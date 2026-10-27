@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Festival Architect</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Festival Architect home">
+          <span class="brand-mark"><i></i><i></i><i></i></span>
+          <span>Festival <em>Architect</em></span>
+        </a>
+        <div class="festival-meta">
+          <span class="live-dot"></span> One day · 14:00—23:00
+        </div>
+        <div class="plan-actions">
+          <span class="status-pill" id="plan-status">DRAFT</span>
+          <button class="button secondary" id="finalise-btn">Finalise plan</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div>
+            <p class="eyebrow">LINEUP PLANNER / 2026</p>
+            <h1>Make every slot<br /><em>feel inevitable.</em></h1>
+            <p class="hero-copy">Build your one-day programme, balance the budget, and turn a shortlist into a lineup that can actually run.</p>
+          </div>
+          <div class="hero-shape" aria-hidden="true"><span></span><span></span><span></span></div>
+        </section>
+
+        <section class="metrics" aria-label="Festival plan summary">
+          <div class="metric"><span>ARTISTS BOOKED</span><strong id="artist-count">0 <small>/ 8</small></strong></div>
+          <div class="metric"><span>COMMITTED</span><strong id="committed">€0</strong></div>
+          <div class="metric"><span>REMAINING</span><strong id="remaining">€10,000</strong></div>
+          <div class="metric"><span>STAGES</span><strong>2 <small>ACTIVE</small></strong></div>
+        </section>
+
+        <div class="workspace">
+          <section class="artists-panel panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">01 / DISCOVER</p><h2>Artist catalogue</h2></div>
+              <span class="catalogue-count">8 artists</span>
+            </div>
+            <div class="artist-list" id="artist-list"></div>
+          </section>
+
+          <section class="schedule-panel panel">
+            <div class="section-heading schedule-heading">
+              <div><p class="eyebrow">02 / SHAPE</p><h2>Today’s timetable</h2></div>
+              <div class="legend"><span><i class="stage-a"></i>Stage A</span><span><i class="stage-b"></i>Stage B</span></div>
+            </div>
+            <div class="timeline-wrap">
+              <div class="time-axis" id="time-axis"></div>
+              <div class="stage-rows">
+                <div class="stage-row"><div class="stage-label"><span class="stage-letter a">A</span><span>Main Stage</span></div><div class="track" id="track-stage-a"></div></div>
+                <div class="stage-row"><div class="stage-label"><span class="stage-letter b">B</span><span>Warehouse</span></div><div class="track" id="track-stage-b"></div></div>
+              </div>
+            </div>
+            <div class="schedule-empty" id="schedule-empty">Select an artist from the catalogue to begin building your day.</div>
+          </section>
+        </div>
+      </main>
+
+      <footer><span>Festival Architect</span><span>Your plan saves automatically in this browser.</span></footer>
+    </div>
+
+    <dialog id="booking-dialog">
+      <form method="dialog" id="booking-form">
+        <button type="button" class="close" id="close-dialog" aria-label="Close">×</button>
+        <p class="eyebrow" id="dialog-step">CREATE PERFORMANCE</p>
+        <h2 id="dialog-title">Book artist</h2>
+        <div class="artist-preview" id="artist-preview"></div>
+        <div class="form-grid">
+          <label>Stage<select id="stage-input"><option value="A">Stage A · Main Stage</option><option value="B">Stage B · Warehouse</option></select></label>
+          <label>Start time<select id="time-input"></select></label>
+        </div>
+        <div class="booking-detail"><span>Set duration <b id="duration-preview"></b></span><span>Ends at <b id="end-preview"></b></span></div>
+        <p class="form-message" id="form-message" role="alert"></p>
+        <div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-btn">Remove booking</button><span></span><button type="button" class="button secondary" id="cancel-btn">Cancel</button><button class="button primary" id="save-btn" value="default">Add to lineup</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="finalise-dialog" class="confirm-dialog">
+      <form method="dialog"><p class="eyebrow">READY TO LOCK IT IN?</p><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
+    </dialog>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
