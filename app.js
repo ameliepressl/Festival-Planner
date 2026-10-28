@@ -62,4 +62,12 @@ $('#booking-form').addEventListener('submit', (e) => { e.preventDefault(); const
 $('#remove-btn').addEventListener('click', () => { if(!editingId)return; state.bookings=state.bookings.filter(b=>b.id!==editingId);save();closeBooking();render();toast('Booking removed and budget released.'); });
 $('#finalise-btn').addEventListener('click', () => { if(state.final){state.final=false;save();render();toast('Plan reopened as a draft.');return;} if(state.bookings.length<4){toast('Book at least four artists before finalising.');return;} $('#finalise-dialog').showModal(); });
 $('#confirm-finalise').addEventListener('click', () => { state.final=true;save();render();toast('Lineup finalised. Your plan is now read-only.'); });
+document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
+  if (button.dataset.section !== 'Lineup planner') {
+    toast(`${button.dataset.section} will be added in a later feature branch.`);
+    return;
+  }
+  document.querySelectorAll('.sidebar-item').forEach((item) => item.classList.remove('active'));
+  button.classList.add('active');
+}));
 populateTimes();render();
