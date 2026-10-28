@@ -36,10 +36,10 @@
           <span>Festival <em>Architect</em></span>
         </a>
         <div class="festival-meta">
-          <span class="live-dot"></span> One day · 14:00—23:00
+          <span class="live-dot"></span> <span id="event-summary"></span>
         </div>
         <div class="plan-actions">
-          <span class="status-pill" id="plan-status">DRAFT</span>
+          <button class="button secondary hidden" id="print-plan">Print / Save PDF</button>
           <button class="button secondary" id="finalise-btn">Finalise plan</button>
         </div>
       </header>
@@ -49,41 +49,37 @@
           <div>
             <p class="eyebrow">LINEUP PLANNER / 2026</p>
             <h1>Make every slot<br /><em>feel inevitable.</em></h1>
-            <p class="hero-copy">Build your one-day programme, balance the budget, and turn a shortlist into a lineup that can actually run.</p>
+            <p class="hero-copy">Build your festival programme, balance the budget, and turn a shortlist into a lineup that can actually run.</p>
           </div>
           <div class="hero-shape" aria-hidden="true"><span></span><span></span><span></span></div>
         </section>
 
+        <div class="summary-heading"><p class="eyebrow">YOUR PLAN AT A GLANCE</p><button class="button secondary" id="edit-settings">Edit planning settings</button></div>
         <section class="metrics" aria-label="Festival plan summary">
-          <div class="metric"><span>ARTISTS BOOKED</span><strong id="artist-count">0 <small>/ 8</small></strong></div>
-          <div class="metric"><span>COMMITTED</span><strong id="committed">€0</strong></div>
-          <div class="metric"><span>REMAINING</span><strong id="remaining">€10,000</strong></div>
-          <div class="metric"><span>STAGES</span><strong>2 <small>ACTIVE</small></strong></div>
+          <div class="metric"><span>PERFORMANCES BOOKED</span><strong id="performance-count"></strong></div>
+          <div class="metric"><span>STAGES</span><strong id="stage-count"></strong></div>
+          <div class="metric budget-metric"><span>ARTIST BUDGET</span><div class="budget-values"><div><small>Total</small><strong id="budget-total"></strong></div><div><small>Used</small><strong id="committed"></strong></div><div><small>Remaining</small><strong id="remaining"></strong></div></div><progress id="budget-progress" value="0" max="100" aria-label="Artist budget used"></progress></div>
         </section>
 
         <div class="workspace">
+          <section class="schedule-panel panel">
+            <div class="section-heading schedule-heading">
+              <div><p class="eyebrow">PROGRAMME</p><h2>Festival timetable</h2></div>
+              <div class="schedule-tools"><span class="catalogue-count">14:00–23:00 each day</span><button class="button secondary" id="edit-hours">Day &amp; stage hours</button><button class="button secondary" id="add-block">+ Add calendar block</button></div>
+            </div>
+            <div class="day-navigation"><button class="button secondary" id="previous-day" aria-label="Previous day">←</button><div id="current-day" aria-live="polite"></div><button class="button secondary" id="next-day" aria-label="Next day">→</button></div>
+            <div class="timeline-wrap" id="calendar"></div>
+            <div class="schedule-empty" id="schedule-empty">Select an artist from the catalogue to begin building your day.</div>
+          </section>
+
           <section class="artists-panel panel">
             <div class="section-heading">
-              <div><p class="eyebrow">01 / DISCOVER</p><h2>Artist catalogue</h2></div>
-              <span class="catalogue-count">8 artists</span>
+              <div><p class="eyebrow">DISCOVER</p><h2>Artist catalogue</h2></div>
+              <button class="button secondary" id="add-artist">+ Add artist</button>
             </div>
             <div class="artist-list" id="artist-list"></div>
           </section>
 
-          <section class="schedule-panel panel">
-            <div class="section-heading schedule-heading">
-              <div><p class="eyebrow">02 / SHAPE</p><h2>Today’s timetable</h2></div>
-              <div class="legend"><span><i class="stage-a"></i>Stage A</span><span><i class="stage-b"></i>Stage B</span></div>
-            </div>
-            <div class="timeline-wrap">
-              <div class="time-axis" id="time-axis"></div>
-              <div class="stage-rows">
-                <div class="stage-row"><div class="stage-label"><span class="stage-letter a">A</span><span>Main Stage</span></div><div class="track" id="track-stage-a"></div></div>
-                <div class="stage-row"><div class="stage-label"><span class="stage-letter b">B</span><span>Warehouse</span></div><div class="track" id="track-stage-b"></div></div>
-              </div>
-            </div>
-            <div class="schedule-empty" id="schedule-empty">Select an artist from the catalogue to begin building your day.</div>
-          </section>
         </div>
       </main>
 
@@ -91,6 +87,8 @@
       </div>
     </div>
 
+    <dialog id="settings-dialog"><form id="settings-form"><p class="eyebrow">PLANNING SETTINGS</p><h2>Shape your festival</h2><div class="form-grid"><label>Number of stages<input id="stages-input" type="number" min="1" max="12" required></label><label>Artist budget (€)<input id="budget-input" type="number" min="0" step="1" required></label></div><p id="settings-message" class="form-message" role="alert"></p><div class="dialog-actions"><span></span><span></span><button type="button" class="button secondary" id="cancel-settings">Cancel</button><button class="button primary">Save settings</button></div></form></dialog>
+    <div id="performance-tooltip" class="performance-tooltip" role="tooltip" hidden></div>
     <dialog id="booking-dialog">
       <form method="dialog" id="booking-form">
         <button type="button" class="close" id="close-dialog" aria-label="Close">×</button>
@@ -98,18 +96,25 @@
         <h2 id="dialog-title">Book artist</h2>
         <div class="artist-preview" id="artist-preview"></div>
         <div class="form-grid">
-          <label>Stage<select id="stage-input"><option value="A">Stage A · Main Stage</option><option value="B">Stage B · Warehouse</option></select></label>
-          <label>Start time<select id="time-input"></select></label>
+          <label>Performance day<select id="day-input"></select></label><label>Stage<select id="stage-input"><option value="A">Stage A · Main Stage</option><option value="B">Stage B · Warehouse</option></select></label>
+          <label>Start time<input id="time-input" type="time" step="60" required></label>
         </div>
+        <label class="notes-label">Notes (optional)<textarea id="booking-notes" rows="3" maxlength="2000" placeholder="Stage setup, reminders, special requirements…"></textarea></label>
         <div class="booking-detail"><span>Set duration <b id="duration-preview"></b></span><span>Ends at <b id="end-preview"></b></span></div>
         <p class="form-message" id="form-message" role="alert"></p>
         <div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-btn">Remove booking</button><span></span><button type="button" class="button secondary" id="cancel-btn">Cancel</button><button class="button primary" id="save-btn" value="default">Add to lineup</button></div>
       </form>
     </dialog>
 
+    <dialog id="hours-dialog"><form id="hours-form"><p class="eyebrow">AVAILABILITY</p><h2>Day &amp; stage hours</h2><label class="notes-label">Festival day<select id="hours-day"></select></label><div class="form-grid"><label>Festival opens<input type="time" step="60" id="hours-start" required></label><label>Festival closes<input type="time" step="60" id="hours-end" required></label></div><p class="hours-help">Stages follow the day’s hours unless you set custom hours below. Closed times appear grey in the calendar.</p><div id="stage-hours-list"></div><p class="form-message" id="hours-message" role="alert"></p><div class="dialog-actions"><span></span><span></span><button type="button" class="button secondary" id="cancel-hours">Cancel</button><button class="button primary">Save hours</button></div></form></dialog>
+    <dialog id="block-dialog"><form id="block-form"><p class="eyebrow">CALENDAR BLOCK</p><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="time" step="60" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
+    <dialog id="artist-dialog"><form id="artist-form"><p class="eyebrow">MANAGE CATALOGUE</p><h2 id="artist-dialog-title">Add artist</h2><div class="form-grid"><label>Name<input id="name-input" maxlength="100" required></label><label>Genre<input id="genre-input" maxlength="80" required></label><label>Price per performance (€)<input id="fee-input" type="number" min="0" step="1" required></label><label>Set duration (minutes)<input id="duration-input" type="number" min="15" max="540" step="5" required></label></div><p class="form-message" id="artist-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="delete-artist">Delete artist</button><span></span><button type="button" class="button secondary" id="cancel-artist">Cancel</button><button class="button primary">Save artist</button></div></form></dialog>
+    <dialog id="delete-dialog" class="confirm-dialog"><form method="dialog"><h2>Delete this artist?</h2><p id="delete-description"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep artist</button><button class="button danger" id="confirm-delete">Delete artist</button></div></form></dialog>
     <dialog id="finalise-dialog" class="confirm-dialog">
       <form method="dialog"><p class="eyebrow">READY TO LOCK IT IN?</p><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
     </dialog>
+    <section id="print-plan-content" aria-label="Printable festival plan"></section>
+    <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="app.js"></script>
   </body>
