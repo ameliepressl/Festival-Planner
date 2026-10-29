@@ -1,38 +1,14 @@
-const ARTISTS = [
-  { id: 'naya', name: 'Naya Bloom', genre: 'Dream pop', fee: 1800, duration: 60, colour: '#f5c8be' },
-  { id: 'nightbus', name: 'Night Bus', genre: 'Indie dance', fee: 1400, duration: 45, colour: '#f9dc88' },
-  { id: 'satori', name: 'Satori Club', genre: 'Electronic', fee: 2200, duration: 75, colour: '#b7e4dc' },
-  { id: 'mila', name: 'Mila & The Sun', genre: 'Soul / R&B', fee: 1200, duration: 45, colour: '#d8c7ed' },
-  { id: 'tomas', name: 'Tomás Vale', genre: 'Alt folk', fee: 900, duration: 40, colour: '#e7d5ae' },
-  { id: 'redwood', name: 'Redwood Hearts', genre: 'Rock', fee: 2000, duration: 60, colour: '#ffd0a2' },
-  { id: 'luna', name: 'Luna Lune', genre: 'Ambient pop', fee: 1100, duration: 50, colour: '#c7d9f4' },
-  { id: 'riko', name: 'Riko Reyes', genre: 'Global beats', fee: 1500, duration: 60, colour: '#d4e8b7' }
-];
-const BUDGET = 10000, START = 14 * 60, END = 23 * 60;
+// Festival Architect — the screen: drawing the page and reacting to clicks.
+// The rules live in rules/festival-rules.js (loaded first in index.html); this file only calls them.
 let state = loadState();
 let selectedArtistId = null, editingId = null;
 const $ = (selector) => document.querySelector(selector);
 const euros = (n) => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
-const timeText = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-function loadState() { try { return JSON.parse(localStorage.getItem('festival-architect-v2')) || { bookings: [], final: false }; } catch { return { bookings: [], final: false }; } }
-function save() { localStorage.setItem('festival-architect-v2', JSON.stringify(state)); }
-function artist(id) { return ARTISTS.find((a) => a.id === id); }
-function total() { return state.bookings.reduce((sum, b) => sum + artist(b.artistId).fee, 0); }
+function loadState() { return parseState(localStorage.getItem(STORAGE_KEY)); }
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function minutesFromInput(value) { const [h, m] = value.split(':').map(Number); return h * 60 + m; }
-function conflict(stage, start, duration, ignoreId) { const end = start + duration; return state.bookings.some((b) => b.id !== ignoreId && b.stage === stage && start < b.start + artist(b.artistId).duration && end > b.start); }
-function validation(booking, ignoreId = null) {
-  const a = artist(booking.artistId), end = booking.start + a.duration;
-  if (state.final) return 'This lineup is final. Reopen it to make changes.';
-  if (booking.start < START || end > END) return `This ${a.duration}-minute set must run between 14:00 and 23:00.`;
-  if (conflict(booking.stage, booking.start, a.duration, ignoreId)) return `That slot overlaps another performance on Stage ${booking.stage}.`;
-  const existing = state.bookings.find((b) => b.artistId === booking.artistId && b.id !== ignoreId);
-  if (existing) return `${a.name} is already in the lineup.`;
-  const replacedFee = ignoreId ? artist(state.bookings.find((b) => b.id === ignoreId).artistId).fee : 0;
-  if (total() - replacedFee + a.fee > BUDGET) return `Adding ${a.name} would exceed the €10,000 artist budget.`;
-  return '';
-}
 function render() {
-  const committed = total();
+  const committed = total(state);
   $('#artist-count').innerHTML = `${state.bookings.length} <small>/ 8</small>`;
   $('#committed').textContent = euros(committed); $('#remaining').textContent = euros(BUDGET - committed);
   $('#plan-status').textContent = state.final ? 'FINAL' : 'DRAFT'; $('#plan-status').classList.toggle('final', state.final);
@@ -58,10 +34,10 @@ function closeBooking() { $('#booking-dialog').close(); selectedArtistId = null;
 function toast(message) { const t=$('#toast'); t.textContent=message;t.classList.add('visible');setTimeout(()=>t.classList.remove('visible'),2600); }
 $('#time-input').addEventListener('change', updateEndPreview);
 $('#close-dialog').addEventListener('click', closeBooking); $('#cancel-btn').addEventListener('click', closeBooking);
-$('#booking-form').addEventListener('submit', (e) => { e.preventDefault(); const booking = { id: editingId || crypto.randomUUID(), artistId: selectedArtistId, stage: $('#stage-input').value, start: minutesFromInput($('#time-input').value) }; const problem=validation(booking,editingId); if(problem) { $('#form-message').textContent=problem; return; } if(editingId) state.bookings=state.bookings.map(b=>b.id===editingId?booking:b); else state.bookings.push(booking); save(); closeBooking();render();toast(editingId?'Performance updated.':'Artist added to the lineup.'); });
+$('#booking-form').addEventListener('submit', (e) => { e.preventDefault(); const booking = { id: editingId || crypto.randomUUID(), artistId: selectedArtistId, stage: $('#stage-input').value, start: minutesFromInput($('#time-input').value) }; const problem=validation(state,booking,editingId); if(problem) { $('#form-message').textContent=problem; return; } if(editingId) state.bookings=state.bookings.map(b=>b.id===editingId?booking:b); else state.bookings.push(booking); save(); closeBooking();render();toast(editingId?'Performance updated.':'Artist added to the lineup.'); });
 $('#remove-btn').addEventListener('click', () => { if(!editingId)return; state.bookings=state.bookings.filter(b=>b.id!==editingId);save();closeBooking();render();toast('Booking removed and budget released.'); });
-$('#finalise-btn').addEventListener('click', () => { if(state.final){state.final=false;save();render();toast('Plan reopened as a draft.');return;} if(state.bookings.length<4){toast('Book at least four artists before finalising.');return;} $('#finalise-dialog').showModal(); });
-$('#confirm-finalise').addEventListener('click', () => { state.final=true;save();render();toast('Lineup finalised. Your plan is now read-only.'); });
+$('#finalise-btn').addEventListener('click', () => { if(state.final){state.final=false;save();render();toast('Plan reopened as a draft.');return;} const problems=finaliseProblems(state); if(problems.length){toast(problems.join(' '));return;} $('#finalise-dialog').showModal(); });
+$('#confirm-finalise').addEventListener('click', () => { const problems=finaliseProblems(state); if(problems.length){toast(problems.join(' '));return;} state.final=true;save();render();toast('Lineup finalised. Your plan is now read-only.'); });
 document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
   if (button.dataset.section !== 'Lineup planner') {
     toast(`${button.dataset.section} will be added in a later feature branch.`);
