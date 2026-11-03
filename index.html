@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
   </head>
   <body>
     <div class="app-layout">
@@ -22,11 +23,12 @@
           <button class="sidebar-item" data-section="Task board"><span>✓</span>Task board</button>
           <button class="sidebar-item" data-section="Site map"><span>⌖</span>Site map</button>
           <button class="sidebar-item" data-section="Vendors"><span>▤</span>Vendors</button>
+          <button class="sidebar-item" data-section="Checklist"><span>☑</span>Checklist</button>
         </nav>
         <div class="sidebar-team">
           <p class="sidebar-label">COLLABORATORS</p>
-          <div class="team-avatars" aria-label="Kira, Amelie, Fredderik and Vicky"><span>K</span><span>A</span><span>F</span><span>V</span></div>
-          <small>Kira · Amelie<br />Fredderik · Vicky</small>
+          <div class="team-avatars" aria-label="Kira, Amelie, Frederik and Vicky"><span>K</span><span>A</span><span>F</span><span>V</span></div>
+          <small>Kira · Amelie<br />Frederik · Vicky</small>
         </div>
       </aside>
       <div class="app-shell" id="top">
@@ -87,6 +89,8 @@
         </div>
       </main>
 
+      <div class="checklist-view hidden" id="checklist-view"></div>
+
       <footer><span>Festival Architect</span><span>Your plan saves automatically in this browser.</span></footer>
       </div>
     </div>
@@ -113,5 +117,7 @@
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/festival-rules.js"></script>
     <script src="app.js"></script>
+    <script src="rules/checklist-rules.js"></script>
+    <script src="checkliste-festivalplanung/checklist-page.js"></script>
   </body>
 </html>
