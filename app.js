@@ -20,6 +20,22 @@ function loadState() {
   result.settings = {...{stages:2,budget:10000},...result.settings};
   delete result.settings.required;
   result.event = {...DEFAULT_EVENT,...result.event};
+  // Reset remaining daily restrictions from the retired availability editor.
+  if (!result.dailyHoursResetV1) {
+    result.event.startMinutes = DEFAULT_EVENT.startMinutes;
+    result.event.endMinutes = DEFAULT_EVENT.endMinutes;
+    delete result.event.dayHours;
+    result.dailyHoursResetV1 = true;
+    localStorage.setItem('festival-architect-v2', JSON.stringify(result));
+  }
+  // Retire saved stage overrides after removing the stage-hours editor.
+  if (!result.stageHoursResetV1) {
+    for (const hours of Object.values(result.event.dayHours || {})) {
+      delete hours.stages;
+    }
+    result.stageHoursResetV1 = true;
+    localStorage.setItem('festival-architect-v2', JSON.stringify(result));
+  }
   result.bookings = result.bookings.filter(b=>b.type==='block'||result.artists.some(a=>a.id===b.artistId)).map(b=>({...b,date:b.date||result.event.startDate}));
   return result;
 }
@@ -85,7 +101,7 @@ function render(){
  $('.budget-metric').classList.toggle('over-budget',total()>state.settings.budget);$('#print-plan').classList.toggle('hidden',!state.final);
  $('#finalise-btn').textContent=state.final?'Reopen as draft':'Finalise plan';
  $('#budget-total').textContent=euros(state.settings.budget);$('#budget-progress').value=state.settings.budget?total()/state.settings.budget*100:0;$('#edit-settings').disabled=state.final;
- $('#settings-form').querySelectorAll('input,button').forEach(e=>e.disabled=state.final);$('#add-artist').disabled=state.final;$('#add-block').disabled=state.final;$('#edit-hours').disabled=state.final;
+ $('#settings-form').querySelectorAll('input,button').forEach(e=>e.disabled=state.final);$('#add-artist').disabled=state.final;$('#add-block').disabled=state.final;
  $('#artist-list').innerHTML=state.artists.map(a=>{const booked=state.bookings.filter(b=>b.artistId===a.id);return `<article class="artist-card"><div class="avatar" style="background:${a.colour}">${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} / performance</div>${booked.length?`<div class="booked-label">${state.final?'BOOKED':'PLANNED'} · ${booked.length} performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.slice().sort((x,y)=>x.date.localeCompare(y.date)||x.start-y.start).map(b=>`<li>${dateText(b.date)} · Stage ${b.stage}<br>${timeText(b.start)}–${timeText(b.start+a.duration)}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${state.final?'disabled':''}>Edit</button><button class="button primary" data-artist="${a.id}" ${state.final?'disabled':''}>Book</button></div></article>`;}).join('')||'<p>No artists yet. Add your first artist above.</p>';
  const daily=dayHours(currentDay);$('.schedule-heading .catalogue-count').textContent=`Festival open ${timeText(daily.start)}–${timeText(daily.end)}`;
  $('#current-day').innerHTML=`<strong>${dateText(currentDay)}</strong><small>Day ${index+1} of ${dates.length}</small>`;$('#previous-day').disabled=index===0;$('#next-day').disabled=index===dates.length-1;
@@ -142,22 +158,6 @@ function showPerformanceDetails(element) {
  tip.style.top=`${rect.bottom+box.height+16<window.innerHeight?rect.bottom+8:Math.max(8,rect.top-box.height-8)}px`;
 }
 window.addEventListener('scroll',()=>{const focused=document.activeElement;if(focused?.matches('[data-booking]'))showPerformanceDetails(focused);else hidePerformanceDetails();},true);window.addEventListener('resize',hidePerformanceDetails);
-function populateHours(){
- const date=$('#hours-day').value,h=dayHours(date);$('#hours-start').value=timeText(h.start);$('#hours-end').value=timeText(h.end);$('#hours-message').textContent='';
- $('#stage-hours-list').innerHTML=stages().map(stage=>{const custom=state.event.dayHours?.[date]?.stages?.[stage],hours=custom||h;return `<details class="stage-hours"><summary>Stage ${stage} <small>${custom?'Custom hours':'Follows festival hours'}</small></summary><label class="hours-toggle"><input type="checkbox" data-custom="${stage}" ${custom?'checked':''}>Use custom hours</label><div class="form-grid"><label>Opens<input type="time" step="60" data-open="${stage}" value="${timeText(hours.start)}" ${custom?'':'disabled'} required></label><label>Closes<input type="time" step="60" data-close="${stage}" value="${timeText(hours.end)}" ${custom?'':'disabled'} required></label></div></details>`;}).join('');
- document.querySelectorAll('[data-custom]').forEach(box=>box.onchange=()=>{document.querySelector(`[data-open="${box.dataset.custom}"]`).disabled=!box.checked;document.querySelector(`[data-close="${box.dataset.custom}"]`).disabled=!box.checked;});
-}
-$('#edit-hours').onclick=()=>{if(!writable())return;$('#hours-day').innerHTML=days().map(d=>`<option value="${d}">${dateText(d)}</option>`).join('');$('#hours-day').value=currentDay;populateHours();$('#hours-dialog').showModal();};
-$('#hours-day').onchange=populateHours;$('#cancel-hours').onclick=()=>$('#hours-dialog').close();
-$('#hours-form').onsubmit=e=>{
- e.preventDefault();if(!writable())return;const date=$('#hours-day').value,start=inputMinutes($('#hours-start').value),end=inputMinutes($('#hours-end').value),custom={};
- if(!Number.isFinite(start)||!Number.isFinite(end)||start>=end){$('#hours-message').textContent='Closing time must be after opening time on the same day.';return;}
- for(const stage of stages()){if(!document.querySelector(`[data-custom="${stage}"]`).checked)continue;const a=inputMinutes(document.querySelector(`[data-open="${stage}"]`).value),b=inputMinutes(document.querySelector(`[data-close="${stage}"]`).value);if(!Number.isFinite(a)||!Number.isFinite(b)||a>=b||a<start||b>end){$('#hours-message').textContent=`Stage ${stage} hours must fit within ${timeText(start)}–${timeText(end)}, with closing after opening.`;return;}custom[stage]={start:a,end:b};}
- const proposed={...state.event,dayHours:{...state.event.dayHours,[date]:{start,end,stages:custom}}};
- const invalid=state.bookings.find(b=>b.date===date&&availabilityProblem(b,proposed));
- if(invalid){$('#hours-message').textContent=`Move or remove “${entryName(invalid)}” (${timeText(invalid.start)}–${timeText(invalid.start+entryDuration(invalid))}, Stage ${invalid.stage}) before saving these hours.`;return;}
- state.event=proposed;currentDay=date;save();render();$('#hours-dialog').close();toast('Day and stage hours saved.');
-};
 $('#edit-settings').onclick=()=>{if(!writable())return;$('#stages-input').value=state.settings.stages;$('#budget-input').value=state.settings.budget;$('#settings-message').textContent='';$('#settings-dialog').showModal();};
 $('#cancel-settings').onclick=()=>$('#settings-dialog').close();
 $('#settings-form').onsubmit=e=>{e.preventDefault();if(!writable())return;const settings={stages:Number($('#stages-input').value),budget:Number($('#budget-input').value)};if(state.bookings.some(b=>b.stage.charCodeAt(0)-65>=settings.stages)){$('#settings-message').textContent='Move or remove bookings on those stages first.';return;}confirmBudget(total(),()=>{state.settings=settings;save();render();$('#settings-dialog').close();toast('Planning settings saved.');},settings.budget);};
