@@ -1,0 +1,30 @@
+/* Crew checklist page. Uses the colours and fonts already defined in styles.css. */
+
+.checklist-hero{padding:64px 4px 34px}
+.checklist-hero h1{font:600 52px/1.02 Fraunces,serif;letter-spacing:-2.2px;margin:0}
+.checklist-hero h1 em{font-weight:500;color:var(--coral)}
+
+/* Overall progress bar at the top */
+.checklist-progress{border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:20px 4px 18px;margin-bottom:34px}
+.checklist-progress-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.checklist-progress-top span{font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted)}
+.checklist-progress-top strong{font:600 34px Fraunces,serif;letter-spacing:-.8px}
+.checklist-bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.checklist-bar div{height:100%;width:0;background:var(--coral);border-radius:6px;transition:width .35s ease}
+.checklist-progress small{display:block;margin-top:10px;font:11px 'DM Mono';color:var(--muted)}
+
+/* One card per team */
+.checklist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;padding-bottom:48px}
+.checklist-card{background:var(--white);border:1px solid var(--line);padding:18px 18px 10px;transition:border-color .2s}
+.checklist-card.complete{border-color:#43a995}
+.checklist-card header{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:6px}
+.checklist-card h2{font:600 19px Fraunces,serif;letter-spacing:-.3px;margin:0;flex:1}
+.checklist-icon{width:28px;height:28px;border-radius:50%;background:var(--paper);display:grid;place-items:center;font-size:14px}
+.checklist-count{font:500 11px 'DM Mono';color:var(--muted)}
+.checklist-card.complete .checklist-count{color:#258371}
+.checklist-card ul{list-style:none;margin:0;padding:0}
+.checklist-card li label{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;font-size:13px;line-height:1.4;cursor:pointer}
+.checklist-card input{accent-color:var(--coral);width:16px;height:16px;margin:1px 0 0;flex:none;cursor:pointer}
+.checklist-card input:checked+span{color:var(--muted);text-decoration:line-through}
+
+@media(max-width:500px){.checklist-hero h1{font-size:38px}.checklist-grid{grid-template-columns:1fr}}

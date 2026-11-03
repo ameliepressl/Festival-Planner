@@ -16,6 +16,8 @@ Use this file together with GitHub branches and pull requests so the team can se
 | --- | --- | --- | --- | --- |
 | `codex/left-navigation` | Add a visual left navigation bar to the original lineup planner. No new feature pages yet. | Ready for team preview — not committed | Kira, Vicky, Fredderik | 28 October 2026 |
 
+| `codex/festival-planner-edits` | Editable artist catalogue, planning settings and vertical multi-day lineup calendar for 15–16 October 2026. | Local preview — ready for review | — | 28 October 2026 |
+
 ## Team ownership
 
 Agree an owner before starting each row. Update this table in the same pull request as the work.
@@ -35,3 +37,53 @@ Agree an owner before starting each row. Update this table in the same pull requ
 - [ ] I described what changed and how I tested it.
 - [ ] At least one teammate reviewed the pull request.
 - [ ] The table above reflects the current status.
+
+## Lineup planner integration notes
+
+- Event dates and daily opening hours live in the persisted `state.event` object in `app.js`. A future event settings page should update this object; no new page has been added here.
+- Default event: 15–16 October 2026, 14:00–23:00 daily. Existing bookings without dates migrate to the first day.
+- Required artists counts distinct artists across the event. Each daily booking incurs the artist's performance fee.
+- Artist edits update existing bookings. Duration and price changes are rejected if they cause schedule conflicts, run past closing, or exceed the budget. Deleting an artist requires an in-app confirmation and removes their bookings.
+- Reducing stages requires moving or removing affected bookings first. Final plans remain read-only until reopened.
+- Validation: JavaScript syntax check; isolated logic checks for overlap, adjacent sets, independent dates, duplicate daily bookings, closing time, budget, editing existing bookings and fee propagation; browser inspection of the calendar and booking dialog.
+
+### Planner layout refinement
+
+Calendar precedes the unnumbered artist catalogue. Planning settings open in a save/cancel dialog. Summary order is artists, stages, then a combined total/used/remaining budget with usage bar. Removed the draft badge. Performance details appear in a small grey tooltip on hover or keyboard focus; Escape dismisses it.
+
+### Final plan export and flexible budget
+
+- Finalisation has no minimum artist requirement. Required artists remains a planning target.
+- Final plans expose Print / Save PDF with both daily calendars, dated performance details (artist, genre, fee, duration, stage and times), counts and budget summary. Uses the browser/system print dialog and its Save as PDF destination.
+- Added total performance count and individual dated bookings in each catalogue entry.
+- Budget increases beyond the available amount require explicit in-app confirmation. This also applies to fee increases and budget reductions that increase the shortfall. Existing over-budget plans can still be edited without repeating the warning when overspend does not increase.
+- Remaining budget becomes negative and red when overspent; the budget panel and usage bar show a warning colour.
+- Slot conflicts list occupied ranges and the last conflicting end time.
+- Verified JavaScript syntax, whitespace, isolated confirmation/validation/print-content checks and browser display. Native print preview could not be inspected through the in-app browser automation.
+
+### Calendar blocks, notes and minute-level times
+
+- Added grey, editable non-artist calendar blocks with title, day, stage, start, duration and optional notes. Blocks reserve stage time and participate in collision checks, but never count toward artist/performance totals or fees.
+- Added optional editable notes to artist bookings. Both kinds of appointment show notes in tooltips and printable details.
+- Start times use minute-precision time inputs, including times such as 15:11.
+- Thin grey borders separate adjacent appointments.
+- Removed the required-artist target from settings, summary and print export. Artist and performance counts share equal formatting, with a conditional repeat-booking note.
+- Validation: syntax and whitespace checks; isolated checks for arbitrary-minute booking, block conflict end times, adjacent blocks, closing boundaries, cost/count exclusion and exported notes; browser verification of the summary and block control.
+
+### Availability and visual alignment
+
+- Matched planned/booked catalogue status font sizes. Aligned summary number baselines. Calendar appointments fill stage columns, retain their dark left edge, and use a single flat grid-coloured separator without shadows.
+- Added Day & stage hours dialog: select a day, edit festival hours, and expand individual stages to override their hours. Stage overrides must fit within their day. Existing appointments must be moved before reducing availability around them.
+- Shared calendar axis spans the earliest opening and latest closing across all days. Closed periods appear grey per stage, including in the print layout. Booking and block validation enforce availability.
+- Future event page integration: `state.event.dayHours[date] = {start, end, stages: {A: {start, end}}}`; times are minutes after midnight. Missing overrides inherit the daily or existing default hours.
+- Checked differing daily hours (14–23 and 12–22), late stage opening at 16:00, shared axis bounds, closed shading and booking boundaries, plus existing booking checks and browser layout.
+
+### Compact summary and short appointments
+
+Summary stays in a single horizontal row with performances, stages and budget; artist count and repeat-booking note removed from the overview. Short appointments hide the entire time line rather than clipping it; full times remain in the accessible label and hover details. Very small entries hide the title too. Confirmed Stage C’s 30-minute “xx” entry now shows its title without clipped times. Syntax, existing logic and whitespace checks passed.
+
+## Integration with main — 3 November 2026
+
+Merged lineup-planner-update-1 with main while preserving the crew checklist and its rules/tests. Current lineup business rules live in rules/festival-rules.js alongside the isolated legacy baseline exports. Existing tests remain unchanged; current-lineup integration tests cover the new behavior. User explicitly requested publishing the merge to main.
+
+Validation: all 30 tests passed (26 original and 4 integration tests). Browser checks passed for lineup rendering, checklist navigation, booking dialog and reload; no console errors.
