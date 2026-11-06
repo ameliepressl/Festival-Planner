@@ -74,3 +74,106 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 @container (height < 16px){.vertical-performance>strong{display:none}}
 @container (width < 105px){.vertical-performance>span{display:none}}
 @media print{.print-calendar .vertical-performance.compact-appointment>span{display:none}.print-calendar .vertical-performance strong{line-height:10px}.print-calendar .vertical-performance>span{line-height:9px}}
+
+/* Empty preliminary Gantt chart, styled to match the festival planner. */
+#gantt-view .checklist-hero{padding-top:32px}
+#gantt-view .checklist-hero>.button{margin-bottom:28px}
+#open-gantt{margin-top:12px}
+.gantt-panel{border:1px solid var(--line);background:var(--white);margin-bottom:48px}
+.gantt-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.gantt-heading h2{font:600 25px Fraunces,serif;margin:0}
+.gantt-heading .eyebrow{margin:0}
+.gantt-scroll{overflow-x:auto}
+.gantt-scroll:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+.gantt-table{border-collapse:collapse;table-layout:fixed;min-width:1120px;width:100%}
+.gantt-caption{text-align:left;padding:14px 24px;font:11px 'DM Mono',monospace;color:var(--muted)}
+.gantt-table th{font:500 11px 'DM Mono',monospace;color:var(--muted);text-align:left;height:48px;background:var(--paper)}
+.gantt-table th,.gantt-table td{border:1px solid var(--line);padding:12px}
+.gantt-table th:first-child{width:220px}
+.gantt-table th:nth-child(2){width:110px}.gantt-table th:nth-child(3){width:100px}
+.gantt-table td{height:48px}
+.gantt-table .gantt-week{background-image:linear-gradient(to right,transparent 49%,var(--line) 50%,transparent 51%);background-size:28.57% 100%}
+.gantt-table tbody tr:nth-child(even){background:var(--paper)}
+.gantt-empty{margin:0;border-top:1px solid var(--line);padding:20px 24px;font-size:13px;color:var(--muted)}
+
+/* Numbered work areas: restrained colour bands, no scheduled task bars. */
+.gantt-table{border-collapse:separate;border-spacing:0;min-width:1240px}
+.gantt-table th,.gantt-table td{border-width:0 1px 1px 0}
+.gantt-table th:first-child{width:310px;position:sticky;left:0;z-index:1}
+.gantt-table .gantt-category-name{background:var(--category-tint);color:var(--ink);font:600 13px/1.5 'DM Sans',sans-serif;border-left:4px solid var(--category-accent);height:64px;text-align:left}
+.gantt-category-number{display:inline-block;min-width:28px;font:500 12px 'DM Mono',monospace;color:var(--category-accent)}
+.gantt-table .gantt-category td{background-color:var(--white);height:64px}
+.gantt-table .gantt-category:nth-child(even) td{background-color:var(--paper)}
+.gantt-table thead th:first-child{z-index:2}
+
+/* One workstream example under Site & infrastructure. */
+.gantt-table .gantt-workstream th,.gantt-table .gantt-subtask th{background:#eef3fa;color:var(--ink);border-left:4px solid #496c9f;font:500 13px/1.5 'DM Sans',sans-serif;white-space:normal}
+.gantt-table .gantt-workstream th{padding:16px 12px 16px 22px;font-weight:700}
+.gantt-workstream small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:6px}
+.gantt-table .gantt-subtask th{padding:14px 12px 14px 36px}
+.gantt-outline-number{font:500 11px 'DM Mono',monospace;color:#496c9f;margin-right:8px;white-space:nowrap}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{background-color:#fafbfd;height:56px}
+
+/* Compact rows with independent hierarchy controls. */
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:42px;padding-top:8px;padding-bottom:8px}
+.gantt-table .gantt-workstream th{padding:8px 12px 8px 18px}
+.gantt-table .gantt-subtask th{padding:7px 12px 7px 43px}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:38px;padding-top:7px;padding-bottom:7px}
+.gantt-workstream small{font-size:10px;line-height:1.4;margin-top:3px}
+.gantt-toggle{display:inline-grid;place-items:center;width:26px;height:26px;padding:0;margin:-3px 5px -3px -5px;border:1px solid transparent;border-radius:4px;color:inherit;background:transparent;cursor:pointer;font:16px/1 sans-serif;vertical-align:middle}
+.gantt-toggle:hover{background:rgba(255,255,255,.65);border-color:currentColor}
+.gantt-toggle:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.gantt-table tr[hidden]{display:none}
+
+/* Dense outline: categories open, task steps collapsed initially. */
+.gantt-table th:first-child{width:390px}
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:34px;padding-top:4px;padding-bottom:4px}
+.gantt-table .gantt-workstream th{background:var(--paper);border-left-color:var(--category-accent);padding:4px 10px 4px 21px;font-size:12px;line-height:1.35}
+.gantt-table .gantt-subtask th{background:var(--white);border-left-color:var(--category-accent);padding:4px 10px 4px 47px;font-size:12px;line-height:1.35}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:30px;padding-top:3px;padding-bottom:3px}
+.gantt-outline-number{color:var(--category-accent);font-size:10px}
+.gantt-toggle{height:24px;width:24px;margin:-2px 4px -2px -4px}
+.gantt-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--line)}
+.gantt-controls .button{font-size:11px;padding:7px 10px}
+.gantt-controls span{font-size:12px;color:var(--muted)}
+
+/* Maximum overview density and independently expandable weeks. */
+.gantt-table th:first-child{width:390px}
+.gantt-table th:nth-child(2){width:110px}
+.gantt-table th:nth-child(n+3){width:88px}
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:27px;padding-top:2px;padding-bottom:2px;font-size:12px;line-height:1.25}
+.gantt-table .gantt-workstream th{padding:2px 8px 2px 20px;font-size:11px;line-height:1.3}
+.gantt-table .gantt-subtask th{padding:2px 8px 2px 43px;font-size:11px;line-height:1.3}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:25px;padding:2px 8px}
+.gantt-toggle{height:22px;width:22px;margin:-1px 4px -1px -4px;font-size:14px}
+.gantt-table .gantt-day-cell{background-image:none;border-right-color:var(--line)}
+.gantt-table thead th{padding:4px 5px;height:48px;vertical-align:bottom}
+.gantt-week-toggle{display:block;border:0;background:transparent;font:500 10px 'DM Mono',monospace;color:var(--ink);padding:5px 2px;cursor:pointer;white-space:nowrap;border-radius:3px}
+.gantt-week-toggle:hover{background:var(--aqua)}
+.gantt-week-toggle:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+.gantt-day-label{display:block;font:10px 'DM Mono',monospace;color:var(--muted);padding:3px 2px}
+
+.gantt-table .gantt-workstream th,.gantt-table .gantt-subtask th{height:25px}
+
+/* Daily schedule bars inherit each work area's colour. */
+.gantt-table td.gantt-day-cell,.gantt-table td.gantt-week{position:relative;padding:0;background-image:none}
+.gantt-schedule-bar{position:absolute;top:7px;height:11px;background:var(--category-accent);opacity:.75;min-width:2px}
+.gantt-category .gantt-schedule-bar{background:var(--category-accent);height:7px;top:10px;opacity:.9}
+.gantt-workstream .gantt-schedule-bar{background:var(--category-accent);height:9px;top:8px;opacity:.85}
+.gantt-table .gantt-festival-day{background-color:#fff0d2!important}
+.gantt-table .gantt-day-label{font-size:9px;white-space:nowrap}
+
+/* The chart scrolls within a fixed-height viewport, keeping dates in sight. */
+.gantt-scroll{max-height:72vh;overflow:auto;isolation:isolate}
+.gantt-table thead th{position:sticky;top:0;z-index:4;background:var(--paper);box-shadow:0 1px 0 var(--line)}
+.gantt-table thead th:first-child{z-index:6}
+.gantt-table th:first-child{width:270px}
+.gantt-table tbody th:first-child{padding-left:0;padding-right:0;overflow:visible;border-left:0;background:transparent}
+.gantt-label-preview{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:270px;padding:2px 8px;border-left:4px solid var(--category-accent);background:var(--white);min-height:25px;box-sizing:border-box}
+.gantt-category .gantt-label-preview{background:var(--category-tint);font-size:12px;font-weight:600}
+.gantt-workstream .gantt-label-preview{padding-left:18px;background:var(--paper)}
+.gantt-subtask .gantt-label-preview{padding-left:36px}
+.gantt-scrolled-sideways .gantt-label-preview{max-width:160px}
+
+
+.gantt-table tbody th:first-child{box-shadow:none}
