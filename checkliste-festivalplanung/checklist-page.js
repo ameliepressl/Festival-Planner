@@ -12,13 +12,13 @@
   function render() {
     view.innerHTML = `
       <section class="checklist-hero">
-        <p class="eyebrow">CREW CHECKLIST</p>
+        <p class="eyebrow">FINAL CHECKLIST</p>
         <h1>Nothing forgotten<br /><em>before the gates open.</em></h1>
-        <p class="hero-copy">Tick off what each team has done. Your progress saves automatically in this browser.</p>
+        <p class="hero-copy">On the event day, confirm each checkpoint on site before ticking it off. Advance preparation belongs in the task board. Review any previously saved ticks against these checks. Your progress saves automatically in this browser.</p>
       </section>
-      <section class="checklist-progress" aria-label="Checklist progress">
+      <section class="checklist-progress" aria-label="Final checklist progress">
         <div class="checklist-progress-top"><span>OVERALL PROGRESS</span><strong id="checklist-percent"></strong></div>
-        <div class="checklist-bar" id="checklist-bar" role="progressbar" aria-label="Checklist progress" aria-valuemin="0" aria-valuemax="100"><div></div></div>
+        <div class="checklist-bar" id="checklist-bar" role="progressbar" aria-label="Final checklist progress" aria-valuemin="0" aria-valuemax="100"><div></div></div>
         <small id="checklist-summary"></small>
       </section>
       <div class="checklist-grid">
@@ -46,7 +46,7 @@
     view.querySelector('#checklist-bar').setAttribute('aria-valuenow', overall.percent);
     view.querySelector('#checklist-bar div').style.width = `${overall.percent}%`;
     view.querySelector('#checklist-summary').textContent =
-      `${overall.done} of ${overall.total} tasks done${overall.percent === 100 ? ' · ready to open the gates!' : ''}`;
+      `${overall.done} of ${overall.total} tasks done${overall.percent === 100 ? ' · all listed checks confirmed' : ''}`;
     view.querySelectorAll('.checklist-card').forEach((card) => {
       const team = progressOf(card.dataset.group, checked);
       card.querySelector('.checklist-count').textContent = `${team.done}/${team.total}`;
@@ -62,15 +62,15 @@
     updateProgress();
   });
 
-  // Left navigation: "Checklist" shows this page, "Lineup planner" shows the planner again.
+  // Left navigation: "Final checklist" shows this page, "Lineup planner" shows the planner again.
   function show(section) {
-    const onChecklist = section === 'Checklist';
+    const onChecklist = section === 'Final checklist';
     view.classList.toggle('hidden', !onChecklist);
     lineup.classList.toggle('hidden', onChecklist);
     window.scrollTo(0, 0);
   }
   document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Checklist'].includes(button.dataset.section)) show(button.dataset.section);
+    if (['Lineup planner', 'Final checklist'].includes(button.dataset.section)) show(button.dataset.section);
   }));
 
   render();

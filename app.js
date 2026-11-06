@@ -39,7 +39,7 @@ $('#remove-btn').addEventListener('click', () => { if(!editingId)return; state.b
 $('#finalise-btn').addEventListener('click', () => { if(state.final){state.final=false;save();render();toast('Plan reopened as a draft.');return;} const problems=finaliseProblems(state); if(problems.length){toast(problems.join(' '));return;} $('#finalise-dialog').showModal(); });
 $('#confirm-finalise').addEventListener('click', () => { const problems=finaliseProblems(state); if(problems.length){toast(problems.join(' '));return;} state.final=true;save();render();toast('Lineup finalised. Your plan is now read-only.'); });
 document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
-  if (!['Lineup planner', 'Checklist'].includes(button.dataset.section)) {
+  if (!['Lineup planner', 'Final checklist'].includes(button.dataset.section)) {
     toast(`${button.dataset.section} will be added in a later feature branch.`);
     return;
   }

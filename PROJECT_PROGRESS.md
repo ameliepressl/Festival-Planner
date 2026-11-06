@@ -35,3 +35,9 @@ Agree an owner before starting each row. Update this table in the same pull requ
 - [ ] I described what changed and how I tested it.
 - [ ] At least one teammate reviewed the pull request.
 - [ ] The table above reflects the current status.
+
+## Crew checklist — 6 November 2026
+
+Branch: `feature-crew-checklist`. Revised all 56 checkpoints to describe event-day readiness and clarified the checklist instructions. Advance booking, ordering and scheduling belong in the future task board, which is not implemented here. Task IDs and saved ticks are preserved; users are asked to review earlier ticks against the revised checks. Status: local changes for review.
+
+Renamed the navigation and page label to “Final checklist”. Validation: all 26 tests passed; browser tick/untick and reload persistence verified for the event-day wording.

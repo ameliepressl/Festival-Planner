@@ -37,3 +37,15 @@ tick it off, and see at a glance how ready the festival is.
 4. Ticking a task twice unticks it again.
 5. After reloading the page the same 8 tasks are ticked and it still shows 14 %.
 6. Clicking "Lineup planner" shows the planner; booking an artist still works.
+
+## Event-day checkpoint wording — 6 November 2026
+
+Why: this checklist verifies readiness on the event day; advance preparation belongs in the future task board.
+
+What: rewrite all 56 checkpoints as observable on-site states or confirmations, and clarify the page instructions. Keep the existing task IDs so saved ticks remain compatible. Existing ticks should be reviewed against the revised wording.
+
+Out of scope: task board, subtasks, Gantt chart, assignments, and changes to checklist behaviour.
+
+Done when: no checkpoint asks users to book, order or plan in advance; existing tests pass; ticking, unticking and reload persistence still work in the browser.
+
+Renamed the navigation and page label to “Final checklist”. Validation: all 26 tests passed; browser tick/untick and reload persistence verified for the event-day wording.

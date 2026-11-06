@@ -1,87 +1,87 @@
-// Festival Architect — the crew checklist: what every team has to get done before the gates open.
+// Festival Architect — the crew checklist: event-day checks each team confirms on site before the gates open.
 // Only data and calculations live here (no screen code), so they can be tested (tests/) and used by
 // checkliste-festivalplanung/checklist-page.js.
 
 const CHECKLIST = [
   { id: 'security', title: 'Security', icon: '◈', tasks: [
-    { id: 'security-plan', text: 'Crowd management plan written and approved' },
-    { id: 'security-staff', text: 'Security staff booked and briefed' },
-    { id: 'security-entry', text: 'Entry points with bag checks set up' },
-    { id: 'security-exits', text: 'Emergency exits marked and kept free' },
-    { id: 'security-barriers', text: 'Crowd barriers in front of both stages' },
-    { id: 'security-lost', text: 'Lost & found and lost-child point set up' }
+    { id: 'security-plan', text: 'Security lead has confirmed today’s crowd management arrangements' },
+    { id: 'security-staff', text: 'Security staff checked in, briefed and at their posts' },
+    { id: 'security-entry', text: 'Entry points staffed and bag-check stations ready' },
+    { id: 'security-exits', text: 'Emergency exits clearly marked and routes clear' },
+    { id: 'security-barriers', text: 'Crowd barriers in position and checked at both stages' },
+    { id: 'security-lost', text: 'Lost & found and lost-child point staffed and clearly marked' }
   ] },
   { id: 'stage', title: 'Stage building', icon: '▥', tasks: [
-    { id: 'stage-build', text: 'Both stages built according to the plan' },
-    { id: 'stage-inspection', text: 'Stage structures inspected and signed off' },
-    { id: 'stage-rigging', text: 'Rigging load points checked' },
-    { id: 'stage-weather', text: 'Rain and wind protection in place' },
-    { id: 'stage-access', text: 'Stairs, ramps and backstage access safe' }
+    { id: 'stage-build', text: 'Both stages fully assembled and ready for today’s programme' },
+    { id: 'stage-inspection', text: 'Stage inspection sign-offs available to the stage manager' },
+    { id: 'stage-rigging', text: 'Rigging lead has confirmed load points are checked and secure' },
+    { id: 'stage-weather', text: 'Stage weather protection checked against today’s conditions' },
+    { id: 'stage-access', text: 'Stairs, ramps and backstage routes checked and clear' }
   ] },
   { id: 'sound', title: 'Sound', icon: '◉', tasks: [
-    { id: 'sound-pa', text: 'PA system set up on both stages' },
-    { id: 'sound-monitors', text: 'Stage monitors and in-ears ready' },
-    { id: 'sound-backline', text: 'Backline matches the artists’ technical riders' },
-    { id: 'sound-checks', text: 'Soundcheck schedule shared with all artists' },
-    { id: 'sound-limits', text: 'Noise limits known and a sound level meter in place' },
-    { id: 'sound-spares', text: 'Spare microphones, cables and batteries packed' }
+    { id: 'sound-pa', text: 'PA system tested and working on both stages' },
+    { id: 'sound-monitors', text: 'Stage monitors and in-ear systems tested and ready' },
+    { id: 'sound-backline', text: 'Backline on site and checked against today’s technical riders' },
+    { id: 'sound-checks', text: 'Pre-opening soundchecks completed and remaining checks confirmed with artists' },
+    { id: 'sound-limits', text: 'Sound engineer briefed on today’s noise limits and meter working' },
+    { id: 'sound-spares', text: 'Spare microphones, cables and batteries available at the stages' }
   ] },
   { id: 'lighting', title: 'Lighting', icon: '✦', tasks: [
-    { id: 'lighting-plot', text: 'Lighting plan agreed for each stage' },
-    { id: 'lighting-rig', text: 'Lights rigged and focused' },
-    { id: 'lighting-show', text: 'Light shows programmed for the evening sets' },
-    { id: 'lighting-site', text: 'Paths, toilets and exits lit after dark' },
-    { id: 'lighting-emergency', text: 'Emergency lighting tested' }
+    { id: 'lighting-plot', text: 'Lighting setup checked against each stage’s lighting plan' },
+    { id: 'lighting-rig', text: 'Lighting crew has checked fixtures are secure, focused and working' },
+    { id: 'lighting-show', text: 'Evening lighting cues loaded and tested' },
+    { id: 'lighting-site', text: 'Path, toilet and exit lights tested and ready for dusk' },
+    { id: 'lighting-emergency', text: 'Emergency lighting tested and working' }
   ] },
   { id: 'power', title: 'Power & cables', icon: 'ϟ', tasks: [
-    { id: 'power-generators', text: 'Generators delivered and fuelled' },
-    { id: 'power-backup', text: 'Backup power for stages and first aid' },
-    { id: 'power-check', text: 'Electrical installation checked by an electrician' },
-    { id: 'power-ramps', text: 'Cable ramps over all walkways' }
+    { id: 'power-generators', text: 'Generators running and fuel levels checked for today’s operation' },
+    { id: 'power-backup', text: 'Backup power for stages and first aid tested and ready' },
+    { id: 'power-check', text: 'Electrician has confirmed the installation is ready for use' },
+    { id: 'power-ramps', text: 'Cables protected and cable ramps secure across walkways' }
   ] },
   { id: 'backstage', title: 'Backstage & catering', icon: '☕', tasks: [
-    { id: 'backstage-rooms', text: 'Dressing rooms ready and labelled' },
-    { id: 'backstage-riders', text: 'Hospitality riders read and ordered' },
-    { id: 'backstage-catering', text: 'Crew and artist catering times planned' },
-    { id: 'backstage-diets', text: 'Allergies and dietary needs noted' },
-    { id: 'backstage-water', text: 'Drinking water on and next to both stages' }
+    { id: 'backstage-rooms', text: 'Dressing rooms clean, stocked and labelled' },
+    { id: 'backstage-riders', text: 'Hospitality supplies on site and checked against today’s riders' },
+    { id: 'backstage-catering', text: 'Catering team on site and today’s serving times confirmed' },
+    { id: 'backstage-diets', text: 'Catering team has confirmed dietary requests and labelled meals' },
+    { id: 'backstage-water', text: 'Drinking water stocked on and next to both stages' }
   ] },
   { id: 'artists', title: 'Artist care & transport', icon: '♪', tasks: [
-    { id: 'artists-arrival', text: 'Arrival times confirmed with every artist' },
-    { id: 'artists-shuttle', text: 'Shuttle and parking for artists organised' },
-    { id: 'artists-passes', text: 'Artist and crew passes printed' },
-    { id: 'artists-contacts', text: 'Contact person named for each artist' }
+    { id: 'artists-arrival', text: 'Artist liaison has checked today’s arrivals and flagged any delays' },
+    { id: 'artists-shuttle', text: 'Shuttle drivers checked in and artist parking ready' },
+    { id: 'artists-passes', text: 'Artist and crew passes available at check-in' },
+    { id: 'artists-contacts', text: 'Artist contacts on duty and reachable' }
   ] },
   { id: 'medical', title: 'First aid & safety', icon: '✚', tasks: [
-    { id: 'medical-team', text: 'Paramedics and first aid tent booked' },
-    { id: 'medical-defib', text: 'Defibrillator on site and its place known' },
-    { id: 'medical-fire', text: 'Fire extinguishers placed and checked' },
-    { id: 'medical-evacuation', text: 'Evacuation plan shared with all teams' },
-    { id: 'medical-weather', text: 'Storm and heat plan ready' }
+    { id: 'medical-team', text: 'Medical team on site and first aid point staffed and equipped' },
+    { id: 'medical-defib', text: 'Defibrillator ready for use and its location confirmed with staff' },
+    { id: 'medical-fire', text: 'Fire extinguishers checked, accessible and in position' },
+    { id: 'medical-evacuation', text: 'Team leads briefed on evacuation routes and meeting points' },
+    { id: 'medical-weather', text: 'Safety lead has checked today’s forecast and briefed teams on weather actions' }
   ] },
   { id: 'facilities', title: 'Toilets, water & waste', icon: '♲', tasks: [
-    { id: 'facilities-toilets', text: 'Enough toilets, including accessible ones' },
-    { id: 'facilities-water', text: 'Free drinking water stations' },
-    { id: 'facilities-bins', text: 'Bins and recycling points across the site' },
-    { id: 'facilities-cleaning', text: 'Cleaning crew booked for during and after' }
+    { id: 'facilities-toilets', text: 'Toilets, including accessible units, open, clean and stocked' },
+    { id: 'facilities-water', text: 'Free drinking water stations working and clearly marked' },
+    { id: 'facilities-bins', text: 'Bins and recycling points in position and ready for use' },
+    { id: 'facilities-cleaning', text: 'Cleaning crew on site, briefed and equipped for today’s shifts' }
   ] },
   { id: 'entry', title: 'Tickets & entry', icon: '▤', tasks: [
-    { id: 'entry-scanners', text: 'Ticket scanners tested' },
-    { id: 'entry-wristbands', text: 'Wristbands delivered' },
-    { id: 'entry-signs', text: 'Signs to entrance, stages, toilets and exits' },
-    { id: 'entry-accessible', text: 'Accessible entrance and viewing area' }
+    { id: 'entry-scanners', text: 'Ticket scanners tested with the entry team and ready to use' },
+    { id: 'entry-wristbands', text: 'Wristbands stocked at each entry point' },
+    { id: 'entry-signs', text: 'Entrance, stage, toilet and exit signs in place and visible' },
+    { id: 'entry-accessible', text: 'Accessible entrance, routes and viewing area checked and clear' }
   ] },
   { id: 'permits', title: 'Permits & insurance', icon: '§', tasks: [
-    { id: 'permits-event', text: 'Event permit from the city' },
-    { id: 'permits-noise', text: 'Noise permit for the festival hours' },
-    { id: 'permits-alcohol', text: 'Licence to sell alcohol' },
-    { id: 'permits-insurance', text: 'Event liability insurance' }
+    { id: 'permits-event', text: 'Event permit available on site and today’s conditions checked with the event lead' },
+    { id: 'permits-noise', text: 'Noise permit available and permitted hours confirmed with the sound lead' },
+    { id: 'permits-alcohol', text: 'Alcohol licence available and service conditions confirmed with bar leads' },
+    { id: 'permits-insurance', text: 'Insurance documents and incident-reporting contact available on site' }
   ] },
   { id: 'team', title: 'Team & radios', icon: '◎', tasks: [
-    { id: 'team-shifts', text: 'Staff and volunteer shifts planned' },
-    { id: 'team-briefing', text: 'Team briefing held on the morning of the festival' },
-    { id: 'team-radios', text: 'Radios charged, channels assigned' },
-    { id: 'team-contacts', text: 'Emergency contact list handed out' }
+    { id: 'team-shifts', text: 'Staff and volunteers checked in and today’s posts covered' },
+    { id: 'team-briefing', text: 'Event-day team briefing completed' },
+    { id: 'team-radios', text: 'Radios charged, issued and tested on assigned channels' },
+    { id: 'team-contacts', text: 'Team leads have today’s contact list and key contacts are reachable' }
   ] }
 ];
 
