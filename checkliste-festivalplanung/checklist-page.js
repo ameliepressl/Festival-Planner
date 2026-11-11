@@ -64,13 +64,13 @@
 
   // Left navigation: "Final checklist" shows this page, "Lineup planner" shows the planner again.
   function show(section) {
-    const onChecklist = section === 'Final checklist';
+    const onChecklist = section === 'Checklist';
     view.classList.toggle('hidden', !onChecklist);
     lineup.classList.toggle('hidden', onChecklist);
     window.scrollTo(0, 0);
   }
   document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Final checklist'].includes(button.dataset.section)) show(button.dataset.section);
+    if (['Lineup planner', 'Checklist'].includes(button.dataset.section)) show(button.dataset.section);
   }));
 
   render();

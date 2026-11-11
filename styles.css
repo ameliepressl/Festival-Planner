@@ -74,3 +74,32 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 @container (height < 16px){.vertical-performance>strong{display:none}}
 @container (width < 105px){.vertical-performance>span{display:none}}
 @media print{.print-calendar .vertical-performance.compact-appointment>span{display:none}.print-calendar .vertical-performance strong{line-height:10px}.print-calendar .vertical-performance>span{line-height:9px}}
+
+
+/* Extra planning controls stay grouped and the calendar remains the main focus. */
+.plan-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:14px 0 0}
+.plan-tools-copy,.tools-message,.calendar-help,.field-help{color:var(--muted);font-size:12px;line-height:1.6}
+.plan-tools-copy{margin-right:auto}.tools-message{flex-basis:100%;margin:0}.tools-message:empty{display:none}
+.button.quiet{background:transparent;color:var(--muted);padding:7px 0;border-bottom:1px solid var(--line)}
+.button.quiet:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.calendar-help{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.booking-legend{display:inline-flex;align-items:center;gap:6px;font:10px 'DM Mono';white-space:nowrap}
+.booking-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:8px}
+.tentative-dot{border:1px solid var(--muted);background:transparent}.confirmed-dot{background:#258371}
+#booking-dialog{width:min(560px,calc(100% - 30px));max-height:90vh;overflow:auto}
+#settings-dialog,#print-dialog,#restore-dialog{max-height:90vh;overflow:auto}
+.notes-label select{display:block;width:100%;margin-top:7px;padding:10px 8px;background:var(--white);border:1px solid var(--line);font:13px 'DM Sans';color:var(--ink)}
+.form-grid .full-width{grid-column:1/-1}.field-help{margin:0 0 16px}.slot-suggestion{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 14px}.slot-suggestion:has(.button.hidden):has(p:empty){display:none}.slot-suggestion .field-help{margin:0}
+.stage-name-settings{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:18px}
+.stage-name-settings summary{font-size:13px;font-weight:600;cursor:pointer}.stage-name-settings .field-help{margin:10px 0}.stage-name-settings .form-grid{margin-bottom:0}
+.slot-actions,.restore-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}.slot-actions .quiet{margin-left:auto}
+.vertical-track{cursor:crosshair}.vertical-track:focus-visible{outline:2px solid var(--coral);outline-offset:-2px}
+.add-stage-slot,.calendar-slot-trigger{font:11px 'DM Sans';background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 7px;cursor:pointer;margin-left:8px}
+.add-stage-slot:hover,.calendar-slot-trigger:hover{border-color:var(--ink);color:var(--ink)}
+.vertical-performance.tentative{border-left-style:dashed}.vertical-performance.confirmed{border-left-style:solid}
+.vertical-performance .entry-status{font-size:8px;line-height:10px;color:#405c54;letter-spacing:.3px;text-transform:uppercase}
+.vertical-performance.calendar-block .entry-status{color:var(--muted)}
+.linked-block-hint{color:var(--muted);font-size:11px;line-height:1.5}.booking-status-label{font:10px 'DM Mono';color:#52665e;text-transform:uppercase}
+@container (height < 52px){.vertical-performance>.entry-status{display:none}}
+@media(max-width:650px){.plan-tools-copy{flex-basis:100%}.plan-tools{gap:8px 20px}.slot-actions,.restore-actions{justify-content:flex-start}.slot-actions .quiet{margin-left:0}.calendar-help{font-size:11px}.dialog-actions .secondary{display:block}}
+@media print{.plan-tools,.calendar-help,.add-stage-slot,.calendar-slot-trigger{display:none!important}.vertical-performance .entry-status{font-size:6px;line-height:8px}.vertical-performance.tentative{border-left-style:dashed}}

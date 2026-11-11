@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
+// Explicit test data keeps booking checks independent of the editable starter catalogue.
+const bookingArtists = [{id:'naya',name:'Naya Bloom',genre:'Dream pop',fee:1800,duration:60,colour:'#f5c8be'}];
 function planner(saved = null) {
   const nodes = new Map();
   function node() { return { value: '', innerHTML: '', textContent: '', hidden: false, opened: false,
@@ -31,7 +33,7 @@ test('merged planner starts with shared rules and renders both-day navigation', 
   assert.match(html, /checklist-page.js/);
 });
 test('minute-level bookings, blocks, adjacent sets and separate dates use current rules', () => {
-  const p = planner();
+  const p = planner({ artists: bookingArtists });
   p.run("state.bookings=[{id:'break',type:'block',title:'Changeover',date:'2026-10-15',stage:'A',start:911,duration:20,notes:'Drums'}]");
   assert.match(p.run("validation({artistId:'naya',date:'2026-10-15',stage:'A',start:920})"), /15:31/);
   assert.equal(p.run("validation({artistId:'naya',date:'2026-10-15',stage:'A',start:931})"), '');
@@ -62,4 +64,73 @@ test('saved custom artists and blocks survive loading; retired hours reset once'
   assert.match(print, /Change drums/);
   assert.match(print, /Soundcheck complete/);
   assert.match(print, /Fri 16 October/);
+});
+
+test('booking form accepts a 15:11 start and keeps it after reloading saved data', () => {
+  const p = planner({ artists: bookingArtists });
+  p.run("openBooking('naya')");
+  p.nodes.get('#time-input').value = '15:11';
+  p.nodes.get('#booking-notes').value = 'Check microphone';
+  p.nodes.get('#booking-form').onsubmit({ preventDefault() {} });
+  assert.equal(p.run('state.bookings.length'), 1);
+  assert.equal(p.run('state.bookings[0].start'), 911);
+  assert.equal(p.nodes.get('#performance-count').textContent, 1);
+  assert.match(p.nodes.get('#calendar').innerHTML, /15:11–16:11/);
+  const reloaded = planner(JSON.parse(p.storage.get('festival-architect-v2')));
+  assert.equal(reloaded.run('state.bookings[0].start'), 911);
+  assert.equal(reloaded.run('state.bookings[0].notes'), 'Check microphone');
+});
+
+test('settings dialog opens and saves stages and budget', () => {
+  const p = planner();
+  p.nodes.get('#edit-settings').onclick();
+  assert.equal(p.nodes.get('#settings-dialog').opened, true);
+  p.nodes.get('#stages-input').value = '3';
+  p.nodes.get('#budget-input').value = '15000';
+  p.nodes.get('#settings-form').onsubmit({ preventDefault() {} });
+  assert.equal(p.nodes.get('#settings-dialog').opened, false);
+  assert.equal(p.run('state.settings.stages'), 3);
+  assert.equal(p.nodes.get('#stage-count').textContent, 3);
+  assert.match(p.nodes.get('#calendar').innerHTML, /Stage C/);
+  assert.equal(p.run('state.settings.budget'), 15000);
+});
+
+
+test('fresh plans start with one editable example and adding or editing an artist persists', () => {
+  const p = planner();
+  assert.equal(p.run('state.artists.length'), 1);
+  assert.equal(p.run('state.artists[0].name'), 'Example Artist');
+  assert.equal(p.run('state.artists[0].fee'), 0);
+  assert.equal(p.run('state.artists[0].duration'), 60);
+  assert.equal(p.run('state.bookings.length'), 0);
+  p.run("openArtist('example')");
+  p.nodes.get('#name-input').value = 'My artist';
+  p.nodes.get('#genre-input').value = 'Jazz';
+  p.nodes.get('#fee-input').value = '500';
+  p.nodes.get('#duration-input').value = '45';
+  p.nodes.get('#artist-form').onsubmit({ preventDefault() {} });
+  assert.equal(p.run("artist('example').name"), 'My artist');
+  assert.equal(p.run("artist('example').fee"), 500);
+  p.run('openArtist()');
+  p.nodes.get('#name-input').value = 'Second artist';
+  p.nodes.get('#genre-input').value = 'Rock';
+  p.nodes.get('#fee-input').value = '700';
+  p.nodes.get('#duration-input').value = '60';
+  p.nodes.get('#artist-form').onsubmit({ preventDefault() {} });
+  const reloaded = planner(JSON.parse(p.storage.get('festival-architect-v2')));
+  assert.equal(reloaded.run('state.artists.length'), 2);
+  assert.equal(reloaded.run("artist('example').duration"), 45);
+  assert.match(reloaded.nodes.get('#artist-list').innerHTML, /Second artist/);
+});
+
+test('older saved bookings keep their artists when no catalogue was stored', () => {
+  const p = planner({ bookings: [{id:'old',artistId:'naya',stage:'A',start:840}], final:false });
+  assert.equal(p.run('state.bookings.length'), 1);
+  assert.equal(p.run("artist('naya').name"), 'Naya Bloom');
+  assert.equal(p.run('total()'), 1800);
+});
+
+test('a saved empty catalogue stays empty rather than reinserting the example', () => {
+  const p = planner({artists:[],bookings:[],final:false});
+  assert.equal(p.run('state.artists.length'), 0);
 });
