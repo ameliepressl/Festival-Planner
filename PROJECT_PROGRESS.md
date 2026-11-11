@@ -124,3 +124,19 @@ Gantt scrolling: sticky week/date header in a vertically scrollable chart; task 
 Sideways scrolling now shortens label previews only; font weight, text colours and category styling remain unchanged.
 
 Session handover: confirmed the current Gantt task hierarchy and daily schedule load as the default template on app opening. Future scope: project users, roles and permissions controlling task and timeline editing. All current work remains local on feature-task-board-placeholder, uncommitted and unpushed. Known validation issue: one existing integration assertion still expects the former Checklist navigation name.
+
+10 November: redesigned Gantt controls into Outline (Areas/Tasks/Subtasks) and Timeline (Weeks/Days) selectors, with selected/custom states and consistent individual chevrons. Timeline switches preserve the visible date. Local changes on feature-task-board; no commit.
+
+Head-of-project editing: browser-local plan model with stable IDs, custom subtask dates/names, add/remove and ordering controls. Explicit save/cancel, date validation, auto timeline extension and parent aggregation. No authentication/role enforcement implemented.
+
+Inline edit mode replaces modal: names, date ranges, add/remove and reorder actions now appear in Gantt rows, with live bar updates and explicit Save/Cancel. Existing persisted plans retained.
+
+Inline reordering now uses drag handles and insertion markers, replacing up/down buttons. Tasks retain subtasks when moved; subtasks retain dates. Keyboard arrows on handles remain available. No commit requested.
+
+Compact edit rows: drag handle at far left, inline name and +/× actions on the same line. × removal keeps two-click confirmation and accessible labels.
+
+Column refinement: Owner visible in overview and edit mode; Subtask dates is a separate edit-only column. Timeline rebuilds preserve the two permanent columns.
+
+Timeline page description moved beside title on wide screens to reduce header height; stacks responsively.
+
+Validation: updated the navigation test to match the approved Final checklist label, with explicit user approval. Full test suite rerun before commit.

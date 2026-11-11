@@ -104,12 +104,16 @@
         <section class="checklist-hero">
           <button class="button secondary" id="back-task-board">← Back to task board</button>
           <p class="eyebrow">TASK BOARD / PRELIMINARY TIMELINE</p>
-          <h1>Project timeline</h1>
-          <p class="hero-copy">Your festival preparation, scheduled backwards from opening day. Expand a task group to see its daily plan.</p>
+          <div class="gantt-intro-row"><h1>Project timeline</h1>
+          <p class="hero-copy">Your festival preparation, scheduled backwards from opening day. Expand a task group to see its daily plan.</p></div>
         </section>
         <section class="gantt-panel" aria-labelledby="gantt-title">
           <div class="gantt-heading"><h2 id="gantt-title">Gantt chart</h2><span class="eyebrow">13 AREAS · 52 TASKS · 209 SUBTASKS</span></div>
-          <div class="gantt-controls"><button class="button secondary" id="gantt-expand-all">Expand all</button><button class="button secondary" id="gantt-collapse-all">Collapse all</button><span>Expand a category, then a task to see its steps.</span></div>
+          <div class="gantt-controls">
+            <div class="gantt-control-group"><span class="gantt-control-label" id="outline-label">Outline</span><div class="gantt-segmented" role="group" aria-labelledby="outline-label"><button type="button" data-outline="areas" aria-pressed="false">Areas</button><button type="button" data-outline="tasks" aria-pressed="true">Tasks</button><button type="button" data-outline="subtasks" aria-pressed="false">Subtasks</button></div><span class="gantt-view-state" id="outline-state" aria-live="polite"></span></div>
+            <div class="gantt-control-group"><span class="gantt-control-label" id="timeline-label">Timeline</span><div class="gantt-segmented" role="group" aria-labelledby="timeline-label"><button type="button" data-timeline="weeks" aria-pressed="false">Weeks</button><button type="button" data-timeline="days" aria-pressed="true">Days</button></div><span class="gantt-view-state" id="timeline-state" aria-live="polite"></span></div>
+            <p class="gantt-control-hint">Use the arrows to adjust individual areas, tasks or weeks.</p>
+          </div>
           <div class="gantt-scroll" tabindex="0" role="region" aria-label="Gantt chart categories, scroll horizontally to view all weeks">
             <table class="gantt-table"><caption class="gantt-caption">Eight-week layout · Expand any week to see its days · Dates to be defined</caption>
               <thead><tr><th scope="col">Task</th><th scope="col">Owner</th><th scope="col">Week 1</th><th scope="col">Week 2</th><th scope="col">Week 3</th><th scope="col">Week 4</th><th scope="col">Week 5</th><th scope="col">Week 6</th><th scope="col">Week 7</th><th scope="col">Week 8</th></tr></thead>
@@ -431,7 +435,9 @@
     <script src="app.js"></script>
     <script src="rules/checklist-rules.js"></script>
     <script src="checkliste-festivalplanung/checklist-page.js"></script>
+    <script src="gantt-defaults.js"></script>
+    <script src="gantt-editor.js?v=owner-columns"></script>
     <script src="gantt-placeholder.js"></script>
-    <script src="gantt-schedule.js"></script>
+    <script src="gantt-schedule.js?v=owner-columns"></script>
   </body>
 </html>

@@ -39,3 +39,31 @@ Keep weeks/dates visible in a vertically scrolling chart. Narrow task column to 
 ## Default project template and future permissions
 
 The approved 13 categories, 52 tasks, 209 subtasks and relative daily schedule are the default inputs loaded on every app opening. Dates are anchored to the configured festival dates. Keep this as the starting template for future projects. Later work will introduce users, project roles and permission-based editing of tasks and timelines; no accounts or permissions are implemented in this version.
+
+## Clearer detail controls — 10 November 2026
+
+Replace expand/collapse-all with an Outline control (Areas / Tasks / Subtasks) and replace All weeks/days with Timeline (Weeks / Days). Selected states reflect actual detail; manual mixtures show Custom. Retain independent row and week toggles, using consistent chevrons and accessible labels. Preserve horizontal position on timeline changes by anchoring to the currently visible date. Stay on feature-task-board; no commit requested.
+
+## Head-of-project editing
+
+Add a browser-local editor for subtask names and dates, adding/removing/reordering subtasks and moving task groups within an area. Save explicitly; cancel discards edits. Stable task identities keep schedules attached when numbering changes. Aggregate dates follow children; custom dates extend the visible timeline. Validate nonempty titles and valid ordered date ranges. Preserve edits after reload and keep existing outline/week controls. No user accounts or actual multi-user access control yet.
+
+## Inline edit mode
+
+Edit plan enables names, date inputs and ordering/add/remove controls directly on chart rows. Update schedule bars immediately after valid date changes. Explicit Save/Cancel; cancelled drafts never touch persisted plan. Preserve outline state across edits; reuse chart initialisers for structural updates. Remove popup editor.
+
+## Drag reordering
+
+Replace visible up/down buttons with drag handles in inline edit mode. Task groups move as a unit within their area; subtasks move within their task. Show insertion line and preserve dates, IDs and children. Keyboard arrows on focused handles provide equivalent reordering. Save/Cancel continues to govern persistence.
+
+## Compact inline editing — 11 November
+
+Place drag handles at the far left of each editable row. Keep number, name and compact +/× actions on one line. × sits immediately after each subtask name; retain accessible remove labels and second-click confirmation without expanding row text.
+
+## Owner and dates columns
+
+Show Task and Owner in overview. In edit mode show Task, Owner and Subtask dates as separate columns. Keep date controls out of the Owner cells and preserve timeline alignment across mode changes.
+
+## Compact page introduction
+
+Place grey description to the right of Project timeline on wider screens; stack on small screens. Reduce introduction height without changing wording.

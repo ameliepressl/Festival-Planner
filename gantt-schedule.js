@@ -1,14 +1,14 @@
 // Proposed schedule, relative to the festival dates; no completion tracking.
-(function () {
-  const boundaries = {"1.1": [-84, -82, -80, -78, -76], "1.2": [-76, -73, -70, -2, 0], "2.1": [-76, -73, -71, -70, -68], "2.2": [-68, -67, -56, -7, 0], "3.1": [-68, -64, -51, -42, -35], "3.2": [-35, -28, -21, -2, 1], "3.3": [-63, -56, -42, -28, -7], "4.1": [-70, -66, -61, -58, -56], "4.2": [-56, -55, -53, -52, -51], "4.3": [-35, -32, -29, -26, -25], "4.4": [-51, -47, -42, -35, -1], "4.5": [-21, -17, -12, -7, 1], "5.1": [-68, -63, -49, -42, -35], "5.2": [-35, -32, -28, -25, -21], "5.3": [-21, -14, -10, -7, 1], "5.4": [-35, -28, -21, -14, 1], "6.1": [-63, -59, -49, -42, -35], "6.2": [-35, -28, -21, -14, -2], "7.1": [-49, -42, -35, -28, -1], "7.2": [-76, -70, -66, -63, -60], "7.3": [-60, -53, -42, -1, 1], "7.4": [-53, -42, -14, -1, 1], "7.5": [-49, -42, -35, -1, 1], "7.6": [-49, -42, -35, -1, 1], "7.7": [-42, -28, -7, -1, 1], "7.8": [-56, -49, -35, -3, -1, 1], "7.9": [-49, -42, -28, -1, 1], "7.10": [-42, -35, -21, -2, 0], "7.11": [-28, -21, -14, -2, 1], "8.1": [-63, -56, -49, -2, 1], "8.2": [-56, -49, -35, -7, 1], "8.3": [-42, -35, -14, -1, 1], "8.4": [-42, -35, -28, -7, 1], "8.5": [-56, -49, -35, -14, 1], "8.6": [-35, -28, -7, -1, 1], "8.7": [-35, -28, -21, -7, 1], "9.1": [-56, -49, -28, -14, 1], "9.2": [-14, -10, -3, 0, 1], "9.3": [-28, -21, -7, -2, 1], "10.1": [-63, -60, -57, -55, -54], "10.2": [-28, -21, -7, -2, 1], "10.3": [-28, -21, -14, -2, 1], "11.1": [-28, -21, -7, -1, 1], "11.2": [-42, -35, -28, -14, 1], "11.3": [-28, -21, -14, -7, 1], "11.4": [-21, -14, -7, -2, 1], "12.1": [-76, -73, -68, -21, -14], "12.2": [-63, -56, -49, -21, -14], "12.3": [-68, -63, -56, -49, -42], "13.1": [0, 1, 2, 4, 6], "13.2": [0, 2, 3, 5, 7], "13.3": [2, 5, 7, 9, 12]};
+window.initialiseGanttTimeline = function () {
+  const boundaries = window.ganttDefaultBoundaries;
   const DAY = 86400000;
   const parseDate = value => new Date(value + 'T12:00:00Z');
   const opening = parseDate(state.event.startDate);
   const ending = parseDate(state.event.endDate);
   const afterEvent = Math.round((ending - opening) / DAY) + 1;
-  const firstOffset = -84;
-  const lastOffset = Math.max(13, afterEvent + 11);
-  const weekCount = Math.ceil((lastOffset - firstOffset + 1) / 7);
+  let firstOffset = -84;
+  let lastOffset = Math.max(13, afterEvent + 11);
+  let weekCount;
   const formatDate = offset => new Date(opening.getTime() + offset * DAY).toLocaleDateString('en-GB', {day:'numeric',month:'short',timeZone:'UTC'});
   const chart = document.querySelector('#gantt-view');
   const rows = Array.from(chart.querySelectorAll('tbody tr'));
@@ -16,28 +16,38 @@
   const ranges = new Map();
   rows.filter(row => row.classList.contains('gantt-subtask')).forEach(row => {
     const number = numberOf(row);
-    const parts = number.split('.');
-    const group = parts.slice(0,2).join('.');
-    const index = Number(parts[2]) - 1;
-    const points = boundaries[group];
-    if (!points || index + 1 >= points.length) throw new Error('Missing schedule: ' + number);
-    const shift = group.startsWith('13.') ? afterEvent : 0;
-    ranges.set(row, {start:points[index] + shift, end:points[index+1] - 1 + shift});
+    const start=Math.round((parseDate(row.dataset.startDate)-opening)/DAY);
+    const end=Math.round((parseDate(row.dataset.endDate)-opening)/DAY);
+    if(!Number.isFinite(start)||!Number.isFinite(end)||start>end)throw new Error('Invalid saved dates for '+number);
+    ranges.set(row,{start,end});
+
   });
   rows.slice().reverse().forEach(row => {
     if (ranges.has(row)) return;
     const prefix = numberOf(row) + '.';
     const descendants = rows.filter(child => numberOf(child).startsWith(prefix) && ranges.has(child)).map(child => ranges.get(child));
-    ranges.set(row, {start:Math.min(...descendants.map(r=>r.start)),end:Math.max(...descendants.map(r=>r.end))});
+    if(descendants.length)ranges.set(row, {start:Math.min(...descendants.map(r=>r.start)),end:Math.max(...descendants.map(r=>r.end))});
   });
+  const scheduled=Array.from(ranges.values());
+  firstOffset=Math.floor(Math.min(-84,...scheduled.map(r=>r.start))/7)*7;
+  lastOffset=Math.max(lastOffset,...scheduled.map(r=>r.end));
+  weekCount=Math.ceil((lastOffset-firstOffset+1)/7);
   chart.querySelector('.gantt-caption').textContent = `${formatDate(firstOffset)} – ${formatDate(lastOffset)} ${opening.getUTCFullYear()} · Festival ${formatDate(0)} – ${formatDate(afterEvent-1)} · Proposed daily schedule`;
-  chart.querySelector('.gantt-empty').textContent = 'Planning template: teams work in parallel. Opening-day preparation is due before gates open. Pack-down and evaluation follow the festival. Owners are unassigned.';
+  chart.querySelector('.gantt-empty').textContent = 'Head of project · Edit tasks and dates using Edit plan. Changes are saved in this browser. Owners are unassigned.';
   const header = chart.querySelector('thead tr');
   const table = chart.querySelector('table');
-  const expanded = new Set(Array.from({length:weekCount},(_,i)=>i+1));
+  const expanded = new Set(window.ganttExpandedWeeks ?? Array.from({length:weekCount},(_,i)=>i+1));
   function draw() {
+    window.ganttExpandedWeeks=Array.from(expanded);
     while(header.children.length>2)header.lastElementChild.remove();
+    const dateCells=new Map(rows.map(row=>[row,row.querySelector('.gantt-date-cell')]));
     rows.forEach(row=>{while(row.children.length>2)row.lastElementChild.remove();});
+    const editing=chart.classList.contains('gantt-editing');
+    header.children[1].textContent='Owner';
+    if(editing){
+      const datesHeader=document.createElement('th');datesHeader.scope='col';datesHeader.className='gantt-dates-header';datesHeader.textContent='Subtask dates';header.append(datesHeader);
+      rows.forEach(row=>{const cell=dateCells.get(row)||document.createElement('td');cell.className='gantt-date-cell';row.append(cell);});
+    }
     let columnCount=0, timelineWidth=0;
     for(let week=1;week<=weekCount;week++) {
       const start=firstOffset+(week-1)*7;
@@ -51,21 +61,23 @@
         th.style.width=daily?'58px':'122px';
         if(index===0){
           const button=document.createElement('button');button.type='button';button.className='gantt-week-toggle';button.dataset.week=week;
-          button.textContent=`${daily?'−':'+'} W${week}`;
+          button.innerHTML=`<span class="gantt-chevron" aria-hidden="true">›</span><span>Week ${week}</span>`;
+          button.title=daily?'Show this week as one column':'Show the seven days of this week';
           button.setAttribute('aria-label',`${daily?'Collapse':'Expand'} Week ${week}${daily?' to week view':' to day view'}`);
           button.setAttribute('aria-expanded',String(daily));
-          button.onclick=()=>{daily?expanded.delete(week):expanded.add(week);draw();header.querySelector(`[data-week="${week}"]`).focus();};
+          button.onclick=()=>{const anchor=captureAnchor();daily?expanded.delete(week):expanded.add(week);draw();restoreAnchor(anchor);header.querySelector(`[data-week="${week}"]`).focus({preventScroll:true});};
           th.append(button);
         }
         const label=document.createElement('span');label.className='gantt-day-label';label.textContent=daily?formatDate(span.start):`${formatDate(start)}–${formatDate(end)}`;th.append(label);
         const festival=span.start<=afterEvent-1&&span.end>=0;
         if(festival){th.classList.add('gantt-festival-day');th.title='Festival days; preparation due before gates open';}
+        th.dataset.start=span.start;th.dataset.end=span.end;
         header.append(th);
         rows.forEach(row=>{
           const cell=document.createElement('td');cell.className=daily?'gantt-day-cell':'gantt-week';
           if(festival)cell.classList.add('gantt-festival-day');
           const range=ranges.get(row);
-          if(range.start<=span.end&&range.end>=span.start){
+          if(range&&range.start<=span.end&&range.end>=span.start){
             const bar=document.createElement('span');bar.className='gantt-schedule-bar';
             const left=Math.max(range.start,span.start),right=Math.min(range.end,span.end);
             bar.style.left=`${(left-span.start)/(span.end-span.start+1)*100}%`;
@@ -77,16 +89,40 @@
         });
       });
     }
-    table.style.width=`${380+timelineWidth}px`;
+    table.style.width=`${(chart.classList.contains('gantt-editing')?640:380)+timelineWidth}px`;
     table.style.minWidth='100%';
+    updateTimelineState();
 
   }
-  const controls=chart.querySelector('.gantt-controls');
-  const weeks=document.createElement('button');weeks.type='button';weeks.className='button secondary';weeks.textContent='All weeks';weeks.onclick=()=>{expanded.clear();draw();};
-  const days=document.createElement('button');days.type='button';days.className='button secondary';days.textContent='All days';days.onclick=()=>{for(let w=1;w<=weekCount;w++)expanded.add(w);draw();};
-  controls.append(weeks,days);
-  const checks=Array.from(ranges.entries()).filter(([row])=>row.classList.contains('gantt-subtask'));
-  if(checks.length!==209||checks.some(([row,r])=>r.start>r.end||(!numberOf(row).startsWith('13.')&&r.end>0)))throw new Error('Invalid preparation schedule');
+  function updateTimelineState() {
+    const mode=expanded.size===0?'weeks':expanded.size===weekCount?'days':'custom';
+    chart.querySelectorAll('[data-timeline]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.timeline===mode)));
+    chart.querySelector('#timeline-state').textContent=mode==='custom'?'Custom':'';
+  }
+  function captureAnchor() {
+    const position=chart.querySelector('.gantt-scroll').scrollLeft;
+    let offset=0;
+    for(const cell of header.querySelectorAll('th[data-start]')){
+      const width=parseFloat(cell.style.width);
+      if(offset+width>position)return Number(cell.dataset.start)+(position-offset)/width*(Number(cell.dataset.end)-Number(cell.dataset.start)+1);
+      offset+=width;
+    }
+    return firstOffset;
+  }
+  function restoreAnchor(anchor) {
+    let offset=0;
+    for(const cell of header.querySelectorAll('th[data-start]')){
+      const start=Number(cell.dataset.start),end=Number(cell.dataset.end),width=parseFloat(cell.style.width);
+      if(anchor>=start&&anchor<end+1){offset+=(anchor-start)/(end-start+1)*width;break;}
+      offset+=width;
+    }
+    chart.querySelector('.gantt-scroll').scrollLeft=offset;
+  }
+  chart.querySelectorAll('[data-timeline]').forEach(button=>button.onclick=()=>{
+    const anchor=captureAnchor();expanded.clear();
+    if(button.dataset.timeline==='days')for(let week=1;week<=weekCount;week++)expanded.add(week);
+    draw();restoreAnchor(anchor);
+  });
   draw();
   const scroller=chart.querySelector('.gantt-scroll');
   rows.forEach(row=>{
@@ -99,4 +135,5 @@
   scroller.addEventListener('scroll',()=>{
     scroller.classList.toggle('gantt-scrolled-sideways',scroller.scrollLeft>8);
   },{passive:true});
-})();
+};
+window.initialiseGanttTimeline();

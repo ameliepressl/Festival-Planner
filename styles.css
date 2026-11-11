@@ -177,3 +177,100 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 
 
 .gantt-table tbody th:first-child{box-shadow:none}
+
+/* One control per axis, with explicit selected and custom states. */
+.gantt-controls{gap:18px 28px;padding:16px 20px;background:var(--paper);align-items:center}
+.gantt-control-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gantt-control-label{font:500 10px 'DM Mono',monospace!important;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.gantt-segmented{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:7px;background:#eaece7;gap:2px}
+.gantt-segmented button{border:0;border-radius:4px;background:transparent;color:var(--muted);font:500 12px 'DM Sans',sans-serif;min-height:30px;padding:5px 12px;cursor:pointer}
+.gantt-segmented button:hover{background:rgba(255,255,255,.6);color:var(--ink)}
+.gantt-segmented button[aria-pressed="true"]{background:var(--ink);color:white;box-shadow:0 1px 3px #0002}
+.gantt-segmented button:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.gantt-view-state{font:10px 'DM Mono',monospace!important;color:var(--muted)}
+.gantt-view-state:empty{display:none}
+.gantt-control-hint{width:100%;margin:0;font-size:11px;color:var(--muted)}
+.gantt-chevron{display:inline-block;font:20px/1 sans-serif!important;transform:rotate(0deg);transition:transform .15s;color:inherit}
+.gantt-toggle[aria-expanded="true"] .gantt-chevron,.gantt-week-toggle[aria-expanded="true"] .gantt-chevron{transform:rotate(90deg)}
+.gantt-toggle{border-radius:4px;background:rgba(255,255,255,.45);border-color:rgba(30,45,47,.12)}
+.gantt-toggle:hover{background:var(--white);border-color:var(--muted)}
+.gantt-week-toggle{display:flex;align-items:center;gap:5px;min-height:28px;padding:3px 5px;background:#e6ebe5;border:1px solid var(--line);border-radius:4px;font-size:9px}
+.gantt-week-toggle .gantt-chevron{font-size:16px!important}
+.gantt-week-toggle:hover{background:var(--aqua);border-color:var(--muted)}
+.gantt-table .gantt-day-header:first-child{overflow:visible}
+@media(prefers-reduced-motion:reduce){.gantt-chevron{transition:none}}
+
+.gantt-editor-dialog{width:min(650px,calc(100vw - 32px));max-height:90vh;overflow:auto;padding:28px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+.gantt-editor-dialog::backdrop{background:#1e2d2f88}
+.gantt-editor-dialog h2{font:600 30px Fraunces,serif;margin:0 0 12px}
+.gantt-edit-help{font-size:12px;line-height:1.5;color:var(--muted)}
+.gantt-editor-dialog label{display:grid;gap:5px;font-size:12px;margin-top:12px}
+.gantt-editor-dialog select,.gantt-editor-dialog input{width:100%;padding:8px;border:1px solid var(--line);background:var(--white);font:13px 'DM Sans',sans-serif;color:var(--ink);box-sizing:border-box}
+.gantt-edit-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.gantt-edit-actions .button{padding:6px 9px;font-size:11px}
+.gantt-date-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gantt-edit-footer{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);padding-top:16px;margin-top:18px}
+
+/* Edit in context: inputs and actions live beside their timeline bars. */
+.gantt-inline-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 20px;background:#edf3ed;border-bottom:1px solid var(--line)}
+.gantt-inline-toolbar[hidden]{display:none}
+.gantt-inline-toolbar>div{flex:1;min-width:220px}
+.gantt-inline-toolbar strong{display:block;font-size:13px}
+.gantt-inline-toolbar span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+#inline-error{width:100%;margin:0;color:#a44232;font-size:12px}
+#inline-error:empty{display:none}
+.gantt-editing .gantt-inline-toolbar{position:sticky;top:0;z-index:8}
+.gantt-editing .gantt-table th:nth-child(2){width:260px}
+.gantt-editing .gantt-label-preview,.gantt-editing .gantt-scrolled-sideways .gantt-label-preview{max-width:270px;white-space:normal}
+.gantt-inline-name{width:calc(100% - 70px);min-width:80px;border:1px solid var(--line);background:var(--white);padding:4px;font:12px 'DM Sans',sans-serif;color:var(--ink);box-sizing:border-box}
+.gantt-subtask .gantt-inline-name{width:calc(100% - 44px)}
+.gantt-row-actions{display:flex;gap:4px;margin:4px 0 1px 24px}
+.gantt-row-action{border:1px solid var(--line);border-radius:3px;padding:3px 6px;background:var(--paper);font:10px 'DM Sans',sans-serif;color:var(--ink);cursor:pointer}
+.gantt-row-action:hover{background:var(--aqua)}
+.gantt-row-action:disabled{opacity:.35;cursor:default}
+.gantt-inline-dates{display:flex;gap:4px;padding:4px}
+.gantt-inline-dates input{min-width:0;width:50%;border:1px solid var(--line);padding:3px;background:var(--white);font-size:11px;color:var(--ink)}
+.gantt-inline-name:invalid,.gantt-inline-dates input[aria-invalid="true"]{border-color:#b34833}
+.gantt-inline-name:focus-visible,.gantt-inline-dates input:focus-visible,.gantt-row-action:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+
+/* Drag handles and clear insertion markers in edit mode. */
+.gantt-drag-handle{display:inline-grid;place-items:center;width:26px;height:23px;padding:0;border:1px solid var(--line);border-radius:3px;background:var(--paper);color:var(--muted);font-size:19px;line-height:1;cursor:grab;touch-action:none;user-select:none}
+.gantt-drag-handle:hover{background:var(--aqua);color:var(--ink)}
+.gantt-drag-handle:active{cursor:grabbing}
+.gantt-drag-handle:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.gantt-dragging{opacity:.45}
+.gantt-is-dragging{cursor:grabbing;user-select:none}
+.gantt-table .gantt-drop-before>th,.gantt-table .gantt-drop-before>td{box-shadow:inset 0 3px var(--coral)}
+.gantt-table .gantt-drop-after>th,.gantt-table .gantt-drop-after>td{box-shadow:inset 0 -3px var(--coral)}
+
+/* One-line edit rows: handle, outline, name, then compact actions. */
+.gantt-editing .gantt-workstream .gantt-label-preview,.gantt-editing .gantt-subtask .gantt-label-preview{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:3px 5px;min-height:30px}
+.gantt-editing .gantt-workstream th,.gantt-editing .gantt-subtask th{height:30px}
+.gantt-editing .gantt-drag-handle{flex:0 0 20px;width:20px;height:22px;border-color:transparent;background:transparent;font-size:17px}
+.gantt-editing .gantt-toggle{flex:0 0 19px;width:19px;height:21px;margin:0}
+.gantt-editing .gantt-outline-number{flex:none;margin-right:0;font-size:9px}
+.gantt-editing .gantt-inline-name,.gantt-editing .gantt-subtask .gantt-inline-name{flex:1;width:0;min-width:30px;padding:3px 4px;font-size:11px}
+.gantt-editing .gantt-row-actions{display:contents;margin:0}
+.gantt-editing .gantt-row-action{flex:0 0 22px;display:inline-grid;place-items:center;width:22px;height:22px;padding:0;font-size:16px;border-color:transparent;background:transparent}
+.gantt-editing .gantt-row-action:hover{background:var(--aqua);border-color:var(--line)}
+.gantt-editing .gantt-remove-action{color:var(--muted)}
+.gantt-editing .gantt-remove-action:hover,.gantt-editing .gantt-remove-confirm{color:#a23e2e;background:#fae0da;border-color:#d9a197}
+.gantt-inline-dates{padding:2px 4px}
+
+/* Owner remains a separate column; date inputs exist only while editing. */
+.gantt-editing .gantt-table th:nth-child(2){width:110px}
+.gantt-editing .gantt-table .gantt-dates-header{width:260px}
+.gantt-table .gantt-date-cell{padding:0}
+
+/* Keep the timeline introduction short, with supporting copy beside the title. */
+.gantt-intro-row{display:flex;align-items:center;justify-content:space-between;gap:28px}
+.gantt-intro-row h1{flex:none}
+.gantt-intro-row .hero-copy{flex:1;max-width:380px;margin:0;font-size:13px;line-height:1.6}
+#gantt-view .checklist-hero{padding-bottom:26px}
+@media(max-width:1000px){.gantt-intro-row{gap:20px}.gantt-intro-row h1{font-size:40px}.gantt-intro-row .hero-copy{font-size:12px}}
+@media(max-width:700px){.gantt-intro-row{align-items:flex-start;flex-direction:column;gap:12px}.gantt-intro-row .hero-copy{max-width:none}}
+
+/* A single readable line of supporting text beside the title. */
+.gantt-intro-row{flex-direction:row;align-items:center;gap:24px;overflow-x:auto;padding-bottom:4px}
+.gantt-intro-row h1{font-size:clamp(32px,3.2vw,48px)}
+.gantt-intro-row .hero-copy{flex:none;max-width:none;margin:0;white-space:nowrap;font-size:12px;line-height:1.5}

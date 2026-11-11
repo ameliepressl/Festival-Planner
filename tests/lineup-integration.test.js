@@ -27,7 +27,7 @@ test('merged planner starts with shared rules and renders both-day navigation', 
   assert.equal(p.nodes.get('#performance-count').textContent, 0);
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.match(html, /id="checklist-view"/);
-  assert.match(html, /data-section="Checklist"/);
+  assert.match(html, /data-section="Final checklist"/);
   assert.match(html, /checklist-page.js/);
 });
 test('minute-level bookings, blocks, adjacent sets and separate dates use current rules', () => {
