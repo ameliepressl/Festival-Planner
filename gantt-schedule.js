@@ -89,7 +89,10 @@ window.initialiseGanttTimeline = function () {
         });
       });
     }
-    table.style.width=`${(chart.classList.contains('gantt-editing')?640:380)+timelineWidth}px`;
+    table.dataset.timelineWidth=timelineWidth;
+    const taskWidth=!chart.classList.contains('gantt-editing')&&chart.querySelector('.gantt-scroll').scrollLeft>8?160:270;
+    table.style.setProperty('--gantt-task-width',taskWidth+'px');
+    table.style.width=`${taskWidth+110+(chart.classList.contains('gantt-editing')?260:0)+timelineWidth}px`;
     table.style.minWidth='100%';
     updateTimelineState();
 
@@ -124,6 +127,17 @@ window.initialiseGanttTimeline = function () {
     draw();restoreAnchor(anchor);
   });
   draw();
+  const preview=document.querySelector('#gantt-preview-chart');
+  if(preview){
+    preview.replaceChildren();const duration=lastOffset-firstOffset+1;
+    rows.filter(row=>row.classList.contains('gantt-category')).forEach(row=>{
+      const line=document.createElement('span');line.className='gantt-preview-row';line.setAttribute('style',row.getAttribute('style'));
+      const name=document.createElement('span');name.className='gantt-preview-name';name.textContent=row.querySelector('th').textContent.trim().replace(/^›\s*/,'');
+      const track=document.createElement('span');track.className='gantt-preview-track';const range=ranges.get(row);
+      if(range){const bar=document.createElement('span');bar.className='gantt-preview-bar';bar.style.left=((range.start-firstOffset)/duration*100)+'%';bar.style.width=((range.end-range.start+1)/duration*100)+'%';track.append(bar);}
+      line.append(name,track);preview.append(line);
+    });
+  }
   const scroller=chart.querySelector('.gantt-scroll');
   rows.forEach(row=>{
     const heading=row.querySelector('th');
@@ -132,8 +146,15 @@ window.initialiseGanttTimeline = function () {
     while(heading.firstChild)label.append(heading.firstChild);
     heading.append(label);
   });
-  scroller.addEventListener('scroll',()=>{
-    scroller.classList.toggle('gantt-scrolled-sideways',scroller.scrollLeft>8);
-  },{passive:true});
+  function alignFrozenColumn(){
+    const sideways=scroller.scrollLeft>8;
+    const editing=chart.classList.contains('gantt-editing');
+    const width=sideways&&!editing?160:270;
+    scroller.classList.toggle('gantt-scrolled-sideways',sideways);
+    table.style.setProperty('--gantt-task-width',width+'px');
+    table.style.width=(width+110+(editing?260:0)+Number(table.dataset.timelineWidth))+'px';
+  }
+  scroller.onscroll=alignFrozenColumn;
+  alignFrozenColumn();
 };
 window.initialiseGanttTimeline();

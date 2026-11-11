@@ -274,3 +274,34 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 .gantt-intro-row{flex-direction:row;align-items:center;gap:24px;overflow-x:auto;padding-bottom:4px}
 .gantt-intro-row h1{font-size:clamp(32px,3.2vw,48px)}
 .gantt-intro-row .hero-copy{flex:none;max-width:none;margin:0;white-space:nowrap;font-size:12px;line-height:1.5}
+
+.gantt-preview-card{display:block;width:100%;padding:20px;text-align:left;border:1px solid var(--line);background:var(--white);color:var(--ink);font-family:'DM Sans',sans-serif;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.gantt-preview-card:hover{border-color:var(--coral);box-shadow:0 3px 14px #17272b0d}
+.gantt-preview-card:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+.gantt-preview-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:16px;font:600 23px Fraunces,serif}
+.gantt-preview-heading small{display:block;margin-top:5px;font:10px 'DM Mono',monospace;color:var(--muted)}
+.gantt-preview-link{font:600 12px 'DM Sans',sans-serif;color:var(--coral);white-space:nowrap}
+.gantt-preview-link>span{font-size:20px;vertical-align:middle;margin-left:4px}
+.gantt-preview-chart{display:block;border-top:1px solid var(--line)}
+.gantt-preview-row{display:grid;grid-template-columns:minmax(180px,30%) 1fr;gap:12px;align-items:center;min-height:22px;border-bottom:1px solid var(--line)}
+.gantt-preview-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;padding:3px 7px;background:var(--category-tint);border-left:3px solid var(--category-accent)}
+.gantt-preview-track{display:block;position:relative;height:20px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(7.142% - 1px),var(--line) calc(7.142% - 1px),var(--line) 7.142%)}
+.gantt-preview-bar{display:block;position:absolute;top:6px;height:7px;background:var(--category-accent);opacity:.75}
+@media(max-width:700px){.gantt-preview-card{padding:12px}.gantt-preview-heading{font-size:19px;align-items:flex-start;flex-direction:column;gap:10px}.gantt-preview-row{grid-template-columns:135px 1fr;gap:8px}.gantt-preview-name{font-size:9px}}
+
+/* Team preparation countdown in the upper-right header. */
+.festival-countdown{display:grid;gap:2px;border-right:1px solid var(--line);padding-right:18px;margin-right:3px;text-align:right;white-space:nowrap}
+.countdown-label{font:8px 'DM Mono',monospace;letter-spacing:.7px;color:var(--muted)}
+.countdown-total{font-size:11px;color:var(--ink)}
+.countdown-total strong{font:600 27px/1.1 Fraunces,serif;color:var(--coral)}
+.countdown-working{font-size:10px;color:var(--muted)}
+.countdown-working b{font-weight:600;color:var(--ink)}
+@media(max-width:1000px){.topbar{gap:12px;flex-wrap:wrap;height:auto;min-height:86px;padding:12px 0}.festival-countdown{padding-right:10px}.plan-actions{margin-left:auto}.festival-meta{font-size:10px}}
+
+/* Reserve space beneath the last row for overlay horizontal scrollbars. */
+.gantt-scroll{padding-bottom:22px;scroll-padding-bottom:22px}
+
+/* The frozen header and labels share the same real column width. */
+.gantt-table th:first-child{width:var(--gantt-task-width,270px)}
+.gantt-table tbody th:first-child{background:var(--paper);border-right:1px solid var(--line)}
+.gantt-table .gantt-label-preview{max-width:var(--gantt-task-width,270px)}

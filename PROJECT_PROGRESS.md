@@ -140,3 +140,13 @@ Column refinement: Owner visible in overview and edit mode; Subtask dates is a s
 Timeline page description moved beside title on wide screens to reduce header height; stacks responsively.
 
 Validation: updated the navigation test to match the approved Final checklist label, with explicit user approval. Full test suite rerun before commit.
+
+Task board: live 13-area timeline preview replaces open button. Hover highlights; click or keyboard activation opens chart.
+
+Festival countdown: upper-right calendar-day and Monday–Friday workday totals, anchored to configured event start and Europe/Lisbon date. Includes today, excludes opening day; holidays not deducted. Handles opening/ongoing/ended states.
+
+Default festival now 30–31 December 2026. Empty October-default plans migrate; Gantt preparation dates follow the shifted anchor. Booked custom events are preserved.
+
+Added bottom clearance inside the Gantt scroll viewport so overlay horizontal scrollbars do not cover the final task row.
+
+Fixed sideways-scroll gap: frozen task header now shrinks together with task labels, with divider at their actual boundary.

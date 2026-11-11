@@ -41,6 +41,11 @@
           <span class="live-dot"></span> <span id="event-summary"></span>
         </div>
         <div class="plan-actions">
+          <div class="festival-countdown" id="festival-countdown" role="group" title="Days remaining include today and exclude festival opening day. Workdays are Monday–Friday; public holidays are not deducted. Time zone: Europe/Lisbon.">
+            <span class="countdown-label">UNTIL THE FESTIVAL</span>
+            <span class="countdown-total"><strong id="countdown-days">0</strong> <span id="countdown-day-unit">days left</span></span>
+            <span class="countdown-working">including <b id="countdown-workdays">0 workdays</b></span>
+          </div>
           <button class="button secondary hidden" id="print-plan">Print / Save PDF</button>
           <button class="button secondary" id="finalise-btn">Finalise plan</button>
         </div>
@@ -91,7 +96,7 @@
           <p class="eyebrow">TASK BOARD · COMING SOON</p>
           <h1>Your project,<br /><em>at a glance.</em></h1>
           <p class="hero-copy">A future home for project progress and the to-dos that need attention first.</p>
-          <button class="button primary" id="open-gantt">Open Gantt chart <span aria-hidden="true">↗</span></button>
+          <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart <span aria-hidden="true">↗</span></span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
         </section>
         <div class="checklist-grid">
           <article class="checklist-card"><h2>Project progress</h2><p>An overview of how festival preparations are progressing will appear here.</p></article>
@@ -431,13 +436,15 @@
     <section id="print-plan-content" aria-label="Printable festival plan"></section>
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
-    <script src="rules/festival-rules.js"></script>
-    <script src="app.js"></script>
+    <script src="rules/festival-rules.js?v=december-2026"></script>
+    <script src="app.js?v=december-2026"></script>
     <script src="rules/checklist-rules.js"></script>
     <script src="checkliste-festivalplanung/checklist-page.js"></script>
+    <script src="rules/countdown-rules.js"></script>
+    <script src="festival-countdown.js"></script>
     <script src="gantt-defaults.js"></script>
-    <script src="gantt-editor.js?v=owner-columns"></script>
+    <script src="gantt-editor.js?v=december-2026"></script>
     <script src="gantt-placeholder.js"></script>
-    <script src="gantt-schedule.js?v=owner-columns"></script>
+    <script src="gantt-schedule.js?v=column-alignment"></script>
   </body>
 </html>

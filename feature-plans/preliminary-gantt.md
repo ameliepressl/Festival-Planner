@@ -67,3 +67,11 @@ Show Task and Owner in overview. In edit mode show Task, Owner and Subtask dates
 ## Compact page introduction
 
 Place grey description to the right of Project timeline on wider screens; stack on small screens. Reduce introduction height without changing wording.
+
+## Task board preview
+
+Replace open button with live highest-level preview. Keep Open Gantt chart and arrow; highlight on hover, navigate only on click or keyboard activation.
+
+## Frozen-column alignment
+
+Shrink the actual task column with its shortened labels while scrolling horizontally, rather than only shrinking label content. Keep the header boundary aligned with the visible names; restore full width at the left edge. Edit mode retains full input width.

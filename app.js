@@ -9,6 +9,13 @@ function loadState() {
   result.settings = {...{stages:2,budget:10000},...result.settings};
   delete result.settings.required;
   result.event = {...DEFAULT_EVENT,...result.event};
+  // Adopt the new template dates for empty plans; keep booked events intact.
+  if (!result.bookings.length && result.event.startDate === '2026-10-15' && result.event.endDate === '2026-10-16') {
+    result.event.startDate = DEFAULT_EVENT.startDate;
+    result.event.endDate = DEFAULT_EVENT.endDate;
+    localStorage.setItem('festival-architect-v2', JSON.stringify(result));
+  }
+
   // Reset remaining daily restrictions from the retired availability editor.
   if (!result.dailyHoursResetV1) {
     result.event.startMinutes = DEFAULT_EVENT.startMinutes;
@@ -53,6 +60,7 @@ function printPlan(){
 }
 $('#print-plan').onclick=printPlan;
 function render(){
+ if(typeof window.updateFestivalCountdown==='function')window.updateFestivalCountdown();
  hidePerformanceDetails();
  const dates=days(),index=dates.indexOf(currentDay);
  $('#event-summary').textContent=`${dates.length} ${dates.length===1?'day':'days'} · ${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''}`;

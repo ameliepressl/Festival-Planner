@@ -27,6 +27,18 @@
   function validPlan(plan){return Array.isArray(plan)&&plan.length===13&&plan.every(a=>typeof a.title==='string'&&Array.isArray(a.tasks)&&a.tasks.every(t=>typeof t.title==='string'&&Array.isArray(t.subtasks)&&t.subtasks.every(s=>typeof s.title==='string'&&s.title.trim()&&validDate(s.start)&&validDate(s.end)&&s.start<=s.end)));}
   let project=defaults;
   try{const saved=JSON.parse(localStorage.getItem(KEY));if(validPlan(saved))project=saved;}catch{}
+  // Preserve preparation lead times when the default festival dates move.
+  const anchorKey='festival-gantt-date-anchor';
+  const previousAnchor=localStorage.getItem(anchorKey)||'2026-10-15';
+  if(project!==defaults&&previousAnchor!==state.event.startDate){
+    const shift=Math.round((opening-new Date(previousAnchor+'T12:00:00Z'))/DAY);
+    project.forEach(a=>a.tasks.forEach(t=>t.subtasks.forEach(step=>{
+      step.start=iso(new Date(new Date(step.start+'T12:00:00Z').getTime()+shift*DAY));
+      step.end=iso(new Date(new Date(step.end+'T12:00:00Z').getTime()+shift*DAY));
+    })));
+    localStorage.setItem(KEY,JSON.stringify(project));
+  }
+  localStorage.setItem(anchorKey,state.event.startDate);
   let editing=false;
   const chart=document.querySelector('#gantt-view');
   let savedProject;
