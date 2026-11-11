@@ -89,7 +89,7 @@ const ARTISTS = [
   { id: 'riko', name: 'Riko Reyes', genre: 'Global beats', fee: 1500, duration: 60, colour: '#d4e8b7' }
 ];
 // Shared event configuration: a future event page can update this persisted object.
-const DEFAULT_EVENT = { startDate: '2026-10-15', endDate: '2026-10-16', startMinutes: 840, endMinutes: 1380 };
+const DEFAULT_EVENT = { startDate: '2026-12-30', endDate: '2026-12-31', startMinutes: 840, endMinutes: 1380 };
 const timeText = n => `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
 function days() { const dates=[]; const d=new Date(state.event.startDate+'T12:00:00Z'); const end=new Date(state.event.endDate+'T12:00:00Z'); while(d<=end){dates.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1);} return dates; }
 const dateText = date => new Date(date+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',timeZone:'UTC'});

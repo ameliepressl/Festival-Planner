@@ -92,3 +92,61 @@ Summary stays in a single horizontal row with performances, stages and budget; a
 Merged lineup-planner-update-1 with main while preserving the crew checklist and its rules/tests. Current lineup business rules live in rules/festival-rules.js alongside the isolated legacy baseline exports. Existing tests remain unchanged; current-lineup integration tests cover the new behavior. User explicitly requested publishing the merge to main.
 
 Validation: all 30 tests passed (26 original and 4 integration tests). Browser checks passed for lineup rendering, checklist navigation, booking dialog and reload; no console errors.
+
+## Task board placeholder — 6 November 2026
+
+Branch: `feature-task-board-placeholder`. Static placeholder only for future project progress and urgent to-dos. No dashboard or task functionality implemented. Status: local preview.
+
+## Lineup startup repair — 6 November 2026
+
+Removed an incomplete legacy single-day script prepended to the current multi-day screen. It caused a syntax error before any artists, stage totals or timetable could render. No saved data reset.
+
+Naming review: navigation, page heading and progress labels consistently identify the feature as “Final checklist”; internal IDs and saved progress unchanged.
+
+## Preliminary Gantt chart — 6 November 2026
+
+Added a Task board button opening an empty eight-week Gantt layout with task, owner and status columns. Back and sidebar navigation included. No task editing, bars or sample data.
+
+Gantt structure: added 13 numbered main categories in distinct muted colours, with sticky labels for horizontal scrolling. No subtasks or scheduled bars.
+
+Cleaning crew example: added workstream 7.1 and six numbered sequential steps (7.1.1–7.1.6), with nested indentation and the infrastructure colour. Timeline and assignments remain empty.
+
+Gantt usability: compact rows and independent expand/collapse controls for categories and workstreams with children. Collapsing a parent preserves its nested group state.
+
+Approved preparation breakdown transferred: 13 categories, 52 task groups, 209 subtasks. Compact outline with independently collapsible levels and expand/collapse-all controls. Task groups start collapsed. Scheduling and assignment remain blank.
+
+Gantt overview refinement: removed Status, reduced category rows to roughly 27px and task/subtask rows to roughly 25px, and added independent week/day toggles. Days are relative (1–56) until real dates are assigned. Hierarchy state is preserved while changing timeline detail.
+
+Proposed daily schedule: all 209 subtasks assigned sequential day ranges over 12 preparation weeks; parallel teams, opening-day final checks, and post-event wrap-up. Uses configured event dates and coloured aggregate bars, daily view by default, independent week toggles and All weeks/All days shortcuts. Dates are a draft template rather than validated supplier lead times.
+
+Gantt scrolling: sticky week/date header in a vertically scrollable chart; task column reduced to 270px with ellipsis. Sideways scrolling reduces frozen task labels to muted 160px previews; full labels remain in hover text.
+
+Sideways scrolling now shortens label previews only; font weight, text colours and category styling remain unchanged.
+
+Session handover: confirmed the current Gantt task hierarchy and daily schedule load as the default template on app opening. Future scope: project users, roles and permissions controlling task and timeline editing. All current work remains local on feature-task-board-placeholder, uncommitted and unpushed. Known validation issue: one existing integration assertion still expects the former Checklist navigation name.
+
+10 November: redesigned Gantt controls into Outline (Areas/Tasks/Subtasks) and Timeline (Weeks/Days) selectors, with selected/custom states and consistent individual chevrons. Timeline switches preserve the visible date. Local changes on feature-task-board; no commit.
+
+Head-of-project editing: browser-local plan model with stable IDs, custom subtask dates/names, add/remove and ordering controls. Explicit save/cancel, date validation, auto timeline extension and parent aggregation. No authentication/role enforcement implemented.
+
+Inline edit mode replaces modal: names, date ranges, add/remove and reorder actions now appear in Gantt rows, with live bar updates and explicit Save/Cancel. Existing persisted plans retained.
+
+Inline reordering now uses drag handles and insertion markers, replacing up/down buttons. Tasks retain subtasks when moved; subtasks retain dates. Keyboard arrows on handles remain available. No commit requested.
+
+Compact edit rows: drag handle at far left, inline name and +/× actions on the same line. × removal keeps two-click confirmation and accessible labels.
+
+Column refinement: Owner visible in overview and edit mode; Subtask dates is a separate edit-only column. Timeline rebuilds preserve the two permanent columns.
+
+Timeline page description moved beside title on wide screens to reduce header height; stacks responsively.
+
+Validation: updated the navigation test to match the approved Final checklist label, with explicit user approval. Full test suite rerun before commit.
+
+Task board: live 13-area timeline preview replaces open button. Hover highlights; click or keyboard activation opens chart.
+
+Festival countdown: upper-right calendar-day and Monday–Friday workday totals, anchored to configured event start and Europe/Lisbon date. Includes today, excludes opening day; holidays not deducted. Handles opening/ongoing/ended states.
+
+Default festival now 30–31 December 2026. Empty October-default plans migrate; Gantt preparation dates follow the shifted anchor. Booked custom events are preserved.
+
+Added bottom clearance inside the Gantt scroll viewport so overlay horizontal scrollbars do not cover the final task row.
+
+Fixed sideways-scroll gap: frozen task header now shrinks together with task labels, with divider at their actual boundary.
