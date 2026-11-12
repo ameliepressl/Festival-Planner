@@ -1,15 +1,14 @@
-// Festival Architect — the crew checklist page: draws the checklist, saves ticks in the browser and
-// switches between the lineup planner and the checklist when the left navigation is clicked.
+// Festival Architect — the crew checklist page draws the checklist and saves ticks in the browser.
 // The list itself and the progress calculation live in rules/checklist-rules.js.
 
 (function () {
   const view = document.querySelector('#checklist-view');
-  const lineup = document.querySelector('main');
   let checked = parseChecked(localStorage.getItem(CHECKLIST_STORAGE_KEY));
 
   function save() { localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checked)); }
 
   function render() {
+    const canEditChecklist = canFestival('checklist');
     view.innerHTML = `
       <section class="checklist-hero">
         <p class="eyebrow">FINAL CHECKLIST</p>
@@ -31,7 +30,7 @@
             </header>
             <ul>
               ${group.tasks.map((task) => `
-                <li><label><input type="checkbox" data-task="${task.id}" ${checked.includes(task.id) ? 'checked' : ''} /><span>${task.text}</span></label></li>
+                <li><label><input type="checkbox" data-task="${task.id}" ${checked.includes(task.id) ? 'checked' : ''} ${canEditChecklist ? '' : 'disabled'} /><span>${task.text}</span></label></li>
               `).join('')}
             </ul>
           </article>`).join('')}
@@ -57,21 +56,14 @@
   view.addEventListener('change', (event) => {
     const taskId = event.target.dataset.task;
     if (!taskId) return;
+    if (!canFestival('checklist')) {
+      event.target.checked = checked.includes(taskId);
+      return;
+    }
     checked = toggleTask(checked, taskId);
     save();
     updateProgress();
   });
-
-  // Left navigation: "Final checklist" shows this page, "Lineup planner" shows the planner again.
-  function show(section) {
-    const onChecklist = section === 'Checklist';
-    view.classList.toggle('hidden', !onChecklist);
-    lineup.classList.toggle('hidden', onChecklist);
-    window.scrollTo(0, 0);
-  }
-  document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Checklist'].includes(button.dataset.section)) show(button.dataset.section);
-  }));
 
   render();
 })();

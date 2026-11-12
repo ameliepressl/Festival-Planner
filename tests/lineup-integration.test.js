@@ -19,7 +19,7 @@ function planner(saved = null) {
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     document: { querySelector(selector) { if (!nodes.has(selector)) nodes.set(selector, node()); return nodes.get(selector); }, querySelectorAll() { return []; } }
   });
-  for (const file of ['rules/festival-rules.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['rules/access-rules.js', 'rules/festival-rules.js', 'app.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return { run: code => vm.runInContext(code, context), nodes, storage };
 }
 test('merged planner starts with shared rules and renders both-day navigation', () => {

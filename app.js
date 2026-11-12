@@ -30,9 +30,13 @@ function toast(message) {
   $('#toast').classList.add('visible');
   setTimeout(() => $('#toast').classList.remove('visible'), 4000);
 }
-function writable() {
+function writable(action = 'lineup') {
+  if (!canFestival(action)) { toast('Your role cannot make this change.'); return false; }
   if (state.final) { toast('Reopen the final plan before editing.'); return false; }
   return true;
+}
+function canRestorePlan() {
+  return canFestival('lineup') && canFestival('overview') && canFestival('budget');
 }
 function closedMarkup(start, end, axisStart) {
   if (end <= start) return '';
@@ -42,9 +46,10 @@ function calendarMarkup(day, publicOnly = false) {
   const bounds = calendarBounds(), height = bounds.end - bounds.start;
   const entries = state.bookings.filter(b => b.date === day && (!publicOnly || (isPerformance(b) && b.status === 'confirmed')));
   const scale = 324 / height;
+  const canBook = canFestival('lineup') && !state.final;
   return `<div class="calendar-grid" style="--print-stages:${stages().length};--print-scale:${scale};grid-template-columns:56px repeat(${stages().length},minmax(145px,1fr))">
     <div class="calendar-corner">TIME</div>
-    ${stages().map(s => `<div class="calendar-stage"><strong>${escapeHtml(stageName(s))}</strong>${!publicOnly ? `<button class="add-stage-slot" data-add-stage="${s}" aria-label="Add appointment on ${escapeHtml(stageName(s))}" ${state.final?'disabled':''}>+</button>` : ''}</div>`).join('')}
+    ${stages().map(s => `<div class="calendar-stage"><strong>${escapeHtml(stageName(s))}</strong>${!publicOnly ? `<button class="add-stage-slot" data-add-stage="${s}" aria-label="Add appointment on ${escapeHtml(stageName(s))}" ${canBook?'':'disabled'}>+</button>` : ''}</div>`).join('')}
     <div class="vertical-times" style="height:${height}px">${Array.from({length:Math.floor(height/60)+1}, (_,i) => `<span style="--minute-offset:${i*60};top:${i*60}px">${timeText(bounds.start+i*60)}</span>`).join('')}</div>
     ${stages().map((s,i) => {
       const h = stageHours(day,s);
@@ -63,7 +68,9 @@ function render() {
   const dates = days();
   if (!dates.includes(currentDay)) currentDay = dates[0];
   const index = dates.indexOf(currentDay), committed = total();
-  $('#event-summary').textContent = `${dates.length} ${dates.length===1?'day':'days'} · ${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''}`;
+  const canEditLineup = canFestival('lineup');
+  const lineupLocked = state.final || !canEditLineup;
+  $('#event-summary').textContent = `${state.event.name ? state.event.name + ' · ' : ''}${dates.length} ${dates.length===1?'day':'days'} · ${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''}`;
   $('.hero .eyebrow').textContent = `LINEUP PLANNER / ${state.event.startDate.slice(0,4)}`;
   $('#performance-count').textContent = performances().length;
   $('#committed').textContent = euros(committed);
@@ -72,15 +79,18 @@ function render() {
   $('.budget-metric').classList.toggle('over-budget', committed>state.settings.budget);
   $('#print-plan').classList.toggle('hidden', !state.final);
   $('#finalise-btn').textContent = state.final?'Reopen as draft':'Finalise plan';
+  $('#finalise-btn').disabled = !canEditLineup;
+  $('#restore-plan').disabled = !canRestorePlan();
   $('#budget-total').textContent = euros(state.settings.budget);
   $('#budget-progress').value = state.settings.budget ? committed/state.settings.budget*100 : committed ? 100 : 0;
-  $('#edit-settings').disabled = state.final;
-  $('#settings-form').querySelectorAll('input,button').forEach(e => e.disabled=state.final);
-  $('#add-artist').disabled = state.final;
-  $('#add-block').disabled = state.final;
+  $('#edit-settings').disabled = lineupLocked;
+  $('#settings-form').querySelectorAll('input,button').forEach(e => e.disabled=lineupLocked);
+  $('#budget-input').disabled = lineupLocked || !canFestival('budget');
+  $('#add-artist').disabled = lineupLocked;
+  $('#add-block').disabled = lineupLocked;
   $('#artist-list').innerHTML = state.artists.map(a => {
     const booked = performances().filter(b => b.artistId===a.id).sort((x,y) => x.date.localeCompare(y.date)||x.start-y.start);
-    return `<article class="artist-card"><div class="avatar" style="background:${a.colour}">${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · default ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} default fee</div>${booked.length?`<div class="booked-label">${booked.length} scheduled performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.map(b => `<li><span class="booking-status ${b.status||'tentative'}">${b.status==='confirmed'?'Confirmed':'Tentative'}</span> · ${dateText(b.date)} · ${escapeHtml(stageName(b.stage))}<br>${timeText(b.start)}–${timeText(b.start+entryDuration(b))} · ${euros(entryFee(b))}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${state.final?'disabled':''}>Edit</button><button class="button primary" data-artist="${a.id}" ${state.final?'disabled':''}>Book</button></div></article>`;
+    return `<article class="artist-card"><div class="avatar" style="background:${a.colour}">${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · default ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} default fee</div>${booked.length?`<div class="booked-label">${booked.length} scheduled performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.map(b => `<li><span class="booking-status ${b.status||'tentative'}">${b.status==='confirmed'?'Confirmed':'Tentative'}</span> · ${dateText(b.date)} · ${escapeHtml(stageName(b.stage))}<br>${timeText(b.start)}–${timeText(b.start+entryDuration(b))} · ${euros(entryFee(b))}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${lineupLocked?'disabled':''}>Edit</button><button class="button primary" data-artist="${a.id}" ${lineupLocked?'disabled':''}>Book</button></div></article>`;
   }).join('') || '<p>No artists yet. Add your first artist above.</p>';
   const daily = dayHours(currentDay);
   $('.schedule-heading .catalogue-count').textContent = `Festival open ${timeText(daily.start)}–${timeText(daily.end)}`;
@@ -88,13 +98,14 @@ function render() {
   $('#previous-day').disabled = index===0;
   $('#next-day').disabled = index===dates.length-1;
   $('#calendar').innerHTML = calendarMarkup(currentDay);
-  $('#schedule-empty').textContent = 'Click a free calendar slot, book an artist, or add a calendar block.';
+  $('#schedule-empty').textContent = lineupLocked ? 'Nothing is scheduled for this day.' : 'Click a free calendar slot, book an artist, or add a calendar block.';
   $('#schedule-empty').classList.toggle('hidden',state.bookings.some(b => b.date===currentDay));
   document.querySelectorAll('[data-artist]').forEach(e => e.onclick=() => openBooking(e.dataset.artist));
   document.querySelectorAll('[data-edit-artist]').forEach(e => e.onclick=() => openArtist(e.dataset.editArtist));
   document.querySelectorAll('[data-add-stage]').forEach(e => e.onclick=() => openSlot(e.dataset.addStage,stageHours(currentDay,e.dataset.addStage).start));
   document.querySelectorAll('[data-booking]').forEach(e => {
     e.onclick = () => {
+      if (!canFestival('lineup')) { showPerformanceDetails(e); return; }
       hidePerformanceDetails();
       const b = state.bookings.find(b => b.id===e.dataset.booking);
       if (b.linkedTo) openBooking(null,b.linkedTo);
@@ -108,7 +119,7 @@ function render() {
 }
 // Empty-stage clicks map one CSS pixel to one minute. Header + buttons provide a keyboard alternative.
 $('#calendar').onclick = event => {
-  if (event.target.closest('button') || state.final) return;
+  if (event.target.closest('button') || state.final || !canFestival('lineup')) return;
   const track = event.target.closest('.vertical-track');
   if (!track) return;
   const rect = track.getBoundingClientRect(), bounds=calendarBounds();
@@ -291,6 +302,7 @@ $('#artist-form').onsubmit=event => {
   save();$('#artist-dialog').close();render();toast('Artist defaults saved. Existing performances keep their agreed details.');
 };
 $('#delete-artist').onclick=() => {
+  if(!writable())return;
   const count=performances().filter(b => b.artistId===editingArtistId).length;
   $('#delete-description').textContent=`Delete ${artist(editingArtistId).name}? ${count?`Their ${count} performance(s) and linked changeovers will also be removed.`:'They have no performances.'}`;
   $('#delete-dialog').showModal();
@@ -331,19 +343,28 @@ $('#stages-input').oninput=populateStageNames;
 $('#edit-settings').onclick=() => {
   if(!writable())return;
   $('#stages-input').value=state.settings.stages;$('#budget-input').value=state.settings.budget;
+  $('#budget-input').disabled=!canFestival('budget');
   $('#stage-names-fields').innerHTML='';populateStageNames();
   $('#settings-message').textContent='';$('#settings-dialog').showModal();
 };
 $('#cancel-settings').onclick=() => $('#settings-dialog').close();
 $('#settings-form').onsubmit=event => {
   event.preventDefault();if(!writable())return;
-  const settings={...state.settings,stages:Number($('#stages-input').value),budget:Number($('#budget-input').value),stageNames:{...state.settings.stageNames}};
+  const budget=canFestival('budget') ? Number($('#budget-input').value) : state.settings.budget;
+  const settings={...state.settings,stages:Number($('#stages-input').value),budget,stageNames:{...state.settings.stageNames}};
   if(!Number.isInteger(settings.stages)||settings.stages<1||settings.stages>12||!Number.isFinite(settings.budget)||settings.budget<0){$('#settings-message').textContent='Enter 1–12 stages and a non-negative budget.';return;}
   if(state.bookings.some(b => b.stage.charCodeAt(0)-65>=settings.stages)){$('#settings-message').textContent='Move or remove bookings on those stages first.';return;}
   let invalidName=false;
   document.querySelectorAll('[data-stage-name]').forEach(input => {const name=input.value.trim();if(!name||name.length>60)invalidName=true;settings.stageNames[input.dataset.stageName]=name;});
   if(invalidName){$('#settings-message').textContent='Give each stage a name of 1–60 characters.';return;}
-  confirmBudget(total(),() => {state.settings=settings;save();render();$('#settings-dialog').close();toast('Planning settings saved.');},settings.budget);
+  confirmBudget(total(),() => {
+    if (!writable()) return;
+    if (settings.budget !== state.settings.budget && !canFestival('budget')) {
+      $('#settings-message').textContent='Only admins can change the artist budget.';
+      return;
+    }
+    state.settings=settings;save();render();$('#settings-dialog').close();toast('Planning settings saved.');
+  },settings.budget);
 };
 function downloadBackup() {
   try {
@@ -359,13 +380,18 @@ function downloadBackup() {
 }
 $('#backup-plan').onclick=downloadBackup;
 $('#backup-before-restore').onclick=downloadBackup;
-$('#restore-plan').onclick=() => {$('#backup-file').value='';$('#backup-file').click();};
+$('#restore-plan').onclick=() => {
+  if (!canRestorePlan()) return;
+  $('#backup-file').value='';$('#backup-file').click();
+};
 $('#backup-file').onchange=async event => {
-  const file=event.target.files?.[0];if(!file)return;
+  const file=event.target.files?.[0];if(!file || !canRestorePlan())return;
   pendingRestore=null;
   try {
     if(file.size>5*1024*1024)throw Error('Choose a lineup backup smaller than 5 MB.');
-    pendingRestore=parsePlanBackup(await file.text());
+    const backupText=await file.text();
+    if (!canRestorePlan()) return;
+    pendingRestore=parsePlanBackup(backupText);
     const p=pendingRestore,sets=p.bookings.filter(isPerformance),amount=sets.reduce((sum,b) => sum+b.fee,0);
     $('#restore-summary').textContent=`${p.artists.length} artists · ${sets.length} performances · ${p.settings.stages} stages · ${p.event.startDate} to ${p.event.endDate}. Used: ${euros(amount)} of ${euros(p.settings.budget)}.${amount>p.settings.budget?' This plan is over budget.':''} ${p.final?'This backup is finalised.':''}`;
     $('#restore-dialog').showModal();
@@ -374,11 +400,12 @@ $('#backup-file').onchange=async event => {
 $('#cancel-restore').onclick=() => {pendingRestore=null;$('#restore-dialog').close();};
 $('#restore-dialog').addEventListener('cancel',() => {pendingRestore=null;});
 $('#confirm-restore').onclick=() => {
-  if(!pendingRestore)return;
+  if(!pendingRestore || !canRestorePlan())return;
   try {
     // Persist before replacing the in-memory plan: a storage error leaves the current plan intact.
     localStorage.setItem(STORAGE_KEY,JSON.stringify(pendingRestore));
     state=pendingRestore;pendingRestore=null;currentDay=state.event.startDate;
+    window.refreshGanttFestivalDates?.();
     $('#print-plan-content').innerHTML='';$('#restore-dialog').close();render();
     $('#backup-message').textContent='Backup restored. The final checklist has not changed.';
   } catch(error) {$('#backup-message').textContent=`Could not restore: ${error.message}`;}
@@ -403,18 +430,16 @@ $('#print-form').onsubmit=event => {event.preventDefault();$('#print-dialog').cl
 $('#previous-day').onclick=() => {currentDay=days()[days().indexOf(currentDay)-1];render();};
 $('#next-day').onclick=() => {currentDay=days()[days().indexOf(currentDay)+1];render();};
 $('#finalise-btn').onclick=() => {
+  if (!canFestival('lineup')) return;
   if(state.final){state.final=false;save();render();return;}
   const problems=planProblems(state);
   if(problems.length){toast(problems[0]);return;}
   $('#finalise-dialog').showModal();
 };
 $('#confirm-finalise').onclick=() => {
+  if (!canFestival('lineup')) return;
   const problems=planProblems(state);
   if(problems.length){toast(problems[0]);return;}
   state.final=true;save();render();toast('Lineup finalised. Choose public or internal PDF using Print / Save PDF.');
 };
-document.querySelectorAll('.sidebar-item').forEach(b => b.onclick=() => {
-  if(!['Lineup planner','Checklist'].includes(b.dataset.section)){toast(`${b.dataset.section} will be added in a later feature branch.`);return;}
-  document.querySelectorAll('.sidebar-item').forEach(item => item.classList.toggle('active',item===b));
-});
 render();

@@ -101,7 +101,7 @@ function catalogueForSavedPlan(saved) {
   const hasLegacyBooking = Array.isArray(saved?.bookings) && saved.bookings.some(b => LEGACY_ARTISTS.some(a => a.id === b.artistId));
   return (hasLegacyBooking ? LEGACY_ARTISTS : ARTISTS).map(a => ({ ...a }));
 }
-// Shared event configuration: a future event page can update this persisted object.
+// Shared event configuration for the overview and lineup.
 const DEFAULT_EVENT = { startDate: '2026-10-15', endDate: '2026-10-16', startMinutes: 840, endMinutes: 1380 };
 const timeText = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 function eventDays(event) {
@@ -150,7 +150,7 @@ function normalizePlan(saved) {
   });
   return result;
 }
-// Future event settings can set event.dayHours[date] with start/end and optional stage overrides.
+// Imported plans can include opening hours for individual days and stages.
 function dayHours(date, event = state.event) {
   const h = event.dayHours?.[date];
   return { start: h?.start ?? event.startMinutes, end: h?.end ?? event.endMinutes };
@@ -226,6 +226,36 @@ function validDate(value) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 function validHours(hours) { return isObject(hours) && Number.isInteger(hours.start) && Number.isInteger(hours.end) && hours.start >= 0 && hours.start < hours.end && hours.end <= 1440; }
+function updatedFestivalEvent(details, previousEvent) {
+  const event = { ...previousEvent, ...details };
+  if (event.dayHours) {
+    event.dayHours = Object.fromEntries(Object.entries(event.dayHours)
+      .filter(([date]) => date >= event.startDate && date <= event.endDate));
+  }
+  return event;
+}
+
+function eventChangeProblem(event, plan) {
+  if (!validText(event.name, 100)) return 'Enter a festival name of 1–100 characters.';
+  if (!validText(event.venue, 120, true)) return 'Enter a venue or city of up to 120 characters.';
+  if (!validDate(event.startDate) || !validDate(event.endDate) || event.endDate < event.startDate) {
+    return 'Choose valid festival dates with the last day on or after the first day.';
+  }
+  if (eventDays(event).at(-1) !== event.endDate) return 'The festival cannot be longer than 366 days.';
+  if (!validHours({ start: event.startMinutes, end: event.endMinutes })) {
+    return 'Enter valid opening and closing times. Closing time must be later than opening time.';
+  }
+  for (const booking of plan.bookings) {
+    const name = entryName(booking, plan);
+    if (booking.date < event.startDate || booking.date > event.endDate) {
+      return `${name} on ${dateText(booking.date)} is outside the new festival dates. Move or remove it in the Lineup Planner first.`;
+    }
+    const problem = availabilityProblem(booking, event, plan);
+    if (problem) return `${name}: ${problem} Move or remove the appointment in the Lineup Planner first.`;
+  }
+  return '';
+}
+
 function planProblems(plan) {
   const problems = [];
   if (!isObject(plan) || !Array.isArray(plan.artists) || !Array.isArray(plan.bookings) || !isObject(plan.settings) || !isObject(plan.event)) return ['The backup is missing its artists, bookings, settings or event.'];
@@ -233,6 +263,7 @@ function planProblems(plan) {
   if (typeof plan.final !== 'boolean') problems.push('The final-plan setting must be true or false.');
   if (!Number.isInteger(plan.settings.stages) || plan.settings.stages < 1 || plan.settings.stages > 12 || !Number.isFinite(plan.settings.budget) || plan.settings.budget < 0) return ['Stage count or budget is invalid.'];
   const e = plan.event;
+  if ((e.name !== undefined && !validText(e.name, 100)) || (e.venue !== undefined && !validText(e.venue, 120, true))) return ['The festival name or venue is invalid.'];
   if (!validDate(e.startDate) || !validDate(e.endDate) || e.endDate < e.startDate || !validHours({ start: e.startMinutes, end: e.endMinutes })) return ['The event dates or opening hours are invalid.'];
   if ((new Date(e.endDate + 'T12:00:00Z') - new Date(e.startDate + 'T12:00:00Z')) / 86400000 >= 366) return ['The event cannot be longer than 366 days.'];
   const dates = eventDays(e), stageIds = planStages(plan);
@@ -283,4 +314,17 @@ function parsePlanBackup(text) {
   result.dailyHoursResetV1 = true;
   result.stageHoursResetV1 = true;
   return result;
+}
+
+
+// A task group finishes when its last scheduled subtask finishes.
+function upcomingMilestones(project, today) {
+  const milestones = [];
+  for (const area of project) {
+    for (const task of area.tasks) {
+      const date = task.subtasks.reduce((latest, step) => step.end > latest ? step.end : latest, '');
+      if (date >= today) milestones.push({ id: task.id, title: task.title, date });
+    }
+  }
+  return milestones.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
 }

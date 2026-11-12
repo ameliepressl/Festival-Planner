@@ -14,6 +14,7 @@ Use this file together with GitHub branches and pull requests so the team can se
 
 | Branch | Scope | Status | Reviewers | Date |
 | --- | --- | --- | --- | --- |
+| `homepage` | Overview opens first with a setup dialog, planning grid, local team roles and upcoming Gantt milestones. | Local review | — | 12 November 2026 |
 | `codex/left-navigation` | Add a visual left navigation bar to the original lineup planner. No new feature pages yet. | Ready for team preview — not committed | Kira, Vicky, Fredderik | 28 October 2026 |
 
 | `codex/festival-planner-edits` | Editable artist catalogue, planning settings and vertical multi-day lineup calendar for 15–16 October 2026. | Local preview — ready for review | — | 28 October 2026 |
