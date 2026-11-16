@@ -24,8 +24,9 @@ const MAP_CATEGORIES = [
   { id: 'services', title: 'Services', colour: '#9d86d6' }
 ];
 
-// Every facility the planner places. "onFence" items belong on the border (gates and exits).
-const LAYOUT_ITEMS = [
+// The facilities every festival ground has exactly once (or twice, one per stage).
+// "onFence" items belong on the border (gates and exits).
+const BASE_ITEMS = [
   { id: 'stage-a', kind: 'stage', name: 'Stage A · Main Stage', category: 'stages', symbol: 'A', team: 'Stage building', hours: 'During the programme',
     text: 'Open-air main stage. It faces the food court so the crowd has room to spread out in front of it.' },
   { id: 'stage-b', kind: 'stage', name: 'Stage B · Warehouse', category: 'stages', symbol: 'B', team: 'Stage building', hours: 'During the programme',
@@ -46,21 +47,37 @@ const LAYOUT_ITEMS = [
     text: 'Emergency exit in the fence with a meeting point outside.' },
   { id: 'exit-2', kind: 'exit', name: 'Emergency exit 2', category: 'safety', symbol: 'EX', onFence: true, team: 'Security', hours: 'Always clear',
     text: 'Second emergency exit, far from the first one and from the main entrance.' },
-  { id: 'toilets-a', kind: 'toilets', name: 'Toilets · Stage A', category: 'facilities', symbol: 'WC', team: 'Toilets, water & waste', hours: 'From gates open',
-    text: 'A row of toilet cabins including accessible units.' },
-  { id: 'toilets-b', kind: 'toilets', name: 'Toilets · Stage B', category: 'facilities', symbol: 'WC', team: 'Toilets, water & waste', hours: 'From gates open',
-    text: 'A row of toilet cabins including accessible units.' },
-  { id: 'water-a', kind: 'water', name: 'Free water · Stage A', category: 'facilities', symbol: 'H₂O', team: 'Toilets, water & waste', hours: 'From gates open',
-    text: 'Free drinking water refill station.' },
-  { id: 'water-b', kind: 'water', name: 'Free water · Stage B', category: 'facilities', symbol: 'H₂O', team: 'Toilets, water & waste', hours: 'From gates open',
-    text: 'Free drinking water refill station.' },
   { id: 'recycling', kind: 'recycling', name: 'Recycling point', category: 'facilities', symbol: '♲', team: 'Toilets, water & waste', hours: 'From gates open',
-    text: 'Bins, recycling and cup return next to the food court.' },
-  ...['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].map((pitch) => ({
-    id: pitch, kind: 'pitch', name: `Food court · Pitch ${pitch}`, category: 'food', symbol: pitch, team: 'Backstage & catering', hours: 'From gates open',
-    text: 'Vendor pitch in the food court. Which vendor stands here is chosen on the Vendors page.'
-  }))
+    text: 'Bins, recycling and cup return next to the food court.' }
 ];
+
+// How many toilet rows, water points and food pitches go on the map depends on the festival size
+// (see rules/capacity-rules.js). The first two toilet rows and water points belong to the two stages.
+const STAGE_SUFFIX = ['a', 'b'];
+function layoutItems(needs = { toiletBlocks: 2, waterPoints: 2, pitches: 6 }) {
+  const numbered = (count, kind, makeItem) => Array.from({ length: Math.max(2, count) }, (_, i) => makeItem(i < 2 ? `${kind}-${STAGE_SUFFIX[i]}` : `${kind}-${i + 1}`, i));
+  const toilets = numbered(needs.toiletBlocks, 'toilets', (id, i) => ({
+    id, kind: 'toilets', name: i < 2 ? `Toilets · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Toilets ${i + 1}`, category: 'facilities', symbol: 'WC',
+    team: 'Toilets, water & waste', hours: 'From gates open', text: 'A row of 8 toilet cabins including an accessible unit.'
+  }));
+  const water = numbered(needs.waterPoints, 'water', (id, i) => ({
+    id, kind: 'water', name: i < 2 ? `Free water · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Free water ${i + 1}`, category: 'facilities', symbol: 'H₂O',
+    team: 'Toilets, water & waste', hours: 'From gates open', text: 'Free drinking water refill station.'
+  }));
+  const pitches = Array.from({ length: needs.pitches }, (_, i) => ({
+    id: `P${i + 1}`, kind: 'pitch', name: `Food court · Pitch P${i + 1}`, category: 'food', symbol: `P${i + 1}`, team: 'Backstage & catering', hours: 'From gates open',
+    text: 'Vendor pitch in the food court. Which vendor stands here is chosen on the Vendors page.'
+  }));
+  return [...BASE_ITEMS, ...toilets, ...water, ...pitches];
+}
+
+// The smallest layout (two toilet rows, two water points, six pitches). Used when no festival size is given.
+const LAYOUT_ITEMS = layoutItems();
+
+// Ids that can appear in a saved layout (also those of larger festivals).
+function isKnownItemId(id) {
+  return BASE_ITEMS.some((item) => item.id === id) || /^(toilets|water)-([ab]|[3-9]|[1-9][0-9])$/.test(id) || /^P([1-9]|1[0-9]|20)$/.test(id);
+}
 
 // ---------- the demo ground: a 600 m wide field with a forest and a lake ----------
 
@@ -71,7 +88,7 @@ const DEMO_SCENE = {
 
 // ---------- small geometry helpers ----------
 
-function findItem(id) { return LAYOUT_ITEMS.find((item) => item.id === id) || null; }
+function findItem(id, items = LAYOUT_ITEMS) { return items.find((item) => item.id === id) || null; }
 function distance(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
 function metresPerUnit(site) { return site.widthMetres / site.width; }
 function metresBetweenPoints(site, a, b) { return Math.round(distance(a, b) * metresPerUnit(site)); }
@@ -178,7 +195,7 @@ const bestBy = (list, score) => list.reduce((best, p) => (best === null || score
 // everything), second stage far from the main stage (sound), food court in the middle of the three,
 // first aid, water and toilets between each stage and the food court, services next to the gate,
 // emergency exits far from the gate and from each other. Nothing goes on a no-go area.
-function suggestLayout(site) {
+function suggestLayout(site, items = LAYOUT_ITEMS) {
   const candidates = candidatePoints(site);
   if (candidates.length === 0) {
     return { placements: {}, problem: 'There is no usable ground. Draw the ground border and make sure not all of it is a no-go area.' };
@@ -210,8 +227,14 @@ function suggestLayout(site) {
   const middle = [(stageA[0] + stageB[0] + entrance[0]) / 3, (stageA[1] + stageB[1] + entrance[1]) / 3];
   const awayFromStages = candidates.filter((p) => distance(p, stageA) * m >= 60 && distance(p, stageB) * m >= 60);
   const court = snap(middle, 20, awayFromStages);
-  [[-14, -7], [0, -7], [14, -7], [-14, 7], [0, 7], [14, 7]].forEach(([dx, dy], i) => {
-    placed[`P${i + 1}`] = snap([court[0] + u(dx), court[1] + u(dy)], 8);
+  // The pitches stand in rows around the middle of the food court, 14 m apart.
+  const pitches = items.filter((item) => item.kind === 'pitch');
+  const columns = pitches.length <= 6 ? 3 : Math.ceil(Math.sqrt(pitches.length * 1.6));
+  const rows = Math.ceil(pitches.length / columns);
+  pitches.forEach((pitch, i) => {
+    const dx = ((i % columns) - (columns - 1) / 2) * 14;
+    const dy = (Math.floor(i / columns) - (rows - 1) / 2) * 14;
+    placed[pitch.id] = snap([court[0] + u(dx), court[1] + u(dy)], 8);
   });
 
   [['a', stageA], ['b', stageB]].forEach(([suffix, stage]) => {
@@ -229,6 +252,20 @@ function suggestLayout(site) {
   placed.security = snap(stepFrom(stepFrom(entrance, inward, u(32)), across, -u(22)), 15);
   placed.recycling = snap(stepFrom(court, sideways(direction(entrance, court)), u(40)), 15);
 
+  // Extra toilet rows and water points for bigger festivals: spread along the main walkways
+  // (gate–food court, food court–stages), alternating left and right of the path.
+  const halfway = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const spots = [[halfway(entrance, court), direction(entrance, court)], [halfway(court, stageA), direction(court, stageA)],
+    [halfway(court, stageB), direction(court, stageB)], [court, direction(entrance, court)]];
+  const extras = items.filter((item) => (item.kind === 'toilets' || item.kind === 'water') && !placed[item.id]);
+  extras.forEach((item, k) => {
+    const [spot, along] = spots[k % spots.length];
+    const round = Math.floor(k / spots.length);
+    const side = (k % 2 ? -1 : 1) * (35 + 15 * Math.floor(round / 2));
+    const shift = (round % 2 ? 1 : -1) * 18 * Math.ceil(round / 2);
+    placed[item.id] = snap(stepFrom(stepFrom(spot, sideways(along), u(side)), along, u(shift)), 15);
+  });
+
   // An exit needs free ground on both sides of the fence, not a forest or lake right behind it.
   const clear = (p) => [-u(30), u(15), u(30)].every((d) => !isBlocked(site, stepFrom(p, direction(p, middle), d)));
   const fence = boundarySamples(site, 240).filter((p) => !isBlocked(site, p) && clear(p) && isFree(p, 20));
@@ -238,7 +275,7 @@ function suggestLayout(site) {
   placed['exit-2'] = bestBy(fencePool, (p) => Math.min(distance(p, entrance), distance(p, exit1)));
 
   const placements = {};
-  LAYOUT_ITEMS.forEach((item) => { placements[item.id] = placed[item.id].map(Math.round); });
+  items.forEach((item) => { placements[item.id] = placed[item.id].map(Math.round); });
   return { placements, problem: null };
 }
 
@@ -296,28 +333,28 @@ function walkwayRoute(site, from, to) {
 
 const LAYOUT_RULE_COUNT = 10;
 
-function checkLayout(site, placements) {
+function checkLayout(site, placements, items = LAYOUT_ITEMS) {
   const at = (id) => placements[id];
   const metres = (a, b) => metresBetweenPoints(site, at(a), at(b));
-  const name = (id) => findItem(id).name;
-  const missing = LAYOUT_ITEMS.filter((item) => !at(item.id)).map((item) => item.id);
+  const name = (id) => findItem(id, items).name;
+  const missing = items.filter((item) => !at(item.id)).map((item) => item.id);
   const rule = (id, label, ids, check) => {
     if (ids.some((i) => missing.includes(i))) return { id, label, ok: false, detail: 'Not everything for this rule is on the map yet.', items: ids };
     return { id, label, items: ids, ...check() };
   };
-  const nearest = (stage, kind) => Math.min(...LAYOUT_ITEMS.filter((i) => i.kind === kind && at(i.id)).map((i) => metres(stage, i.id)));
+  const nearest = (stage, kind) => Math.min(...items.filter((i) => i.kind === kind && at(i.id)).map((i) => metres(stage, i.id)));
   const perStage = (kind, limit) => () => {
     const a = nearest('stage-a', kind);
     const b = nearest('stage-b', kind);
     return { ok: a <= limit && b <= limit, detail: `Stage A: ${a} m · Stage B: ${b} m (at most ${limit} m)` };
   };
-  const pitches = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+  const pitches = items.filter((item) => item.kind === 'pitch').map((item) => item.id);
 
   const rules = [
     { id: 'all-placed', label: 'Every facility is on the map', ok: missing.length === 0, items: missing,
-      detail: missing.length ? `Missing: ${missing.map(name).join(', ')}` : `All ${LAYOUT_ITEMS.length} facilities placed` },
+      detail: missing.length ? `Missing: ${missing.map(name).join(', ')}` : `All ${items.length} facilities placed` },
     rule('usable', 'Nothing stands on a no-go area or outside the fence', [], () => {
-      const wrong = LAYOUT_ITEMS.filter((item) => at(item.id) && !(item.onFence ? isOnFence(site, at(item.id)) : isUsable(site, at(item.id))));
+      const wrong = items.filter((item) => at(item.id) && !(item.onFence ? isOnFence(site, at(item.id)) : isUsable(site, at(item.id))));
       return { ok: wrong.length === 0, items: wrong.map((i) => i.id),
         detail: wrong.length ? `Move: ${wrong.map((i) => i.name).join(', ')}` : 'Everything is on usable ground; gate and exits are on the fence' };
     }),
@@ -344,7 +381,7 @@ function checkLayout(site, placements) {
       return { ok: i <= 80 && s <= 80, detail: `Info ${i} m, security ${s} m from the gate (at most 80 m)` };
     }),
     rule('spacing', 'Facilities do not overlap', [], () => {
-      const placedItems = LAYOUT_ITEMS.filter((item) => at(item.id));
+      const placedItems = items.filter((item) => at(item.id));
       const clashes = [];
       placedItems.forEach((a, i) => placedItems.slice(i + 1).forEach((b) => {
         const minimum = a.kind === 'pitch' && b.kind === 'pitch' ? 5 : 10;
@@ -360,21 +397,21 @@ function checkLayout(site, placements) {
 function layoutScore(rules) { return Math.round((rules.filter((r) => r.ok).length / rules.length) * 100); }
 
 // The nearest facility of one kind (e.g. 'toilets') from a point, for the details panel.
-function nearestOfKind(site, placements, from, kind) {
-  const options = LAYOUT_ITEMS.filter((i) => i.kind === kind && placements[i.id])
+function nearestOfKind(site, placements, from, kind, items = LAYOUT_ITEMS) {
+  const options = items.filter((i) => i.kind === kind && placements[i.id])
     .map((item) => ({ item, metres: metresBetweenPoints(site, from, placements[item.id]) }));
   return options.sort((a, b) => a.metres - b.metres)[0] || null;
 }
 
 // ---------- the demo map and saving ----------
 
-function demoSite() {
+function demoSite(items = LAYOUT_ITEMS) {
   const site = {
     id: 'demo', name: 'Demo festival ground', image: null, width: 1200, height: 800, widthMetres: 600,
     boundary: [[90, 110], [560, 70], [1080, 120], [1130, 420], [1060, 700], [600, 742], [140, 690], [70, 400]],
     entrance: [600, 742], grid: buildGrid(1200, 800, [DEMO_SCENE.forest, DEMO_SCENE.lake]), placements: {}
   };
-  site.placements = suggestLayout(site).placements;
+  site.placements = suggestLayout(site, items).placements;
   return site;
 }
 
@@ -392,13 +429,13 @@ function parseSiteMaps(text) {
     && (s.entrance === null || isPoint(s.entrance))
     && s.grid && typeof s.grid.cells === 'string' && s.grid.cells.length === s.grid.cols * s.grid.rows
     && s.placements && typeof s.placements === 'object')
-    .map((s) => ({ ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => findItem(id) && isPoint(p))) }));
+    .map((s) => ({ ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => isKnownItemId(id) && isPoint(p))) }));
 }
 
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE,
+    SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE, layoutItems, isKnownItemId,
     findItem, distance, metresPerUnit, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
     suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps

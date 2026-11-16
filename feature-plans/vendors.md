@@ -35,3 +35,9 @@ bring in, and whether the visitors' basic needs are covered (e.g. a vegan option
 4. Removing the vendor on P2 and confirming another one puts the new vendor on P2.
 5. After reloading the page the same vendors are on the same pitches.
 6. The site map shows the confirmed vendors on their pitches.
+
+## Update — pitches follow the festival size
+
+The number of food court pitches is no longer fixed at 6: it follows the expected
+visitors (one pitch per 400 visitors, 4 – 20), see feature-plans/festival-size.md.
+The rules keep 6 as the default when no size is given, so the checks above still hold.

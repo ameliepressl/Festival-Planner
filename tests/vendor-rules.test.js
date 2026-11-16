@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   VENDORS, PITCHES, parsePlacements, confirmVendor, removeVendor,
-  vendorOnPitch, pitchIncome, coverage
+  vendorOnPitch, pitchIncome, coverage, fitPlacements
 } = require('../rules/vendor-rules.js');
 
 // Confirm several vendors one after another, as the page does.
@@ -65,6 +65,21 @@ test('confirmed vendors survive reopening the page; broken data is ignored', () 
   assert.deepEqual(parsePlacements(null), {});
   assert.deepEqual(parsePlacements('not json'), {});
   assert.deepEqual(parsePlacements('["tacos"]'), {});
-  assert.deepEqual(parsePlacements('{"ghost":"P1","tacos":"P9"}'), {});
+  assert.deepEqual(parsePlacements('{"ghost":"P1","tacos":"P21"}'), {}); // P21 does not exist (at most 20 pitches)
   assert.deepEqual(parsePlacements('{"tacos":"P1","beer":"P1"}'), { tacos: 'P1' });
+});
+
+test('a bigger food court has room for more vendors', () => {
+  const ids = ['tacos', 'burgers', 'pizza', 'bowls', 'noodles', 'crepes', 'beer'];
+  const placements = ids.reduce((p, id) => confirmVendor(p, id, 13).placements, {});
+  assert.equal(placements.beer, 'P7');
+  assert.equal(confirmVendor(placements, 'coffee', 7).problem, 'All 7 pitches are taken. Remove a vendor first.');
+});
+
+test('when the food court shrinks, vendors on pitches that no longer exist lose their pitch', () => {
+  const placements = { tacos: 'P1', beer: 'P5', coffee: 'P9' };
+  const result = fitPlacements(placements, 6);
+  assert.deepEqual(result.placements, { tacos: 'P1', beer: 'P5' });
+  assert.deepEqual(result.removed.map((v) => v.name), ['Bean There Coffee']);
+  assert.deepEqual(parsePlacements(JSON.stringify({ coffee: 'P13' })), { coffee: 'P13' });
 });

@@ -89,6 +89,16 @@
 .sm-rules li.problem b{background:#c14b3c}
 .sm-rules small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
 
+/* Festival size */
+.sm-needs{list-style:none;margin:6px 0 10px;padding:0}
+.sm-needs li{display:flex;align-items:center;gap:12px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.sm-needs b{min-width:44px;font:600 20px Fraunces,serif;text-align:right}
+.sm-needs small{display:block;color:var(--muted);font-size:11px}
+.sm-note{display:block;color:var(--muted);font-size:11px;line-height:1.4}
+.sm-missing{display:flex;align-items:center;gap:10px;background:#fff1ec;border:1px solid #ffc4b6;padding:10px;margin-bottom:10px;font-size:12px}
+.sm-missing span{flex:1}
+.sm-missing .button{padding:8px 12px;font-size:12px}
+
 /* Map settings */
 .sm-field{display:block;font:10px 'DM Mono';letter-spacing:.6px;color:var(--muted);margin:10px 0}
 .sm-field input{display:block;width:100%;margin-top:5px;font:13px 'DM Sans';color:var(--ink);border:0;border-bottom:1px solid var(--ink);background:transparent;padding:6px 0;outline:none}

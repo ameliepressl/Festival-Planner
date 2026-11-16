@@ -6,8 +6,8 @@
 .vendor-needs .ok{color:#258371}
 .vendor-needs .missing{color:#b44033}
 
-/* The six pitches as a row of slots */
-.pitch-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px}
+/* The food court pitches as a row of slots */
+.pitch-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px;margin-bottom:24px}
 .pitch-slot{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1px dashed #b8c0bb;background:transparent;cursor:pointer;transition:.15s}
 .pitch-slot span{font-size:24px;line-height:1;color:var(--muted)}
 .pitch-slot small{font:500 10px 'DM Mono';color:var(--muted)}
@@ -30,4 +30,5 @@
 .vendor-tags span{font:10px 'DM Mono';padding:3px 7px;background:var(--paper);color:var(--ink)}
 .vendor-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:auto;padding-top:14px}
 
-@media(max-width:700px){.vendor-metrics{grid-template-columns:1fr}.pitch-row{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.vendor-metrics{grid-template-columns:1fr}}
+.vendor-metrics small a{color:var(--coral)}

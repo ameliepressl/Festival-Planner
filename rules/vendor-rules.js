@@ -3,7 +3,10 @@
 // vendors/vendors-page.js and site-map/site-map-page.js.
 // "placements" is a plain object: vendor id -> pitch, e.g. { tacos: 'P1', coffee: 'P2' }.
 
-const PITCHES = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+const PITCHES = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6']; // the smallest food court
+const MAX_PITCHES = 20;
+// The pitch names for a food court of this size: pitchList(3) -> ['P1', 'P2', 'P3'].
+function pitchList(count) { return Array.from({ length: count }, (_, i) => `P${i + 1}`); }
 const VENDOR_STORAGE_KEY = 'festival-architect-vendors';
 
 const VENDOR_CATEGORIES = ['Food', 'Drinks', 'Merch'];
@@ -44,24 +47,24 @@ function parsePlacements(text) {
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
   const result = {};
   Object.entries(saved).forEach(([vendorId, pitch]) => {
-    if (findVendor(vendorId) && PITCHES.includes(pitch) && !Object.values(result).includes(pitch)) result[vendorId] = pitch;
+    if (findVendor(vendorId) && pitchList(MAX_PITCHES).includes(pitch) && !Object.values(result).includes(pitch)) result[vendorId] = pitch;
   });
   return result;
 }
 
-function freePitches(placements) {
+function freePitches(placements, pitchCount = PITCHES.length) {
   const taken = Object.values(placements);
-  return PITCHES.filter((pitch) => !taken.includes(pitch));
+  return pitchList(pitchCount).filter((pitch) => !taken.includes(pitch));
 }
 
 // Confirm a vendor on the first free pitch. Returns { placements, problem }:
 // problem is null when it worked, otherwise a sentence saying why not (placements then stay unchanged).
-function confirmVendor(placements, vendorId) {
+function confirmVendor(placements, vendorId, pitchCount = PITCHES.length) {
   const vendor = findVendor(vendorId);
   if (!vendor) return { placements, problem: 'This vendor is not in the catalogue.' };
   if (placements[vendorId]) return { placements, problem: `${vendor.name} is already on pitch ${placements[vendorId]}.` };
-  const free = freePitches(placements);
-  if (free.length === 0) return { placements, problem: `All ${PITCHES.length} pitches are taken. Remove a vendor first.` };
+  const free = freePitches(placements, pitchCount);
+  if (free.length === 0) return { placements, problem: `All ${pitchCount} pitches are taken. Remove a vendor first.` };
   return { placements: { ...placements, [vendorId]: free[0] }, problem: null };
 }
 
@@ -75,6 +78,15 @@ function removeVendor(placements, vendorId) {
 function vendorOnPitch(placements, pitch) {
   const entry = Object.entries(placements).find(([, p]) => p === pitch);
   return entry ? findVendor(entry[0]) : null;
+}
+
+// When the food court gets smaller, vendors on pitches that no longer exist lose their pitch.
+// Returns { placements, removed } with the vendors that were taken off.
+function fitPlacements(placements, pitchCount) {
+  const allowed = pitchList(pitchCount);
+  const removed = Object.keys(placements).filter((id) => !allowed.includes(placements[id])).map(findVendor);
+  const kept = Object.fromEntries(Object.entries(placements).filter(([, pitch]) => allowed.includes(pitch)));
+  return { placements: kept, removed };
 }
 
 // Pitch fees the confirmed vendors pay to the festival.
@@ -96,7 +108,7 @@ function coverage(placements) {
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    PITCHES, VENDOR_STORAGE_KEY, VENDOR_CATEGORIES, VENDORS, findVendor, parsePlacements,
+    PITCHES, MAX_PITCHES, pitchList, fitPlacements, VENDOR_STORAGE_KEY, VENDOR_CATEGORIES, VENDORS, findVendor, parsePlacements,
     freePitches, confirmVendor, removeVendor, vendorOnPitch, pitchIncome, coverage
   };
 }

@@ -123,7 +123,7 @@ const MapDrawing = (function () {
   // Gravel walkways: gate → food court → each stage, and stage A → backstage.
   function walkways(site, placements) {
     const p = placements;
-    const pitches = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].filter((id) => p[id]);
+    const pitches = Object.keys(p).filter((id) => /^P\d+$/.test(id));
     if (!p.entrance || !p['stage-a'] || !p['stage-b'] || !pitches.length) return '';
     const court = centreOf(pitches.map((id) => p[id]));
     const width = 7 / metresPerUnit(site);

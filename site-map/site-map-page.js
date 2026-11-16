@@ -17,6 +17,10 @@
     erase: { label: 'Erase no-go', hint: 'Drag over red areas to make them usable again.' }
   };
 
+  // Festival size: the expected visitors decide how many toilets, water points and pitches the map needs.
+  let ground = parseGround(read(GROUND_STORAGE_KEY));
+  let needs = capacityNeeds(ground.visitors);
+  let items = layoutItems(needs);
   let sites = loadSites();
   let currentId = read(SELECTED_KEY) || 'demo';
   if (!sites.some((s) => s.id === currentId)) currentId = 'demo';
@@ -32,7 +36,7 @@
   function read(key) { try { return localStorage.getItem(key); } catch { return null; } }
   function loadSites() {
     const list = parseSiteMaps(read(SITE_MAPS_STORAGE_KEY));
-    if (!list.some((s) => s.id === 'demo')) list.unshift(demoSite());
+    if (!list.some((s) => s.id === 'demo')) list.unshift(demoSite(items));
     return list;
   }
   function save() {
@@ -44,6 +48,7 @@
     }
   }
   const site = () => sites.find((s) => s.id === currentId);
+  const currentPlacements = (s) => Object.fromEntries(items.filter((i) => s.placements[i.id]).map((i) => [i.id, s.placements[i.id]]));
   const vendors = () => parsePlacements(read(VENDOR_STORAGE_KEY));
   const colourOf = (categoryId) => MAP_CATEGORIES.find((c) => c.id === categoryId).colour;
   const titleOf = (categoryId) => MAP_CATEGORIES.find((c) => c.id === categoryId).title;
@@ -85,6 +90,7 @@
         </div>
         <aside class="sm-side">
           <section class="sm-card" id="sm-details" aria-live="polite"></section>
+          <section class="sm-card" id="sm-size"></section>
           <section class="sm-card" id="sm-score"></section>
           <section class="sm-card" id="sm-settings"></section>
         </aside>
@@ -93,6 +99,7 @@
     drawScene();
     drawAll();
     renderSettings();
+    renderSize();
     bindMap();
   }
 
@@ -118,7 +125,7 @@
   // The direction an object faces: stages, trucks and toilets towards the food court, gates inwards.
   function anglesFor(s) {
     const p = s.placements;
-    const pitches = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'].filter((id) => p[id]).map((id) => p[id]);
+    const pitches = items.filter((i) => i.kind === 'pitch' && p[i.id]).map((i) => p[i.id]);
     const court = pitches.length ? [0, 1].map((k) => pitches.reduce((sum, q) => sum + q[k], 0) / pitches.length) : [s.width / 2, s.height / 2];
     const inside = [0, 1].map((k) => s.boundary.reduce((sum, q) => sum + q[k], 0) / s.boundary.length);
     return (item, at) => {
@@ -133,11 +140,11 @@
     const u = (metres) => metres / metresPerUnit(s);
     const angle = anglesFor(s);
     const r = box.w / 58;
-    view.querySelector('#sm-paths').innerHTML = MapDrawing.walkways(s, s.placements);
-    const items = LAYOUT_ITEMS.filter((item) => s.placements[item.id] && active.includes(item.category));
+    view.querySelector('#sm-paths').innerHTML = MapDrawing.walkways(s, currentPlacements(s));
+    const shown = items.filter((item) => s.placements[item.id] && active.includes(item.category));
     // Selected pin last, so it is drawn on top.
-    items.sort((a, b) => (a.id === selectedId) - (b.id === selectedId));
-    view.querySelector('#sm-objects').innerHTML = items.map((item) => {
+    shown.sort((a, b) => (a.id === selectedId) - (b.id === selectedId));
+    view.querySelector('#sm-objects').innerHTML = shown.map((item) => {
       const at = s.placements[item.id];
       const vendor = item.kind === 'pitch' ? vendorOnPitch(onPitches, item.id) : null;
       const label = vendor ? vendor.icon : item.symbol;
@@ -174,7 +181,7 @@
   function renderDetails() {
     const panel = view.querySelector('#sm-details');
     const s = site();
-    const item = selectedId && s.placements[selectedId] ? findItem(selectedId) : null;
+    const item = selectedId && s.placements[selectedId] ? findItem(selectedId, items) : null;
     if (!item) {
       panel.innerHTML = `<p class="eyebrow">DETAILS</p><h2>Click a pin</h2><p class="map-text">Every pin on the map is a facility. Click it to see what it is, who is responsible, how far it is from the gate and which layout rules it meets.</p>`;
       return;
@@ -185,8 +192,8 @@
       ? `${walkingMinutesBetween(s, s.placements.entrance, at)} min walk · ${metresBetweenPoints(s, s.placements.entrance, at)} m` : 'This is the gate.';
     const nearby = [['first-aid', 'First aid'], ['toilets', 'Toilets'], ['water', 'Water']]
       .filter(([kind]) => kind !== item.kind)
-      .map(([kind, label]) => { const n = nearestOfKind(s, s.placements, at, kind); return n ? `<li><span>${label}</span><b>${n.metres} m</b></li>` : ''; }).join('');
-    const rules = checkLayout(s, s.placements).filter((rule) => rule.items.includes(item.id));
+      .map(([kind, label]) => { const n = nearestOfKind(s, s.placements, at, kind, items); return n ? `<li><span>${label}</span><b>${n.metres} m</b></li>` : ''; }).join('');
+    const rules = checkLayout(s, s.placements, items).filter((rule) => rule.items.includes(item.id));
     const vendorPart = item.kind !== 'pitch' ? '' : vendor
       ? `<div class="map-vendor"><span class="map-vendor-icon">${vendor.icon}</span><div><strong>${escape(vendor.name)}</strong><small>${vendor.category} · ${escape(vendor.text)}</small></div></div>
          <button class="button secondary" type="button" data-go-vendors>Open in Vendors</button>`
@@ -210,7 +217,7 @@
 
   function renderScore() {
     const s = site();
-    const rules = checkLayout(s, s.placements);
+    const rules = checkLayout(s, s.placements, items);
     const score = layoutScore(rules);
     const passed = rules.filter((r) => r.ok).length;
     view.querySelector('#sm-score').innerHTML = `
@@ -218,6 +225,7 @@
         <div class="sm-ring" style="--score:${score}"><span>${score}<small>%</small></span></div>
         <div><p class="eyebrow">LAYOUT CHECK</p><strong>${passed} of ${rules.length} rules met</strong><small>${score === 100 ? 'This layout is ready to work with.' : 'Click a rule to see what to fix.'}</small></div>
       </div>
+      ${rules[0].ok ? '' : `<div class="sm-missing"><span>${items.filter((i) => !s.placements[i.id]).length} facilities for ${needs.visitors.toLocaleString('en-GB')} visitors still need a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
       <ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}" data-rule="${rule.id}" tabindex="0"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>`;
   }
 
@@ -236,15 +244,43 @@
       </div>`;
   }
 
+  function renderSize() {
+    const rows = [
+      ['Toilet cabins', `${needs.toiletCabins}`, `${needs.toiletBlocks} rows of 8 on the map`],
+      ['Water points', `${needs.waterPoints}`, 'on the map'],
+      ['Food pitches', `${needs.pitches}`, 'on the map and the Vendors page'],
+      ['First aiders', `${needs.firstAiders}`, 'crew on duty'],
+      ['Security staff', `${needs.securityStaff}`, 'crew on duty']
+    ];
+    view.querySelector('#sm-size').innerHTML = `
+      <p class="eyebrow">FESTIVAL SIZE</p>
+      <label class="sm-field">Expected visitors<input id="sm-visitors" type="number" min="${MIN_VISITORS}" max="${MAX_VISITORS}" step="500" value="${ground.visitors}" /></label>
+      <ul class="sm-needs">${rows.map(([label, value, note]) => `<li><b>${value}</b><span>${label}<small>${note}</small></span></li>`).join('')}</ul>
+      <small class="sm-note">Rules of thumb for a one-day open-air event (e.g. one toilet per 100 visitors). Check the local authority's rules for the real event.</small>`;
+  }
+
+  // A new festival size: new facility list; the map shows what still needs a place.
+  function changeVisitors(value) {
+    if (!validVisitors(value)) { toast(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
+    ground = { visitors: Number(value) };
+    needs = capacityNeeds(ground.visitors);
+    items = layoutItems(needs);
+    try { localStorage.setItem(GROUND_STORAGE_KEY, JSON.stringify(ground)); } catch { /* the page still works without saving */ }
+    if (selectedId && !findItem(selectedId, items)) selectedId = null;
+    renderSize(); drawAll();
+    const missing = items.filter((i) => !site().placements[i.id]).length;
+    toast(missing ? `${missing} new facilities need a place. Press “Plan them” or “Suggest optimal layout”.` : 'Festival size saved.');
+  }
+
   // ---------- actions ----------
   function suggest() {
     const s = site();
-    const result = suggestLayout(s);
+    const result = suggestLayout(s, items);
     if (result.problem) { toast(result.problem); return; }
     s.placements = result.placements;
     save();
     drawAll();
-    const score = layoutScore(checkLayout(s, s.placements));
+    const score = layoutScore(checkLayout(s, s.placements, items));
     toast(score === 100 ? 'Optimal layout suggested: all rules met.' : `Layout suggested: ${score}% of the rules met. The check on the right shows what the ground cannot fit.`);
   }
 
@@ -264,7 +300,7 @@
 
   function select(id) {
     selectedId = id;
-    const item = findItem(id);
+    const item = findItem(id, items);
     if (item && !active.includes(item.category)) active = [...active, item.category];
     drawObjects(); renderDetails();
   }
@@ -292,7 +328,7 @@
         entrance: null, grid: emptyGrid(width, height), placements: {}
       };
       created.grid = await detectWater(created);
-      created.placements = suggestLayout(created).placements;
+      created.placements = suggestLayout(created, items).placements;
       sites.push(created);
       switchMap(created.id);
       toast('Map uploaded and a first layout suggested. Set the real width, the fence and the gate, then suggest again.');
@@ -434,12 +470,13 @@
     }
     const rule = t.closest('[data-rule]');
     if (rule) {
-      const found = checkLayout(s, s.placements).find((r) => r.id === rule.dataset.rule);
+      const found = checkLayout(s, s.placements, items).find((r) => r.id === rule.dataset.rule);
       if (found && found.items.length) select(found.items[0]);
       return;
     }
     if (t.closest('[data-go-vendors]')) return document.querySelector('.sidebar-item[data-section="Vendors"]').click();
     const action = t.closest('[data-action]')?.dataset.action;
+    if (action === 'plan-missing') return suggest();
     if (action === 'detect') {
       detectWater(s).then((grid) => { s.grid = grid; showNogo = true; save(); renderPage(); toast('Blue areas marked as no-go. Check them and correct with “Mark no-go” / “Erase no-go”.'); });
     } else if (action === 'clear-nogo') {
@@ -447,7 +484,7 @@
     } else if (action === 'whole') {
       s.boundary = [[0, 0], [s.width, 0], [s.width, s.height], [0, s.height]]; save(); drawScene(); drawAll();
     } else if (action === 'reset-demo') {
-      sites = sites.map((m) => (m.id === 'demo' ? demoSite() : m)); save(); renderPage();
+      sites = sites.map((m) => (m.id === 'demo' ? demoSite(items) : m)); save(); renderPage();
     } else if (action === 'delete' && window.confirm(`Delete the map “${s.name}”? This cannot be undone.`)) {
       sites = sites.filter((m) => m.id !== s.id); switchMap('demo');
     }
@@ -457,6 +494,7 @@
     const s = site();
     if (event.target.id === 'sm-select') switchMap(event.target.value);
     else if (event.target.id === 'sm-upload') upload(event.target.files[0]);
+    else if (event.target.id === 'sm-visitors') changeVisitors(event.target.value);
     else if (event.target.id === 'sm-show-nogo') { showNogo = event.target.checked; drawNogo(); }
     else if (event.target.id === 'sm-name') { s.name = event.target.value.trim() || 'My map'; save(); view.querySelector(`#sm-select option[value="${s.id}"]`).textContent = s.name; }
     else if (event.target.id === 'sm-width') {
@@ -472,7 +510,7 @@
   // The Vendors page uses this to jump straight to a pitch on the map.
   window.openSiteMapAt = function (placeId) {
     selectedId = placeId;
-    const item = findItem(placeId);
+    const item = findItem(placeId, items);
     if (item && !active.includes(item.category)) active = [...active, item.category];
     document.querySelector('.sidebar-item[data-section="Site map"]').click();
   };
@@ -481,6 +519,6 @@
   document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
     const onMap = button.dataset.section === 'Site map';
     view.classList.toggle('hidden', !onMap);
-    if (onMap) { sites = loadSites(); if (!site()) currentId = 'demo'; renderPage(); }
+    if (onMap) { ground = parseGround(read(GROUND_STORAGE_KEY)); needs = capacityNeeds(ground.visitors); items = layoutItems(needs); sites = loadSites(); if (!site()) currentId = 'demo'; renderPage(); }
   }));
 })();

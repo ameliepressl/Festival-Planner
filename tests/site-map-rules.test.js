@@ -6,8 +6,9 @@ const assert = require('node:assert/strict');
 const {
   LAYOUT_ITEMS, LAYOUT_RULE_COUNT, MAP_CATEGORIES, pointInPolygon, buildGrid, emptyGrid, isBlocked, isUsable,
   isOnFence, metresBetweenPoints, walkingMinutesBetween, suggestLayout, checkLayout, layoutScore, demoSite,
-  parseSiteMaps, nearestOfKind, walkwayRoute
+  parseSiteMaps, nearestOfKind, walkwayRoute, layoutItems, isKnownItemId
 } = require('../rules/site-map-rules.js');
+const { capacityNeeds } = require('../rules/capacity-rules.js');
 
 // A plain rectangular field: width × height map units, widthMetres wide in reality, optional no-go polygons.
 function field(width, height, widthMetres, nogo = []) {
@@ -127,6 +128,34 @@ test('walkways go around no-go areas instead of through them', () => {
   assert.ok(route.length > 2, 'the route needs corners to get around the wall');
   assert.ok(route.some((p) => p[1] > 640), 'the route passes through the gap at the bottom');
   route.slice(1, -1).forEach((p) => assert.ok(!isBlocked(site, p), `${p} is inside the wall`));
+});
+
+test('the map gets as many toilet rows, water points and pitches as the festival size needs', () => {
+  const items = layoutItems(capacityNeeds(5000)); // 7 toilet rows, 5 water points, 13 pitches
+  assert.equal(items.filter((i) => i.kind === 'toilets').length, 7);
+  assert.equal(items.filter((i) => i.kind === 'water').length, 5);
+  assert.equal(items.filter((i) => i.kind === 'pitch').length, 13);
+  assert.equal(new Set(items.map((i) => i.id)).size, items.length);
+  items.forEach((i) => assert.ok(isKnownItemId(i.id), i.id));
+  assert.ok(!isKnownItemId('ghost'));
+});
+
+test('even for 20,000 visitors the planner meets all 10 rules on the demo ground', () => {
+  [5000, 20000].forEach((visitors) => {
+    const items = layoutItems(capacityNeeds(visitors));
+    const site = demoSite(items);
+    const rules = checkLayout(site, site.placements, items);
+    rules.forEach((rule) => assert.ok(rule.ok, `${visitors} visitors · ${rule.label}: ${rule.detail}`));
+  });
+});
+
+test('after the festival grows, the new facilities are reported as missing until the layout is suggested again', () => {
+  const site = demoSite(); // planned for the smallest layout
+  const bigger = layoutItems(capacityNeeds(5000));
+  const first = checkLayout(site, site.placements, bigger)[0];
+  assert.equal(first.ok, false);
+  assert.match(first.detail, /Toilets 3/);
+  assert.match(first.detail, /P13/);
 });
 
 test('the nearest toilets are found for the details panel', () => {
