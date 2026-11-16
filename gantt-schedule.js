@@ -18,7 +18,7 @@ window.initialiseGanttTimeline = function () {
     const number = numberOf(row);
     const start=Math.round((parseDate(row.dataset.startDate)-opening)/DAY);
     const end=Math.round((parseDate(row.dataset.endDate)-opening)/DAY);
-    if(!Number.isFinite(start)||!Number.isFinite(end)||start>end)throw new Error('Invalid saved dates for '+number);
+    if(!Number.isFinite(start)||!Number.isFinite(end)||start>end)return;
     ranges.set(row,{start,end});
 
   });
@@ -85,6 +85,7 @@ window.initialiseGanttTimeline = function () {
             const title=`${formatDate(range.start)} – ${formatDate(range.end)}${range.end===0&&!numberOf(row).startsWith('13.')?' · finish before gates open':''}`;
             cell.title=title;bar.setAttribute('aria-hidden','true');cell.append(bar);
           }
+          cell.dataset.start=span.start;cell.dataset.end=span.end;
           row.append(cell);
         });
       });
@@ -95,6 +96,7 @@ window.initialiseGanttTimeline = function () {
     table.style.width=`${taskWidth+110+(chart.classList.contains('gantt-editing')?260:0)+timelineWidth}px`;
     table.style.minWidth='100%';
     updateTimelineState();
+    updateToday(true);
 
   }
   function updateTimelineState() {
@@ -126,21 +128,59 @@ window.initialiseGanttTimeline = function () {
     if(button.dataset.timeline==='days')for(let week=1;week<=weekCount;week++)expanded.add(week);
     draw();restoreAnchor(anchor);
   });
-  draw();
   const preview=document.querySelector('#gantt-preview-chart');
   if(preview){
     preview.replaceChildren();const duration=lastOffset-firstOffset+1;
+    const headerLine=document.createElement('span');headerLine.className='gantt-preview-row gantt-preview-weeks';
+    const label=document.createElement('span');label.textContent='Project weeks';
+    const scale=document.createElement('span');scale.className='gantt-preview-scale';
+    for(let week=1;week<=weekCount;week++){
+      const tick=document.createElement('span');tick.textContent=week;
+      tick.style.flexGrow=Math.min(7,duration-(week-1)*7);
+      scale.append(tick);
+    }
+    headerLine.append(label,scale);preview.append(headerLine);
     rows.filter(row=>row.classList.contains('gantt-category')).forEach(row=>{
       const line=document.createElement('span');line.className='gantt-preview-row';line.setAttribute('style',row.getAttribute('style'));
-      const name=document.createElement('span');name.className='gantt-preview-name';name.textContent=row.querySelector('th').textContent.trim().replace(/^›\s*/,'');
+      const name=document.createElement('span');name.className='gantt-preview-name';name.textContent=(row.querySelector('th').title||row.querySelector('th').textContent).trim().replace(/^›\s*/,'');
       const track=document.createElement('span');track.className='gantt-preview-track';const range=ranges.get(row);
       if(range){const bar=document.createElement('span');bar.className='gantt-preview-bar';bar.style.left=((range.start-firstOffset)/duration*100)+'%';bar.style.width=((range.end-range.start+1)/duration*100)+'%';track.append(bar);}
       line.append(name,track);preview.append(line);
     });
   }
+  const todayFormat=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'});
+  let lastToday;
+  function updateToday(force=false){
+    const {year,month,day}=Object.fromEntries(todayFormat.formatToParts(new Date()).map(({type,value})=>[type,value]));
+    const today=Math.round((parseDate(year+'-'+month+'-'+day)-opening)/DAY);
+    if(!force&&today===lastToday)return;
+    lastToday=today;
+    chart.querySelectorAll('.gantt-today').forEach(cell=>cell.classList.remove('gantt-today'));
+    chart.querySelector('.gantt-today-label')?.remove();
+    if(today>=firstOffset&&today<=lastOffset){
+      const column=Array.from(header.querySelectorAll('[data-start]')).find(cell=>today>=Number(cell.dataset.start)&&today<=Number(cell.dataset.end));
+      if(column){
+        const start=Number(column.dataset.start),end=Number(column.dataset.end);
+        const position=(today-start+.5)/(end-start+1)*100+'%';
+        for(const cell of [column,...rows.map(row=>row.cells[column.cellIndex])]){
+          cell.style.setProperty('--today-position',position);
+          cell.classList.add('gantt-today');
+        }
+        const badge=document.createElement('span');badge.className='gantt-today-label';badge.textContent='Today';column.append(badge);
+      }
+    }
+    if(preview){
+      preview.classList.toggle('gantt-preview-has-today',today>=firstOffset&&today<=lastOffset);
+      preview.style.setProperty('--today-position',(today-firstOffset+.5)/(lastOffset-firstOffset+1)*100+'%');
+    }
+  }
+  draw();
+  clearInterval(window.ganttTodayTimer);
+  window.ganttTodayTimer=setInterval(updateToday,60000);
   const scroller=chart.querySelector('.gantt-scroll');
   rows.forEach(row=>{
     const heading=row.querySelector('th');
+    if(heading.querySelector('.gantt-label-preview'))return;
     const label=document.createElement('div');label.className='gantt-label-preview';
     heading.title=heading.textContent.trim();
     while(heading.firstChild)label.append(heading.firstChild);

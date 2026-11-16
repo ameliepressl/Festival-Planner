@@ -62,8 +62,31 @@
     updateProgress();
   });
 
+  const boardPage = document.querySelector('#board-page');
+  const boardOverview = document.querySelector('#task-board-view');
+  let boardTrigger;
+  boardOverview.addEventListener('click', (event) => {
+    const stat = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
+    if (!stat) return;
+    boardTrigger = stat;
+    boardOverview.classList.add('hidden');
+    boardPage.classList.remove('hidden');
+    window.scrollTo(0, 0);
+    document.querySelector('#board-page-title').focus();
+  });
+  document.querySelector('#back-board-overview').addEventListener('click', () => {
+    show('Task board');
+    requestAnimationFrame(() => {
+      const trigger = boardTrigger?.dataset.cardId
+        ? Array.from(boardOverview.querySelectorAll('.work-board-urgent')).find(button => button.dataset.cardId === boardTrigger.dataset.cardId)
+        : boardTrigger;
+      (trigger ?? boardOverview.querySelector('.work-board-open')).focus();
+    });
+  });
+
   // Left navigation: "Final checklist" shows this page, "Lineup planner" shows the planner again.
   function show(section) {
+    boardPage.classList.add('hidden');
     const onChecklist = section === 'Final checklist';
     view.classList.toggle('hidden', !onChecklist);
     lineup.classList.toggle('hidden', section !== 'Lineup planner');

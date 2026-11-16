@@ -75,3 +75,13 @@ Replace open button with live highest-level preview. Keep Open Gantt chart and a
 ## Frozen-column alignment
 
 Shrink the actual task column with its shortened labels while scrolling horizontally, rather than only shrinking label content. Keep the header boundary aligned with the visible names; restore full width at the left edge. Edit mode retains full input width.
+
+## Today indicator
+
+Show the current Lisbon date in the preview and timeline, with compact project-week labels. Refresh the indicator without rebuilding the chart or replacing edit inputs.
+
+## Add tasks to areas
+
+In edit mode, Add task on an area creates an automatically numbered task with a stable ID. Focus its name, then allow adding subtasks using the existing controls. Save and Cancel apply to the new task as with other edits.
+
+New tasks start with a blank required subtask. Saving requires at least one named subtask with an ordered date range per task. Incomplete drafts have no timeline bars or Task board cards.
