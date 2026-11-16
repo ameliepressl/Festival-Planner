@@ -1,0 +1,105 @@
+/* Financial overview page. Uses the colours and fonts from styles.css; the title reuses .checklist-hero.
+   Chart colours: #1a9a7c (revenue/profit) and #e0563b (costs/loss), checked for colour blindness and contrast. */
+
+.fin-sources{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;border-top:1px solid var(--ink);padding:12px 0;font-size:12px}
+.fin-sources span{font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted)}
+.fin-sources a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--coral)}
+.fin-sources span:last-child{margin-left:auto}
+
+/* Headline numbers */
+.fin-kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);margin-bottom:22px}
+.fin-kpi{padding:18px 20px;border-right:1px solid var(--line)}
+.fin-kpi:last-child{border-right:0}
+.fin-kpi span{display:block;font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
+.fin-kpi strong{display:block;font:600 28px/1.1 Fraunces,serif;letter-spacing:-.6px}
+.fin-kpi small{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+.pos{color:#167a63}
+.neg{color:#c1452e}
+
+/* Cards */
+.fin-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.fin-grid2.wide-left{grid-template-columns:1.5fr 1fr}
+.fin-card{background:var(--white);border:1px solid var(--line);padding:18px 20px;margin-bottom:18px;min-width:0}
+.fin-grid2 .fin-card{margin-bottom:0}
+.fin-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
+.fin-card h2{font:600 20px Fraunces,serif;letter-spacing:-.3px;margin:0}
+.fin-card header span{font:11px 'DM Mono';color:var(--muted)}
+.fin-card header .button{padding:6px 11px;font-size:11px}
+.fin-card h3{font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin:14px 0 8px;font-weight:500}
+.fin-card h3:first-child{margin-top:0}
+.fin-note{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 0}
+.fin-note b{color:var(--ink)}
+.fin-empty{font-size:13px;color:var(--muted)}
+.fin-empty a{color:var(--coral)}
+
+/* Horizontal bars */
+.fin-bars{display:flex;flex-direction:column;gap:7px}
+.fin-bar-row{display:grid;grid-template-columns:minmax(120px,190px) 1fr 74px;align-items:center;gap:10px;font-size:12px;padding:2px 0;cursor:default}
+.fin-bar-row:hover{background:var(--paper)}
+.fin-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fin-bar-track{height:14px;display:block}
+.fin-bar-track i{display:block;height:100%;border-radius:0 4px 4px 0}
+.fin-bar-value{font:500 12px 'DM Mono';text-align:right;color:var(--ink)}
+.fin-bar-value small{display:block;font-size:10px;color:var(--muted)}
+
+/* Price chart */
+.fin-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.fin-grid{stroke:#e6e7e0;stroke-width:1}
+.fin-grid.zero{stroke:var(--ink);stroke-width:1.2}
+.fin-axis{font:10px 'DM Mono';fill:var(--muted)}
+.fin-axis.strong{fill:var(--ink);font-weight:500}
+.fin-be{stroke:var(--ink);stroke-width:1;stroke-dasharray:4 3}
+.fin-cross-line{stroke:var(--muted);stroke-width:1}
+.fin-hit{cursor:crosshair}
+
+/* Scenarios: bars up for profit, down for loss */
+.fin-scenarios{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center}
+.fin-scenario{cursor:default;padding:4px;border-radius:2px}
+.fin-scenario:hover{background:var(--paper)}
+.fin-scenario-plot{height:150px;display:flex;flex-direction:column;border-bottom:1.2px solid var(--ink)}
+.fin-scenarios.with-loss .fin-scenario-plot{border-bottom:0}
+.fin-scenario-up{flex:1;display:flex;align-items:flex-end;justify-content:center}
+.fin-scenario-down{flex:0;display:flex;align-items:flex-start;justify-content:center}
+.fin-scenarios.with-loss .fin-scenario-up{border-bottom:1.2px solid var(--ink)}
+.fin-scenarios.with-loss .fin-scenario-down{flex:1}
+.fin-scenario i{display:block;width:44px;border-radius:4px 4px 0 0}
+.fin-scenario-down i{border-radius:0 0 4px 4px}
+.fin-scenario strong{display:block;font:600 19px Fraunces,serif;margin-top:8px}
+.fin-scenario span{display:block;font-size:12px;font-weight:600}
+.fin-scenario small{display:block;font-size:11px;color:var(--muted)}
+
+/* Artist spending */
+.fin-artists{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:24px}
+.fin-budget-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
+.fin-budget-top strong{font:600 26px Fraunces,serif}
+.fin-budget-bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0}
+.fin-budget-bar i{display:block;height:100%;border-radius:5px}
+.fin-budget small{font-size:12px;color:var(--muted)}
+.fin-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0 0}
+.fin-facts div{background:var(--paper);padding:9px 10px}
+.fin-facts dt{font:10px 'DM Mono';color:var(--muted);letter-spacing:.4px}
+.fin-facts dd{margin:3px 0 0;font:600 16px Fraunces,serif}
+.fin-artists .fin-bar-row{grid-template-columns:90px 1fr 64px}
+
+/* Tables */
+.fin-table{width:100%;border-collapse:collapse;font-size:12px}
+.fin-table th,.fin-table td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
+.fin-table th{font:10px 'DM Mono';letter-spacing:.6px;color:var(--muted);font-weight:500}
+.fin-table td:last-child,.fin-table th:last-child{text-align:right;font-family:'DM Mono'}
+.fin-pl tr.head th{padding-top:12px;color:var(--ink);text-transform:uppercase;text-align:left;font-family:"DM Mono"}
+.fin-pl tr.sum td{font-weight:700;border-bottom:1px solid var(--ink)}
+.fin-pl tr.result td{font:600 17px Fraunces,serif;border-bottom:0;padding-top:12px}
+
+/* Assumptions form */
+.fin-form{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}
+.fin-form label{font:10px 'DM Mono';letter-spacing:.5px;color:var(--muted);padding:6px 0}
+.fin-form input{display:block;width:100%;margin-top:4px;font:14px 'DM Sans';color:var(--ink);border:0;border-bottom:1px solid var(--ink);background:transparent;padding:5px 0;outline:none}
+.fin-form input:focus{border-bottom-color:var(--coral)}
+.fin-form small{display:block;font:11px 'DM Sans';letter-spacing:0;margin-top:3px}
+
+/* Tooltip */
+#finance-view{position:relative}
+.fin-tip{position:absolute;z-index:5;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;line-height:1.45;padding:8px 10px;max-width:260px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+
+@media(max-width:1100px){.fin-artists{grid-template-columns:1fr}.fin-grid2,.fin-grid2.wide-left{grid-template-columns:1fr}}
+@media(max-width:700px){.fin-kpis{grid-template-columns:1fr 1fr}.fin-kpi:nth-child(2){border-right:0}.fin-form{grid-template-columns:1fr}.fin-bar-row{grid-template-columns:100px 1fr 64px}}
