@@ -1,0 +1,33 @@
+/* Vendors page. Uses the colours and fonts from styles.css, the hero from .checklist-hero,
+   the number strip from .metrics and the chips from site-map/site-map.css. */
+
+.vendor-metrics{grid-template-columns:1fr 1fr 1.4fr;margin-bottom:24px}
+.vendor-needs small{display:block;font:500 12px 'DM Sans';margin-top:3px}
+.vendor-needs .ok{color:#258371}
+.vendor-needs .missing{color:#b44033}
+
+/* The six pitches as a row of slots */
+.pitch-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:24px}
+.pitch-slot{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1px dashed #b8c0bb;background:transparent;cursor:pointer;transition:.15s}
+.pitch-slot span{font-size:24px;line-height:1;color:var(--muted)}
+.pitch-slot small{font:500 10px 'DM Mono';color:var(--muted)}
+.pitch-slot.taken{border:1px solid var(--ink);background:var(--white)}
+.pitch-slot:hover{transform:translateY(-2px)}
+
+/* Vendor cards */
+.vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;padding-bottom:48px}
+.vendor-card{background:var(--white);border:1px solid var(--line);padding:18px;display:flex;flex-direction:column;transition:border-color .2s}
+.vendor-card.confirmed{border-color:#43a995}
+.vendor-top{display:flex;align-items:center;gap:12px}
+.vendor-top div{flex:1}
+.vendor-icon{width:46px;height:46px;border-radius:50%;background:var(--paper);display:grid;place-items:center;font-size:24px}
+.vendor-card h2{font:600 18px Fraunces,serif;letter-spacing:-.3px;margin:0}
+.vendor-card small{font:10px 'DM Mono';color:var(--muted);letter-spacing:.4px}
+.vendor-pitch{font:500 11px 'DM Mono';background:#43a995;color:#fff;padding:4px 8px}
+.vendor-card>p{color:var(--muted);font-size:13px;line-height:1.45;margin:14px 0 10px}
+.vendor-card>p.form-message{color:#b44033;margin:6px 0}
+.vendor-tags{display:flex;flex-wrap:wrap;gap:6px;min-height:22px}
+.vendor-tags span{font:10px 'DM Mono';padding:3px 7px;background:var(--paper);color:var(--ink)}
+.vendor-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:auto;padding-top:14px}
+
+@media(max-width:700px){.vendor-metrics{grid-template-columns:1fr}.pitch-row{grid-template-columns:repeat(3,1fr)}}
