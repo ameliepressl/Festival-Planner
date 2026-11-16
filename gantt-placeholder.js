@@ -83,7 +83,7 @@ window.initialiseGanttOutline = function () {
   document.querySelector('#open-gantt').onclick=openChart;
   document.querySelector('#back-task-board').onclick=closeChart;
   document.querySelectorAll('.sidebar-item').forEach(button => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Final checklist', 'Task board'].includes(button.dataset.section)) chart.classList.add('hidden');
+    if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors'].includes(button.dataset.section)) chart.classList.add('hidden');
   }));
   window.ganttNavBound=true;
 };

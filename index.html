@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
+    <link rel="stylesheet" href="site-map/site-map.css" />
+    <link rel="stylesheet" href="vendors/vendors.css" />
   </head>
   <body>
     <div class="app-layout">
@@ -91,6 +93,8 @@
       </main>
 
       <div class="checklist-view hidden" id="checklist-view"></div>
+      <div class="checklist-view hidden" id="site-map-view"></div>
+      <div class="checklist-view hidden" id="vendors-view"></div>
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
           <p class="eyebrow">TASK BOARD · COMING SOON</p>
@@ -446,5 +450,11 @@
     <script src="gantt-editor.js?v=december-2026"></script>
     <script src="gantt-placeholder.js"></script>
     <script src="gantt-schedule.js?v=column-alignment"></script>
+    <script src="rules/capacity-rules.js"></script>
+    <script src="rules/vendor-rules.js"></script>
+    <script src="rules/site-map-rules.js"></script>
+    <script src="site-map/map-drawing.js"></script>
+    <script src="site-map/site-map-page.js"></script>
+    <script src="vendors/vendors-page.js"></script>
   </body>
 </html>
