@@ -112,7 +112,12 @@
       <section class="checklist-hero">
         <p class="eyebrow">FINANCIAL OVERVIEW</p>
         <h1>Know your numbers<br /><em>before the gates open.</em></h1>
-        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size. Change the assumptions at the bottom; everything updates at once.</p>
+        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size. Start with the assumptions right below; everything updates at once.</p>
+      </section>
+      <section class="fin-card fin-assumptions"><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset>Reset</button></header>
+        <div class="fin-groups">${['Revenue', 'Costs'].map((group) => `<div><h3>${group}</h3><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
+          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" /><small>${f.unit}</small></label>`).join('')}</div></div>`).join('')}</div>
+        <p class="fin-note">Change any value: all numbers below update at once. Toilets, water points, first aiders and security follow the festival size on the Site map. Example prices, not quotes: replace them with your real offers.</p>
       </section>
       <div class="fin-sources">
         <span>DATA FROM</span>
@@ -150,7 +155,7 @@
           <div><h3>Most expensive shows</h3>${artists.top.length ? `<table class="fin-table"><thead><tr><th>Artist</th><th>Where</th><th>Fee</th></tr></thead><tbody>${artists.top.map((s) => `<tr><td>${escape(s.name)}</td><td>${dayName(s.date)} · ${s.stage}</td><td>${money(s.fee)}</td></tr>`).join('')}</tbody></table>` : '<p class="fin-empty">No performances booked yet. <a href="#" data-go="Lineup planner">Open the lineup planner</a>.</p>'}</div>
         </div>
       </section>
-      <div class="fin-grid2">
+      <div>
         <section class="fin-card"><header><h2>Profit &amp; loss statement</h2><span>all figures in euros</span></header>
           <table class="fin-table fin-pl"><tbody>
             <tr class="head"><th colspan="2">Revenue</th></tr>${model.revenue.map((r) => `<tr><td>${r.label}</td><td>${money(r.amount)}</td></tr>`).join('')}
@@ -159,11 +164,6 @@
             <tr class="sum"><td>Total costs</td><td>${money(model.totalCosts)}</td></tr>
             <tr class="result ${model.profit >= 0 ? 'pos' : 'neg'}"><td>${model.profit >= 0 ? 'Profit' : 'Loss'}</td><td>${profitText}</td></tr>
           </tbody></table></section>
-        <section class="fin-card"><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset>Reset</button></header>
-          ${['Revenue', 'Costs'].map((group) => `<h3>${group}</h3><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
-            <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" /><small>${f.unit}</small></label>`).join('')}</div>`).join('')}
-          <p class="fin-note">Toilets, water points, first aiders and security follow the festival size on the Site map. Example prices, not quotes: replace them with your real offers.</p>
-        </section>
       </div>
       <div class="fin-tip hidden" role="tooltip"></div>`;
   }
