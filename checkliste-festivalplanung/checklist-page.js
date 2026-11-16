@@ -72,7 +72,7 @@
     window.scrollTo(0, 0);
   }
   document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors'].includes(button.dataset.section)) show(button.dataset.section);
+    if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors', 'Finances'].includes(button.dataset.section)) show(button.dataset.section);
   }));
 
   render();

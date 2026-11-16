@@ -134,5 +134,5 @@ $('#settings-form').onsubmit=e=>{e.preventDefault();if(!writable())return;const 
 $('#previous-day').onclick=()=>{currentDay=days()[days().indexOf(currentDay)-1];render();};$('#next-day').onclick=()=>{currentDay=days()[days().indexOf(currentDay)+1];render();};
 $('#finalise-btn').onclick=()=>{if(state.final){state.final=false;save();render();return;}$('#finalise-dialog').showModal();};
 $('#confirm-finalise').onclick=()=>{state.final=true;save();render();toast('Lineup finalised.');};
-document.querySelectorAll('.sidebar-item').forEach(b=>b.onclick=()=>{if(!['Lineup planner','Final checklist','Task board','Site map','Vendors'].includes(b.dataset.section)){toast(`${b.dataset.section} will be added in a later feature branch.`);return;}document.querySelectorAll('.sidebar-item').forEach(item=>item.classList.toggle('active',item===b));});
+document.querySelectorAll('.sidebar-item').forEach(b=>b.onclick=()=>{if(!['Lineup planner','Final checklist','Task board','Site map','Vendors','Finances'].includes(b.dataset.section)){toast(`${b.dataset.section} will be added in a later feature branch.`);return;}document.querySelectorAll('.sidebar-item').forEach(item=>item.classList.toggle('active',item===b));});
 render();

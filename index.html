@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
     <link rel="stylesheet" href="site-map/site-map.css" />
     <link rel="stylesheet" href="vendors/vendors.css" />
+    <link rel="stylesheet" href="finance/finance.css" />
   </head>
   <body>
     <div class="app-layout">
@@ -25,6 +26,7 @@
           <button class="sidebar-item" data-section="Task board"><span>✓</span>Task board</button>
           <button class="sidebar-item" data-section="Site map"><span>⌖</span>Site map</button>
           <button class="sidebar-item" data-section="Vendors"><span>▤</span>Vendors</button>
+          <button class="sidebar-item" data-section="Finances"><span>€</span>Finances</button>
           <button class="sidebar-item" data-section="Final checklist"><span>☑</span>Final checklist</button>
         </nav>
         <div class="sidebar-team">
@@ -95,6 +97,7 @@
       <div class="checklist-view hidden" id="checklist-view"></div>
       <div class="checklist-view hidden" id="site-map-view"></div>
       <div class="checklist-view hidden" id="vendors-view"></div>
+      <div class="checklist-view hidden" id="finance-view"></div>
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
           <p class="eyebrow">TASK BOARD · COMING SOON</p>
@@ -456,5 +459,7 @@
     <script src="site-map/map-drawing.js"></script>
     <script src="site-map/site-map-page.js"></script>
     <script src="vendors/vendors-page.js"></script>
+    <script src="rules/finance-rules.js"></script>
+    <script src="finance/finance-page.js"></script>
   </body>
 </html>
