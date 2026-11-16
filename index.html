@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css?v=due-soon" />
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
+    <link rel="stylesheet" href="site-map/site-map.css" />
+    <link rel="stylesheet" href="vendors/vendors.css" />
+    <link rel="stylesheet" href="finance/finance.css" />
   </head>
   <body>
     <div class="app-layout">
@@ -23,6 +26,7 @@
           <button class="sidebar-item" data-section="Task board"><span>✓</span>Project tasks</button>
           <button class="sidebar-item" data-section="Site map"><span>⌖</span>Site map</button>
           <button class="sidebar-item" data-section="Vendors"><span>▤</span>Vendors</button>
+          <button class="sidebar-item" data-section="Finances"><span>€</span>Finances</button>
           <button class="sidebar-item" data-section="Final checklist"><span>☑</span>Final checklist</button>
         </nav>
         <div class="sidebar-team">
@@ -91,6 +95,9 @@
       </main>
 
       <div class="checklist-view hidden" id="checklist-view"></div>
+      <div class="checklist-view hidden" id="site-map-view"></div>
+      <div class="checklist-view hidden" id="vendors-view"></div>
+      <div class="checklist-view hidden" id="finance-view"></div>
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
           <p class="eyebrow">PROJECT TASKS</p>
@@ -489,7 +496,15 @@
     <script src="gantt-defaults.js"></script>
     <script src="gantt-editor.js?v=board-create"></script>
     <script src="gantt-placeholder.js"></script>
-    <script src="gantt-schedule.js?v=required-subtask"></script>
+<script src="gantt-schedule.js?v=required-subtask"></script>
     <script src="work-board.js?v=due-soon"></script>
+    <script src="rules/capacity-rules.js"></script>
+    <script src="rules/vendor-rules.js"></script>
+    <script src="rules/site-map-rules.js"></script>
+    <script src="site-map/map-drawing.js"></script>
+    <script src="site-map/site-map-page.js"></script>
+    <script src="vendors/vendors-page.js"></script>
+    <script src="rules/finance-rules.js"></script>
+    <script src="finance/finance-page.js"></script>
   </body>
 </html>
