@@ -208,3 +208,7 @@ Matched the heading to Task overview, reused the Gantt work-area colours in the 
 ## Task deadline filters and grouping — 16 November 2026
 
 Added a Due soon filter to the Task Board for unfinished subtasks due today through the following seven calendar days in Lisbon. Grouped the overview into Overdue, Due today, and Next 7 days, hiding empty groups. Unfinished cards and overview entries show relative deadlines alongside calendar dates.
+
+## Section navigation after merging — 17 November 2026
+
+Updated the navigation script URLs so browsers load the merged section-switching logic. This prevents the Project tasks overview or timeline from appearing below Site map, Vendors, or Finances.
