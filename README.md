@@ -1,105 +1,149 @@
+<div align="center">
+
 # 🎪 Festival Architect
 
-**Plan a whole music festival in one place** — lineup, project tasks, site layout, vendors,
-finances and the event-day checklist.
+**Plan a complete music festival in one place —**
+**from the first artist booking to the last check before the gates open.**
 
-Team project for *Introduction to Programming* at **Nova SBE** by
-**Kira, Amelie, Frederik and Vicky**.
-
-![Tests](https://img.shields.io/badge/tests-112%20JavaScript%20%2B%207%20Python-1a9a7c)
-![Stack](https://img.shields.io/badge/stack-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript%20%C2%B7%20Python-17272b)
+![Python](https://img.shields.io/badge/server-Python%203-17272b)
+![JavaScript](https://img.shields.io/badge/app-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript-17272b)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-ff684c)
+![Tests](https://img.shields.io/badge/tests-JavaScript%20%2B%20Python-1a9a7c)
+
+Team project · *Introduction to Programming* · **Nova SBE**
+Kira · Amelie · Frederik · Vicky
+
+[Quick start](#-quick-start) · [Features](#-features) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+
+</div>
 
 ---
 
-## What it can do
+## 🚀 Quick start
 
-| Section | What you can do there |
-| --- | --- |
-| **Overview** | Start page: festival details, projected finances, urgent tasks, milestones and the team roster. |
-| **Lineup planner** | Multi-day timetable for several stages: book artists, agreed fees and durations per booking, calendar blocks, budget, finalise the plan, print / save as PDF, download and restore a backup. |
-| **Task board** | Project tasks with deadlines, a "needs attention" list and an editable Gantt chart of the whole preparation. |
-| **Site map** | Realistic aerial map with a clickable pin for every facility. Upload your own map (aerial photo or site plan), draw the fence, set the gate, mark water and other no-go areas — and let the planner **suggest the optimal layout** checked against 10 layout rules. |
-| **Vendors** | 24 food, drink and merch vendors on the food court pitches; pitch income and a check of visitor needs (vegan, drinks, alcohol-free). |
-| **Finances** | Profit and loss, break-even (tickets and price), where the money goes and comes from, profit by ticket price, scenarios (bad weather / plan / sold out) and artist spending. |
-| **Final checklist** | Event-day checks for 12 teams with a progress bar. |
-
-The pages work together: the **expected visitors** decide how many toilets, water points,
-food pitches, first aiders and security staff are needed; the site map plans that many,
-the vendors page offers that many pitches, and the finances use all of it.
-
-## Run it
-
-You need Python 3 (already on macOS). No installation, no packages.
+You only need **Python 3** (already installed on macOS). No packages, no setup.
 
 ```bash
 python3 server.py
 ```
 
-Then open **<http://127.0.0.1:8000/>** in your browser and leave the terminal running while
-you use the app. Stop it with `Ctrl + C`.
+Open **<http://127.0.0.1:8000/>** and keep the terminal running while you use the app.
+Stop the server with `Ctrl + C`.
 
-On the first run the server creates `data/users.sqlite3` with the demo usernames
-`Kira`, `Amelie`, `Frederik` and `Vicky` (the file stays on your computer and is not in git).
+> [!TIP]
+> On the first visit the Overview asks for the festival name, dates and opening hours —
+> after that every section is ready to use.
 
-> **Good to know:** the festival plan is saved in your browser (localStorage) for this
-> address. Another browser or device starts with an empty festival — see
-> "Platform" in [the roadmap](feature-plans/roadmap.md) for shared data.
+## ✨ Features
 
-## Run the tests
+### Plan the programme
+- **Overview** — the start page: festival details, projected finances, tasks that need
+  attention, milestones and the team roster.
+- **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed
+  fees and set lengths, mark them tentative or confirmed, add calendar blocks, keep an eye on
+  the budget, finalise the plan, print it as a PDF and save or restore a backup.
 
-```bash
-uvx --from nodejs-wheel node --test
+### Organise the work
+- **Task board** — project tasks with deadlines, a "needs attention" list and an editable
+  **Gantt chart** of the whole preparation, plus a countdown to the festival.
+
+### Design the ground
+- **Site map** — a realistic aerial view with a clickable pin for every facility: stages,
+  gate, first aid, toilets, water, food court, emergency exits and more.
+  - Upload your **own map** (aerial photo or site plan), draw the fence, set the gate and
+    mark no-go areas — water is detected automatically.
+  - **Suggest optimal layout** places everything according to **10 layout rules**
+    (stage distance, first aid / toilets / water near every stage, exits far apart …),
+    with a score. Drag pins to adjust; walkways route around water and forest.
+  - **Festival size:** the expected visitors decide how many toilets, water points, food
+    pitches, first aiders and security staff are needed.
+- **Vendors** — 24 food, drink and merch vendors for the food court pitches, pitch income
+  and a check that visitors' needs are covered (vegan option, drinks, alcohol-free).
+
+### Know the numbers
+- **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
+  and comes from, **profit by ticket price**, **scenarios** (bad weather · plan · sold out)
+  and an analysis of the artist spending. Every assumption can be changed.
+
+### Get ready for the day
+- **Final checklist** — event-day checks for 12 teams, from security to radios, with a
+  progress bar.
+
+## 🔗 How it fits together
+
+The sections share their data, so a change in one place shows up everywhere it matters.
+
+```mermaid
+flowchart LR
+  size["👥 Festival size<br/>(expected visitors)"] --> map["🗺️ Site map<br/>toilets · water · pitches"]
+  size --> vendors["🍔 Vendors<br/>number of pitches"]
+  size --> finance["💶 Finances"]
+  lineup["🎤 Lineup<br/>artist fees"] --> finance
+  vendors --> finance
+  vendors --> map
+  lineup --> overview["🏠 Overview"]
+  finance --> overview
+  tasks["✅ Task board"] --> overview
 ```
 
+## 🧪 Tests
+
+All rules and calculations are covered by automatic tests.
+
 ```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
+uvx --from nodejs-wheel node --test                     # JavaScript
+python3 -m unittest discover -s tests -p 'test_*.py'    # Python
 ```
 
-`uv` downloads Node by itself, so nobody has to install Node.
+`uv` downloads Node by itself — nobody has to install Node.
 
-## How the code is organised
+## 📁 Project structure
 
 ```text
-index.html              page structure (all sections)
-styles.css              shared look
-server.py               local server + SQLite username lookup
-app.js                  lineup planner screen
-overview.js             overview page and team roster
-work-board.js           task board
-gantt-*.js              Gantt chart and project schedule
-festival-countdown.js   days until the festival
-site-map/               site map page and the aerial drawing
-vendors/                vendors page
-finance/                financial overview page
-checkliste-festivalplanung/   final checklist page
-rules/                  all rules and calculations — no screen code, fully tested
-tests/                  automatic tests (JavaScript and Python)
-feature-plans/          one plan per feature: Why, What, Out of scope, Done when
-product-brief/          the product brief (it wins over anything else)
+index.html                    page structure for all sections
+styles.css                    shared look
+server.py                     local server + SQLite username lookup
+app.js                        lineup planner
+overview.js                   overview and team roster
+work-board.js · gantt-*.js    task board and Gantt chart
+festival-countdown.js         days until the festival
+site-map/                     site map and the aerial drawing
+vendors/                      vendors
+finance/                      financial overview
+checkliste-festivalplanung/   final checklist
+rules/                        all rules and calculations — no screen code
+tests/                        automatic tests (JavaScript and Python)
+feature-plans/                one plan per feature, plus the roadmap
+product-brief/                the product brief
 ```
 
-**One rule holds everywhere:** rules and calculations live in `rules/`, screens only show
-things and pass clicks on. That is why every rule can be tested without a browser.
+## 🧭 Design principles
 
-## Who built what
+- **Rules are separate from screens.** Every rule and calculation lives in `rules/`; the
+  screens only show things and pass clicks on. That is why everything can be tested
+  without a browser.
+- **No dependencies.** Plain HTML, CSS and JavaScript in the browser, the Python standard
+  library on the server. Nothing to install, nothing that breaks on update.
+- **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
+  wins over anything else.
 
-Based on the git history; the lineup planner is shared work of the whole team.
+## 🔒 Data & privacy
 
-| | |
-| --- | --- |
-| **Kira** | Overview start page, local server and team directory, lineup workflow and loading |
-| **Amelie** | Left navigation and the first lineup edits |
-| **Frederik** | Rules and tests baseline, final checklist, site map with layout planner, vendors, festival size, financial overview |
-| **Vicky** | Task board, Gantt chart, festival countdown, event-day checklist wording |
+Everything stays on your computer. The festival plan is saved in your browser
+(localStorage) for the address you use, and the team directory in `data/users.sqlite3`,
+which is not part of git.
 
-## How we work
+> [!NOTE]
+> Because the plan lives in the browser, another browser or device starts with an empty
+> festival. Sharing one festival across devices is on the [roadmap](feature-plans/roadmap.md).
 
-- Every feature starts from the latest `main` on its own branch, with a plan in
+## 🤝 How we work
+
+- Every feature starts from the latest `main` on **its own branch**, with a plan in
   `feature-plans/` first.
-- Pull requests are reviewed by another team member; tests must pass and are pasted into
-  the pull request.
-- Tests are never weakened to make them pass.
+- Every pull request is **reviewed by another team member** and only merged when the tests
+  pass.
+- Tests are **never weakened** to make them pass.
 
-Details: [AGENTS.md](AGENTS.md) · progress: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
-what comes next: **[Roadmap](feature-plans/roadmap.md)**
+More: [AGENTS.md](AGENTS.md) · [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
+**[Roadmap — what comes next](feature-plans/roadmap.md)**
