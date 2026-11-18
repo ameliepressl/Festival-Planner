@@ -16,6 +16,7 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 | 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level | |
 | 5 | **Live mode with delays** | Useful *on* the festival day, not only before | |
 | 6 | **"Copy for next year" + final report** | Closes the loop | |
+| 7 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
 | ⚠️ | **Product brief rules** | Over-budget bookings, booking an artist twice and finalising with fewer than 4 artists still differ from the brief (FA R1, FA R4, FA05). Team decision needed, because current tests expect today's behaviour. | |
 
 ---
@@ -101,6 +102,7 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 ## 11. Platform
 
 - [ ] **Shared data on the server** — the same festival from every device (today it lives in each browser's localStorage)
+- [ ] **Two-factor authentication (2FA)** — *owner: Amelie.* After the password, a one-time code from an authenticator app (TOTP); recovery codes in case the phone is lost; only for the shared/online mode. Needs the login from "Shared data on the server".
 - [ ] **Roles & rights** — booker edits the lineup, finance edits the finances, everyone can read. ✅ `rules/access-rules.js`
 - [ ] **Change log** — who changed what, when
 - [ ] **Readiness score** on the Overview; **problems become tasks** on the task board
