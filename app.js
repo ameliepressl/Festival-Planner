@@ -64,6 +64,7 @@ function calendarMarkup(day, publicOnly = false) {
   </div>`;
 }
 function render() {
+  window.updateFestivalCountdown?.();
   hidePerformanceDetails();
   const dates = days();
   if (!dates.includes(currentDay)) currentDay = dates[0];

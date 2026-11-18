@@ -49,3 +49,7 @@ Out of scope: task board, subtasks, Gantt chart, assignments, and changes to che
 Done when: no checkpoint asks users to book, order or plan in advance; existing tests pass; ticking, unticking and reload persistence still work in the browser.
 
 Renamed the navigation and page label to “Final checklist”. Validation: all 26 tests passed; browser tick/untick and reload persistence verified for the event-day wording.
+
+## Consistent naming — 6 November 2026
+
+Use “Final checklist” for the navigation, page title and progress labels. Keep internal task IDs and storage keys stable. Verify navigation and page labels in the browser.

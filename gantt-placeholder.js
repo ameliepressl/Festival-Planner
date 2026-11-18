@@ -1,6 +1,7 @@
-// Gantt hierarchy, chart navigation and milestone links.
+// Navigation only: the preliminary Gantt chart shows the approved preparation task breakdown.
 window.initialiseGanttOutline = function () {
   const chart = document.querySelector('#gantt-view');
+  const board = document.querySelector('#task-board-view');
 
   // Build hierarchy from the numbered rows; only parents with children get a toggle.
   const rows = Array.from(chart.querySelectorAll('tbody tr'));
@@ -67,32 +68,23 @@ window.initialiseGanttOutline = function () {
   });
   updateVisibility();
 
-  window.openGanttMilestone = function (taskId) {
-    showSection('Gantt');
-    const row = rows.find(item => item.dataset.key === 'task-' + taskId);
-    if (!row) {
-      document.querySelector('#back-task-board').focus();
-      return;
-    }
-    const area = parents.find(parent => parent.row.dataset.level === '1' && parent.children.includes(row));
-    if (area?.button.getAttribute('aria-expanded') === 'false') {
-      area.button.setAttribute('aria-expanded', 'true');
-      area.updateLabel();
-      updateVisibility();
-    }
-    const heading = row.querySelector('th');
-    heading.tabIndex = -1;
-    heading.focus({ preventScroll: true });
-    heading.scrollIntoView({ block: 'center', inline: 'nearest' });
-  };
+  function openChart() {
+    board.classList.add('hidden');
+    chart.classList.remove('hidden');
+    window.scrollTo(0, 0);
+    document.querySelector('#back-task-board').focus();
+  }
+  function closeChart() {
+    chart.classList.add('hidden');
+    board.classList.remove('hidden');
+    window.scrollTo(0, 0);
+    document.querySelector('#open-gantt').focus();
+  }
+  document.querySelector('#open-gantt').onclick=openChart;
+  document.querySelector('#back-task-board').onclick=closeChart;
+  document.querySelectorAll('.sidebar-item').forEach(button => button.addEventListener('click', () => {
+    if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors', 'Finances'].includes(button.dataset.section)) chart.classList.add('hidden');
+  }));
+  window.ganttNavBound=true;
 };
 window.initialiseGanttOutline();
-
-document.querySelector('#open-gantt').onclick = () => {
-  showSection('Gantt');
-  document.querySelector('#back-task-board').focus();
-};
-document.querySelector('#back-task-board').onclick = () => {
-  showSection('Task board');
-  document.querySelector('#open-gantt').focus();
-};

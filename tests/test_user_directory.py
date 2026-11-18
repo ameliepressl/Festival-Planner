@@ -3,6 +3,7 @@ from http import HTTPStatus
 from io import BytesIO
 import json
 from pathlib import Path
+import re
 import sqlite3
 import tempfile
 import unittest
@@ -90,3 +91,12 @@ class PlannerRoutingTest(unittest.TestCase):
     def test_serves_only_planner_assets_on_loopback(self):
         self.assertEqual(self.request("/data/users.sqlite3")[0], HTTPStatus.NOT_FOUND)
         self.assertEqual(self.request("/api/users?username=Vicky", "example.test")[0], HTTPStatus.FORBIDDEN)
+
+    def test_serves_all_local_stylesheets_and_scripts_used_by_the_planner(self):
+        _, html = self.request("/")
+        assets = re.findall(rb'(?:src|href)="([^:"/][^:"]*\.(?:js|css)(?:\?[^"]*)?)"', html)
+        self.assertTrue(assets)
+        for asset in assets:
+            path = "/" + asset.decode()
+            with self.subTest(path=path):
+                self.assertEqual(self.request(path)[0], HTTPStatus.OK)

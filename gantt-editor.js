@@ -71,12 +71,16 @@
   const chart = document.querySelector('#gantt-view');
   let savedProject;
 
-  window.getGanttProject = () => cloneProject(editing ? savedProject : project);
+  window.getSavedGanttPlan = () => cloneProject(editing ? savedProject : project);
   const publishProject = () => window.dispatchEvent(new Event('gantt-project-changed'));
   window.refreshGanttFestivalDates = () => {
     if (eventStart === state.event.startDate && eventEnd === state.event.endDate) return;
     const committed = editing ? savedProject : project;
     const next = customPlan ? shiftProject(committed, eventStart, eventEnd) : defaultProject();
+    if (customPlan) {
+      try { persistProject(next); }
+      catch { toast('The updated timeline dates could not be saved in this browser.'); }
+    }
     if (editing) {
       project = shiftProject(project, eventStart, eventEnd);
       savedProject = next;
@@ -87,6 +91,40 @@
     eventEnd = state.event.endDate;
     refresh();
     publishProject();
+  };
+  function persistProject(plan) {
+    localStorage.setItem(KEY, JSON.stringify(plan));
+    localStorage.setItem(anchorKey, state.event.startDate);
+    localStorage.setItem(endAnchorKey, state.event.endDate);
+    customPlan = true;
+  }
+
+  window.addBoardSubtask = ({areaId, taskId, parentName, title, start, end}) => {
+    if (!canFestival('lineup')) throw new Error('Your role cannot add tasks.');
+    if (editing) throw new Error('Save or cancel your timeline edits before adding a task here.');
+    if (!title.trim() || !validDate(start) || !validDate(end) || start > end) {
+      throw new Error('Enter a task name and valid dates. The end date must be on or after the start date.');
+    }
+    const next = structuredClone(project);
+    const area = next.find(entry => String(entry.id) === areaId);
+    if (!area) throw new Error('Choose a work area.');
+    let task = area.tasks.find(entry => String(entry.id) === taskId);
+    if (!taskId) {
+      if (!parentName.trim()) throw new Error('Enter a name for the new parent task.');
+      task = {id:crypto.randomUUID(),title:parentName.trim(),subtasks:[]};
+      area.tasks.push(task);
+    }
+    if (!task) throw new Error('Choose a parent task.');
+    const step = {id:crypto.randomUUID(),title:title.trim(),start,end};
+    task.subtasks.push(step);
+    try { persistProject(next); }
+    catch { throw new Error('Could not save the task in this browser.'); }
+    project = next;
+    window.ganttOutlineState['area-'+area.id] = true;
+    window.ganttOutlineState['task-'+task.id] = true;
+    refresh();
+    publishProject();
+    return step.id;
   };
   function renderProject(){
     tbody.replaceChildren();let count=0,steps=0;
@@ -179,11 +217,23 @@
   }
   function decorate(){
     chart.querySelector('thead th:nth-child(2)').textContent='Owner';
+    project.forEach((area,ai)=>{
+      const preview=chart.querySelector(`[data-key="area-${area.id}"] .gantt-label-preview`);
+      action(preview,'+ Add task',`Add task to area ${ai+1}`,()=>{
+        const task={id:crypto.randomUUID(),title:'New task',subtasks:[{id:crypto.randomUUID(),title:'',start:'',end:''}]};
+        area.tasks.push(task);
+        window.ganttOutlineState['area-'+area.id]=true;
+        window.ganttOutlineState['task-'+task.id]=true;
+        refresh();
+        const field=chart.querySelector(`[data-key="task-${task.id}"] .gantt-inline-name`);
+        field.focus();field.select();
+      }).classList.add('gantt-add-task');
+    });
     project.forEach((area,ai)=>area.tasks.forEach((task,ti)=>{
       function setup(row,item,label){
         const preview=row.querySelector('.gantt-label-preview');
         Array.from(preview.childNodes).filter(node=>node.nodeType===3).forEach(node=>node.remove());
-        const input=document.createElement('input');input.type='text';input.className='gantt-inline-name';input.value=item.title;input.maxLength=160;input.setAttribute('aria-label',label+' name');
+        const input=document.createElement('input');input.type='text';input.className='gantt-inline-name';input.value=item.title;input.required=true;input.placeholder='Enter a name';input.maxLength=160;input.setAttribute('aria-label',label+' name');
         input.oninput=()=>{item.title=input.value;input.setCustomValidity(input.value.trim()?'':'Enter a name.');};preview.append(input);
         const controls=document.createElement('div');controls.className='gantt-row-actions';preview.append(controls);return controls;
       }
@@ -206,40 +256,37 @@
         const remove=action(controls,'×',`Remove ${label}`,()=>{
           if(!confirmed){confirmed=true;remove.classList.add('gantt-remove-confirm');remove.title='Click again to confirm removal';remove.setAttribute('aria-label',`Confirm remove ${label}`);return;}
           task.subtasks.splice(si,1);refresh();
-        });
+        },task.subtasks.length===1);
+        if(remove.disabled)remove.title='A task needs at least one subtask';
         remove.classList.add('gantt-remove-action');
         const cell=row.querySelector('.gantt-date-cell');const dates=document.createElement('div');dates.className='gantt-inline-dates';cell.append(dates);
         ['start','end'].forEach(kind=>{
           const input=document.createElement('input');input.type='date';input.value=step[kind];input.setAttribute('aria-label',label+' '+kind+' date');dates.append(input);
+          input.required=true;
+          input.oninput=()=>{step[kind]=input.value;};
           input.onchange=()=>{
-            const start=kind==='start'?input.value:step.start,end=kind==='end'?input.value:step.end;
-            if(!validDate(start)||!validDate(end)||start>end){input.setCustomValidity('End date must be on or after start date.');input.setAttribute('aria-invalid','true');message(label+': enter valid dates, with end on or after start.');return;}
-            input.setCustomValidity('');input.removeAttribute('aria-invalid');step.start=start;step.end=end;message('');refresh();
+            if(validDate(step.start)&&validDate(step.end)&&step.start<=step.end){
+              row.dataset.startDate=step.start;row.dataset.endDate=step.end;
+              window.initialiseGanttTimeline();
+            }
           };
         });
       });
     }));
   }
-  function invalid(){return Array.from(chart.querySelectorAll('input')).some(input=>!input.checkValidity())||!validPlan(project)||project.some(a=>a.tasks.some(t=>!t.title.trim()));}
+  function invalid(){return Array.from(chart.querySelectorAll('input')).some(input=>!input.checkValidity())||!validPlan(project)||project.some(a=>a.tasks.some(t=>!t.title.trim()||!t.subtasks.length));}
   editButton.onclick=()=>{
-    if (!canFestival('lineup')) return;
+    if (editing || !canFestival('lineup')) return;
     savedProject=cloneProject(project);editing=true;chart.classList.add('gantt-editing');toolbar.hidden=false;editButton.hidden=true;message('');refresh();
   };
   toolbar.querySelector('#inline-cancel').onclick=()=>{
+    if (!editing) return;
     project=savedProject;editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
   };
   toolbar.querySelector('#inline-save').onclick=()=>{
     if (!editing || !canFestival('lineup')) return;
-    if(invalid()){message('Correct empty names or invalid date ranges before saving.');return;}
-    try {
-      localStorage.setItem(KEY, JSON.stringify(project));
-      localStorage.setItem(anchorKey, state.event.startDate);
-      localStorage.setItem(endAnchorKey, state.event.endDate);
-    } catch {
-      message('Could not save: browser storage is unavailable or full.');
-      return;
-    }
-    customPlan = true;
+    if(invalid()){message('Each task needs at least one subtask. Enter all names and both dates, with the end on or after the start.');return;}
+    try{persistProject(project);}catch{message('Could not save: browser storage is unavailable or full.');return;}
     editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
     publishProject();
   };

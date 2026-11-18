@@ -121,15 +121,16 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 .overview-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--ink);font:inherit;cursor:pointer}
 .overview-stat strong{font:600 27px Fraunces,serif;max-width:100%;overflow-wrap:anywhere}
 .overview-booking-counts{display:grid;justify-items:center;gap:4px}
-.overview-team h2,.overview-milestones h2{margin:0 0 8px}
-.overview-milestones{margin:0 0 32px}
-#overview-milestone-list{list-style:none;margin:0;padding:0}
-#overview-milestone-list li{border-bottom:1px solid var(--line)}
-#overview-milestone-list button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;padding:10px 0;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
-#overview-milestone-list button:hover span{text-decoration:underline}
-#overview-milestone-list button span{overflow-wrap:anywhere}
-#overview-milestone-list time{flex-shrink:0;color:var(--muted);font-size:13px}
-#overview-milestone-empty{color:var(--muted)}
+.overview-team h2{margin:0 0 8px}
+.overview-summary{margin:0 0 32px}
+#overview-task-list{list-style:none;margin:0;padding:0}
+#overview-task-list li{border-bottom:1px solid var(--line)}
+#overview-task-list button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;padding:10px 0;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+#overview-task-list button:hover span{text-decoration:underline}
+#overview-task-list button span{overflow-wrap:anywhere}
+#overview-task-list small{display:block;margin-top:3px;color:var(--muted);font-size:12px}
+#overview-task-list time{flex-shrink:0;color:var(--muted);font-size:13px}
+#overview-task-empty{color:var(--muted)}
 .overview-team .field-help{color:var(--muted)}
 .overview-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--white)}
 .overview-table{width:100%;min-width:490px;border-collapse:collapse;font-size:14px;text-align:left}
@@ -147,7 +148,328 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
   .overview-snapshot{grid-template-columns:1fr;gap:8px;margin-bottom:32px}
   .overview-stat{min-height:62px;flex-direction:row;justify-content:space-between}
   .overview-booking-counts{justify-items:end;text-align:right}
-  #overview-milestone-list button{flex-wrap:wrap;gap:4px 12px}
+  #overview-task-list button{flex-wrap:wrap;gap:4px 12px}
   #team-form{grid-template-columns:minmax(0,1fr) minmax(90px,115px)}
   #team-form button{justify-self:start}
 }
+
+/* Empty preliminary Gantt chart, styled to match the festival planner. */
+#gantt-view .checklist-hero{padding-top:32px}
+#gantt-view .checklist-hero>.button{margin-bottom:28px}
+#open-gantt{margin-top:12px}
+.gantt-panel{border:1px solid var(--line);background:var(--white);margin-bottom:48px}
+.gantt-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:22px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.gantt-heading h2{font:600 25px Fraunces,serif;margin:0}
+.gantt-heading .eyebrow{margin:0}
+.gantt-scroll{overflow-x:auto}
+.gantt-scroll:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+.gantt-table{border-collapse:collapse;table-layout:fixed;min-width:1120px;width:100%}
+.gantt-caption{text-align:left;padding:14px 24px;font:11px 'DM Mono',monospace;color:var(--muted)}
+.gantt-table th{font:500 11px 'DM Mono',monospace;color:var(--muted);text-align:left;height:48px;background:var(--paper)}
+.gantt-table th,.gantt-table td{border:1px solid var(--line);padding:12px}
+.gantt-table th:first-child{width:220px}
+.gantt-table th:nth-child(2){width:110px}.gantt-table th:nth-child(3){width:100px}
+.gantt-table td{height:48px}
+.gantt-table .gantt-week{background-image:linear-gradient(to right,transparent 49%,var(--line) 50%,transparent 51%);background-size:28.57% 100%}
+.gantt-table tbody tr:nth-child(even){background:var(--paper)}
+.gantt-empty{margin:0;border-top:1px solid var(--line);padding:20px 24px;font-size:13px;color:var(--muted)}
+
+/* Numbered work areas: restrained colour bands, no scheduled task bars. */
+.gantt-table{border-collapse:separate;border-spacing:0;min-width:1240px}
+.gantt-table th,.gantt-table td{border-width:0 1px 1px 0}
+.gantt-table th:first-child{width:310px;position:sticky;left:0;z-index:2}
+.gantt-table .gantt-category-name{background:var(--category-tint);color:var(--ink);font:600 13px/1.5 'DM Sans',sans-serif;border-left:4px solid var(--category-accent);height:64px;text-align:left}
+.gantt-category-number{display:inline-block;min-width:28px;font:500 12px 'DM Mono',monospace;color:var(--category-accent)}
+.gantt-table .gantt-category td{background-color:var(--white);height:64px}
+.gantt-table .gantt-category:nth-child(even) td{background-color:var(--paper)}
+.gantt-table thead th:first-child{z-index:2}
+
+/* One workstream example under Site & infrastructure. */
+.gantt-table .gantt-workstream th,.gantt-table .gantt-subtask th{background:#eef3fa;color:var(--ink);border-left:4px solid #496c9f;font:500 13px/1.5 'DM Sans',sans-serif;white-space:normal}
+.gantt-table .gantt-workstream th{padding:16px 12px 16px 22px;font-weight:700}
+.gantt-workstream small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:6px}
+.gantt-table .gantt-subtask th{padding:14px 12px 14px 36px}
+.gantt-outline-number{font:500 11px 'DM Mono',monospace;color:#496c9f;margin-right:8px;white-space:nowrap}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{background-color:#fafbfd;height:56px}
+
+/* Compact rows with independent hierarchy controls. */
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:42px;padding-top:8px;padding-bottom:8px}
+.gantt-table .gantt-workstream th{padding:8px 12px 8px 18px}
+.gantt-table .gantt-subtask th{padding:7px 12px 7px 43px}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:38px;padding-top:7px;padding-bottom:7px}
+.gantt-workstream small{font-size:10px;line-height:1.4;margin-top:3px}
+.gantt-toggle{display:inline-grid;place-items:center;width:26px;height:26px;padding:0;margin:-3px 5px -3px -5px;border:1px solid transparent;border-radius:4px;color:inherit;background:transparent;cursor:pointer;font:16px/1 sans-serif;vertical-align:middle}
+.gantt-toggle:hover{background:rgba(255,255,255,.65);border-color:currentColor}
+.gantt-toggle:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.gantt-table tr[hidden]{display:none}
+
+/* Dense outline: categories open, task steps collapsed initially. */
+.gantt-table th:first-child{width:390px}
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:34px;padding-top:4px;padding-bottom:4px}
+.gantt-table .gantt-workstream th{background:var(--paper);border-left-color:var(--category-accent);padding:4px 10px 4px 21px;font-size:12px;line-height:1.35}
+.gantt-table .gantt-subtask th{background:var(--white);border-left-color:var(--category-accent);padding:4px 10px 4px 47px;font-size:12px;line-height:1.35}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:30px;padding-top:3px;padding-bottom:3px}
+.gantt-outline-number{color:var(--category-accent);font-size:10px}
+.gantt-toggle{height:24px;width:24px;margin:-2px 4px -2px -4px}
+.gantt-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--line)}
+.gantt-controls .button{font-size:11px;padding:7px 10px}
+.gantt-controls span{font-size:12px;color:var(--muted)}
+
+/* Maximum overview density and independently expandable weeks. */
+.gantt-table th:first-child{width:390px}
+.gantt-table th:nth-child(2){width:110px}
+.gantt-table th:nth-child(n+3){width:88px}
+.gantt-table .gantt-category-name,.gantt-table .gantt-category td{height:27px;padding-top:2px;padding-bottom:2px;font-size:12px;line-height:1.25}
+.gantt-table .gantt-workstream th{padding:2px 8px 2px 20px;font-size:11px;line-height:1.3}
+.gantt-table .gantt-subtask th{padding:2px 8px 2px 43px;font-size:11px;line-height:1.3}
+.gantt-table .gantt-workstream td,.gantt-table .gantt-subtask td{height:25px;padding:2px 8px}
+.gantt-toggle{height:22px;width:22px;margin:-1px 4px -1px -4px;font-size:14px}
+.gantt-table .gantt-day-cell{background-image:none;border-right-color:var(--line)}
+.gantt-table thead th{padding:4px 5px;height:48px;vertical-align:bottom}
+.gantt-week-toggle{display:block;border:0;background:transparent;font:500 10px 'DM Mono',monospace;color:var(--ink);padding:5px 2px;cursor:pointer;white-space:nowrap;border-radius:3px}
+.gantt-week-toggle:hover{background:var(--aqua)}
+.gantt-week-toggle:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+.gantt-day-label{display:block;font:10px 'DM Mono',monospace;color:var(--muted);padding:3px 2px}
+
+.gantt-table .gantt-workstream th,.gantt-table .gantt-subtask th{height:25px}
+
+/* Daily schedule bars inherit each work area's colour. */
+.gantt-table td.gantt-day-cell,.gantt-table td.gantt-week{position:relative;padding:0;background-image:none}
+.gantt-schedule-bar{position:absolute;top:7px;height:11px;background:var(--category-accent);opacity:.75;min-width:2px}
+.gantt-category .gantt-schedule-bar{background:var(--category-accent);height:7px;top:10px;opacity:.9}
+.gantt-workstream .gantt-schedule-bar{background:var(--category-accent);height:9px;top:8px;opacity:.85}
+.gantt-table .gantt-festival-day{background-color:#fff0d2!important}
+.gantt-table .gantt-day-label{font-size:9px;white-space:nowrap}
+
+/* The chart scrolls within a fixed-height viewport, keeping dates in sight. */
+.gantt-scroll{max-height:72vh;overflow:auto;isolation:isolate}
+.gantt-table thead th{position:sticky;top:0;z-index:4;background:var(--paper);box-shadow:0 1px 0 var(--line)}
+.gantt-table thead th:first-child{z-index:6}
+.gantt-table th:first-child{width:270px}
+.gantt-table tbody th:first-child{padding-left:0;padding-right:0;overflow:visible;border-left:0;background:transparent}
+.gantt-label-preview{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:270px;padding:2px 8px;border-left:4px solid var(--category-accent);background:var(--white);min-height:25px;box-sizing:border-box}
+.gantt-category .gantt-label-preview{background:var(--category-tint);font-size:12px;font-weight:600}
+.gantt-workstream .gantt-label-preview{padding-left:18px;background:var(--paper)}
+.gantt-subtask .gantt-label-preview{padding-left:36px}
+.gantt-scrolled-sideways .gantt-label-preview{max-width:160px}
+
+
+.gantt-table tbody th:first-child{box-shadow:none}
+
+/* One control per axis, with explicit selected and custom states. */
+.gantt-controls{gap:18px 28px;padding:16px 20px;background:var(--paper);align-items:center}
+.gantt-control-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gantt-control-label{font:500 10px 'DM Mono',monospace!important;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.gantt-segmented{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:7px;background:#eaece7;gap:2px}
+.gantt-segmented button{border:0;border-radius:4px;background:transparent;color:var(--muted);font:500 12px 'DM Sans',sans-serif;min-height:30px;padding:5px 12px;cursor:pointer}
+.gantt-segmented button:hover{background:rgba(255,255,255,.6);color:var(--ink)}
+.gantt-segmented button[aria-pressed="true"]{background:var(--ink);color:white;box-shadow:0 1px 3px #0002}
+.gantt-segmented button:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.gantt-view-state{font:10px 'DM Mono',monospace!important;color:var(--muted)}
+.gantt-view-state:empty{display:none}
+.gantt-control-hint{width:100%;margin:0;font-size:11px;color:var(--muted)}
+.gantt-chevron{display:inline-block;font:20px/1 sans-serif!important;transform:rotate(0deg);transition:transform .15s;color:inherit}
+.gantt-toggle[aria-expanded="true"] .gantt-chevron,.gantt-week-toggle[aria-expanded="true"] .gantt-chevron{transform:rotate(90deg)}
+.gantt-toggle{border-radius:4px;background:rgba(255,255,255,.45);border-color:rgba(30,45,47,.12)}
+.gantt-toggle:hover{background:var(--white);border-color:var(--muted)}
+.gantt-week-toggle{display:flex;align-items:center;gap:5px;min-height:28px;padding:3px 5px;background:#e6ebe5;border:1px solid var(--line);border-radius:4px;font-size:9px}
+.gantt-week-toggle .gantt-chevron{font-size:16px!important}
+.gantt-week-toggle:hover{background:var(--aqua);border-color:var(--muted)}
+.gantt-table .gantt-day-header:first-child{overflow:visible}
+@media(prefers-reduced-motion:reduce){.gantt-chevron{transition:none}}
+
+.gantt-editor-dialog{width:min(650px,calc(100vw - 32px));max-height:90vh;overflow:auto;padding:28px;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+.gantt-editor-dialog::backdrop{background:#1e2d2f88}
+.gantt-editor-dialog h2{font:600 30px Fraunces,serif;margin:0 0 12px}
+.gantt-edit-help{font-size:12px;line-height:1.5;color:var(--muted)}
+.gantt-editor-dialog label{display:grid;gap:5px;font-size:12px;margin-top:12px}
+.gantt-editor-dialog select,.gantt-editor-dialog input{width:100%;padding:8px;border:1px solid var(--line);background:var(--white);font:13px 'DM Sans',sans-serif;color:var(--ink);box-sizing:border-box}
+.gantt-edit-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.gantt-edit-actions .button{padding:6px 9px;font-size:11px}
+.gantt-date-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gantt-edit-footer{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--line);padding-top:16px;margin-top:18px}
+
+/* Edit in context: inputs and actions live beside their timeline bars. */
+.gantt-inline-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 20px;background:#edf3ed;border-bottom:1px solid var(--line)}
+.gantt-inline-toolbar[hidden]{display:none}
+.gantt-inline-toolbar>div{flex:1;min-width:220px}
+.gantt-inline-toolbar strong{display:block;font-size:13px}
+.gantt-inline-toolbar span{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+#inline-error{width:100%;margin:0;color:#a44232;font-size:12px}
+#inline-error:empty{display:none}
+.gantt-editing .gantt-inline-toolbar{position:sticky;top:0;z-index:8}
+.gantt-editing .gantt-table th:nth-child(2){width:260px}
+.gantt-editing .gantt-label-preview,.gantt-editing .gantt-scrolled-sideways .gantt-label-preview{max-width:270px;white-space:normal}
+.gantt-inline-name{width:calc(100% - 70px);min-width:80px;border:1px solid var(--line);background:var(--white);padding:4px;font:12px 'DM Sans',sans-serif;color:var(--ink);box-sizing:border-box}
+.gantt-subtask .gantt-inline-name{width:calc(100% - 44px)}
+.gantt-row-actions{display:flex;gap:4px;margin:4px 0 1px 24px}
+.gantt-row-action{border:1px solid var(--line);border-radius:3px;padding:3px 6px;background:var(--paper);font:10px 'DM Sans',sans-serif;color:var(--ink);cursor:pointer}
+.gantt-row-action:hover{background:var(--aqua)}
+.gantt-row-action:disabled{opacity:.35;cursor:default}
+.gantt-inline-dates{display:flex;gap:4px;padding:4px}
+.gantt-inline-dates input{min-width:0;width:50%;border:1px solid var(--line);padding:3px;background:var(--white);font-size:11px;color:var(--ink)}
+.gantt-inline-name:invalid,.gantt-inline-dates input[aria-invalid="true"]{border-color:#b34833}
+.gantt-inline-name:focus-visible,.gantt-inline-dates input:focus-visible,.gantt-row-action:focus-visible{outline:2px solid var(--coral);outline-offset:1px}
+
+/* Drag handles and clear insertion markers in edit mode. */
+.gantt-drag-handle{display:inline-grid;place-items:center;width:26px;height:23px;padding:0;border:1px solid var(--line);border-radius:3px;background:var(--paper);color:var(--muted);font-size:19px;line-height:1;cursor:grab;touch-action:none;user-select:none}
+.gantt-drag-handle:hover{background:var(--aqua);color:var(--ink)}
+.gantt-drag-handle:active{cursor:grabbing}
+.gantt-drag-handle:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.gantt-dragging{opacity:.45}
+.gantt-is-dragging{cursor:grabbing;user-select:none}
+.gantt-table .gantt-drop-before>th,.gantt-table .gantt-drop-before>td{box-shadow:inset 0 3px var(--coral)}
+.gantt-table .gantt-drop-after>th,.gantt-table .gantt-drop-after>td{box-shadow:inset 0 -3px var(--coral)}
+
+/* One-line edit rows: handle, outline, name, then compact actions. */
+.gantt-editing .gantt-workstream .gantt-label-preview,.gantt-editing .gantt-subtask .gantt-label-preview{display:flex;align-items:center;gap:4px;white-space:nowrap;padding:3px 5px;min-height:30px}
+.gantt-editing .gantt-workstream th,.gantt-editing .gantt-subtask th{height:30px}
+.gantt-editing .gantt-drag-handle{flex:0 0 20px;width:20px;height:22px;border-color:transparent;background:transparent;font-size:17px}
+.gantt-editing .gantt-toggle{flex:0 0 19px;width:19px;height:21px;margin:0}
+.gantt-editing .gantt-outline-number{flex:none;margin-right:0;font-size:9px}
+.gantt-editing .gantt-inline-name,.gantt-editing .gantt-subtask .gantt-inline-name{flex:1;width:0;min-width:30px;padding:3px 4px;font-size:11px}
+.gantt-editing .gantt-row-actions{display:contents;margin:0}
+.gantt-editing .gantt-row-action{flex:0 0 22px;display:inline-grid;place-items:center;width:22px;height:22px;padding:0;font-size:16px;border-color:transparent;background:transparent}
+.gantt-editing .gantt-row-action:hover{background:var(--aqua);border-color:var(--line)}
+.gantt-editing .gantt-remove-action{color:var(--muted)}
+.gantt-editing .gantt-remove-action:hover,.gantt-editing .gantt-remove-confirm{color:#a23e2e;background:#fae0da;border-color:#d9a197}
+.gantt-inline-dates{padding:2px 4px}
+
+/* Owner remains a separate column; date inputs exist only while editing. */
+.gantt-editing .gantt-table th:nth-child(2){width:110px}
+.gantt-editing .gantt-table .gantt-dates-header{width:260px}
+.gantt-table .gantt-date-cell{padding:0}
+
+/* Keep the timeline introduction short, with supporting copy beside the title. */
+.gantt-intro-row{display:flex;align-items:center;justify-content:space-between;gap:28px}
+.gantt-intro-row h1{flex:none}
+.gantt-intro-row .hero-copy{flex:1;max-width:380px;margin:0;font-size:13px;line-height:1.6}
+#gantt-view .checklist-hero{padding-bottom:26px}
+@media(max-width:1000px){.gantt-intro-row{gap:20px}.gantt-intro-row h1{font-size:40px}.gantt-intro-row .hero-copy{font-size:12px}}
+@media(max-width:700px){.gantt-intro-row{align-items:flex-start;flex-direction:column;gap:12px}.gantt-intro-row .hero-copy{max-width:none}}
+
+/* A single readable line of supporting text beside the title. */
+.gantt-intro-row{flex-direction:row;align-items:center;gap:24px;overflow-x:auto;padding-bottom:4px}
+.gantt-intro-row h1{font-size:clamp(32px,3.2vw,48px)}
+.gantt-intro-row .hero-copy{flex:none;max-width:none;margin:0;white-space:nowrap;font-size:12px;line-height:1.5}
+
+:is(.gantt-preview-card,.work-board-overview){display:block;width:100%;padding:20px;text-align:left;border:1px solid var(--line);background:var(--white);color:var(--ink);font-family:'DM Sans',sans-serif}
+.gantt-preview-card{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.gantt-preview-card:hover,.work-board-overview:hover{border-color:var(--coral);box-shadow:0 3px 14px #17272b0d}
+.gantt-preview-card:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+.gantt-preview-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:16px;font:600 23px Fraunces,serif}
+.gantt-preview-heading small{display:block;margin-top:5px;font:10px 'DM Mono',monospace;color:var(--muted)}
+.gantt-preview-link{font:600 12px 'DM Sans',sans-serif;color:var(--coral);white-space:nowrap}
+.gantt-preview-link>span{font-size:20px;vertical-align:middle;margin-left:4px}
+.gantt-preview-chart{display:block;border-top:1px solid var(--line)}
+.gantt-preview-row{display:grid;grid-template-columns:minmax(180px,30%) 1fr;gap:12px;align-items:center;min-height:22px;border-bottom:1px solid var(--line)}
+.gantt-preview-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;padding:3px 7px;background:var(--category-tint);border-left:3px solid var(--category-accent)}
+.gantt-preview-track{display:block;position:relative;height:20px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(7.142% - 1px),var(--line) calc(7.142% - 1px),var(--line) 7.142%)}
+.gantt-preview-bar{display:block;position:absolute;top:6px;height:7px;background:var(--category-accent);opacity:.75}
+@media(max-width:700px){:is(.gantt-preview-card,.work-board-overview){padding:12px}.gantt-preview-heading{font-size:19px;align-items:flex-start;flex-direction:column;gap:10px}.gantt-preview-row{grid-template-columns:135px 1fr;gap:8px}.gantt-preview-name{font-size:9px}}
+
+/* Team preparation countdown in the upper-right header. */
+.festival-countdown{display:grid;gap:2px;border-right:1px solid var(--line);padding-right:18px;margin-right:3px;text-align:right;white-space:nowrap}
+.countdown-label{font:8px 'DM Mono',monospace;letter-spacing:.7px;color:var(--muted)}
+.countdown-total{font-size:11px;color:var(--ink)}
+.countdown-total strong{font:600 27px/1.1 Fraunces,serif;color:var(--coral)}
+.countdown-working{font-size:10px;color:var(--muted)}
+.countdown-working b{font-weight:600;color:var(--ink)}
+@media(max-width:1000px){.topbar{gap:12px;flex-wrap:wrap;height:auto;min-height:86px;padding:12px 0}.festival-countdown{padding-right:10px}.plan-actions{margin-left:auto}.festival-meta{font-size:10px}}
+
+/* Reserve space beneath the last row for overlay horizontal scrollbars. */
+.gantt-scroll{padding-bottom:22px;scroll-padding-bottom:22px}
+
+/* The frozen header and labels share the same real column width. */
+.gantt-table th:first-child{width:var(--gantt-task-width,270px)}
+.gantt-table tbody th:first-child{background:var(--paper);border-right:1px solid var(--line)}
+.gantt-table .gantt-label-preview{max-width:var(--gantt-task-width,270px)}
+
+/* Today is a date marker, independent of task completion. */
+.gantt-today::after,.gantt-preview-has-today .gantt-preview-track::after{content:'';position:absolute;left:var(--today-position);top:0;bottom:0;border-left:2px solid #b84835;z-index:1;pointer-events:none}
+.gantt-table thead .gantt-today::after{top:auto;height:6px}
+.gantt-today-label{display:block;color:#a23e2e;font:600 9px 'DM Sans',sans-serif}
+.gantt-preview-scale{display:flex;position:relative}
+.gantt-preview-scale span{flex-basis:0;min-width:0;text-align:center;border-left:1px solid var(--line)}
+.gantt-preview-weeks{font:9px 'DM Mono',monospace;color:var(--muted)}
+.gantt-preview-has-today .gantt-preview-scale::after{content:'Today';position:absolute;left:clamp(0px,calc(var(--today-position) - 15px),calc(100% - 30px));bottom:100%;color:#a23e2e;background:var(--white)}
+@media(max-width:500px){.gantt-preview-scale span:nth-child(even){color:transparent}}
+
+/* Status board for Gantt subtasks. */
+.work-board-tools{display:flex;flex-wrap:wrap;gap:12px;padding:12px;background:var(--white);border:1px solid var(--line)}
+.work-board-tools label{display:grid;gap:5px;font-size:12px;font-weight:600}
+.work-board-tools input,.work-board-tools select,.work-board-status{font:inherit;background:var(--white);color:var(--ink);border:1px solid var(--line);padding:7px;border-radius:3px}
+.work-board-summary{font:11px 'DM Mono',monospace;color:var(--muted)}
+.work-board-columns{display:grid;grid-template-columns:repeat(4,minmax(185px,1fr));gap:8px;overflow:auto;align-items:stretch;padding-bottom:14px}
+.work-board-lane{min-height:260px;background:#eef0ef;border:1px solid var(--line);padding:8px;--lane:#dce0e9}
+.work-board-lane[data-status=done]{--lane:#dbeaf4}
+.work-board-lane[data-status=progress]{--lane:#d9e9d5}
+.work-board-lane[data-status=overdue]{--lane:#f1c8c2}
+.work-board-lane.work-board-drop{outline:2px solid var(--coral);outline-offset:-2px}
+.work-board-lane-title{display:flex;align-items:center;justify-content:space-between;gap:4px;background:var(--lane);padding:10px 8px;margin:0 0 8px;font-size:14px}
+.work-board-count{font:11px 'DM Mono',monospace}
+.work-board-card{background:var(--white);border:1px solid var(--line);border-left:4px solid var(--lane);border-radius:3px;margin-bottom:7px;padding:9px;cursor:grab}
+.work-board-card h3{margin:4px 0 7px;font-size:13px}
+.work-board-number,.work-board-due,.work-board-context,.work-board-empty{font-size:11px;color:var(--muted)}
+.work-board-card-meta{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.work-board-due{text-align:right;white-space:nowrap}
+.work-board-context{border-top:1px solid var(--line);margin:7px 0;padding-top:6px}
+.work-board-status{width:100%;font-size:11px;cursor:pointer}
+
+.gantt-editing .gantt-category .gantt-add-task{display:block;width:auto;padding:0 5px;margin:3px 0;font-size:11px;background:var(--white);border-color:var(--line)}
+
+#board-add-task{align-self:flex-end}
+#board-create-form .form-grid label:not([hidden]){display:grid;gap:8px;align-content:start}
+#board-parent-name[hidden]{display:none}
+#board-create-error{color:#a23e2e}
+#board-create-error:empty{display:none}
+
+.work-board-overview{margin-top:16px}
+.work-board-overview h2{margin:0;font:inherit}
+.work-board-open{padding:0;border:0;background:transparent;cursor:pointer}
+.work-board-open:hover{text-decoration:underline}
+.work-board-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line)}
+.work-board-stat{display:grid;gap:5px;text-align:left;padding:10px 12px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.work-board-stat + .work-board-stat{border-left:1px solid var(--line)}
+.work-board-stat[data-status=planned]{--status-tint:#ece8f5;--status-accent:#614987}
+.work-board-stat[data-status=progress]{--status-tint:#e3eedf;--status-accent:#3e6540}
+.work-board-stat[data-status=overdue]{--status-tint:#f8e2dc;--status-accent:#993e30}
+.work-board-stat[data-status=done]{--status-tint:#e0edf5;--status-accent:#315d78}
+.work-board-stat[data-status]{background:var(--status-tint);box-shadow:inset 0 3px var(--status-accent)}
+.work-board-stat:hover{box-shadow:inset 0 0 0 2px var(--status-accent)}
+.work-board-stat-value{color:var(--status-accent)}
+.work-board-stat-label{font-size:12px}
+.work-board-stat-value{font-size:17px;font-weight:700}
+@media(max-width:500px){
+  .work-board-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .work-board-stat:nth-child(odd){border-left:0}
+  .work-board-stat:nth-child(n+3){border-top:1px solid var(--line)}
+}
+
+.work-board-urgent-list{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.work-board-urgent{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;padding:10px 8px;border:0;border-bottom:1px solid var(--line);text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.work-board-urgent:hover{background:var(--paper)}
+.work-board-urgent-title{font-size:13px;font-weight:700}
+.work-board-urgent-title small{display:block;margin-top:3px;font-weight:400;color:var(--muted)}
+.work-board-urgent time{flex-shrink:0;font-size:12px}
+.work-board-urgent-overdue{color:#993e30;font-weight:700}
+.work-board-card:focus{outline:2px solid var(--coral);outline-offset:2px}
+
+.work-board-urgent{border-left:4px solid var(--category-accent,var(--line))}
+.work-board-urgent-title small{width:fit-content;padding:2px 6px;background:var(--category-tint,var(--paper));color:var(--ink)}
+.work-board-urgent-icon{margin-right:5px}
+
+.work-board-tools .work-board-due-filter{display:flex;align-items:center;align-self:flex-end;min-height:34px;white-space:nowrap}
+.work-board-urgent-group h3{margin:12px 0 6px;font:600 13px 'DM Sans',sans-serif}
+.work-board-urgent time{flex:0 1 auto;text-align:right}
+.work-board-card .work-board-due{white-space:normal}
+
+.lineup-actions{display:flex;gap:8px;align-items:center}
+.overview-section-heading{display:flex;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap}
+.overview-section-heading h2{margin:0}
+.overview-snapshot{margin-bottom:32px}
+.overview-finances{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;background:var(--white);padding:16px;border:1px solid var(--line);border-radius:6px}
+.overview-finances dt{font-size:13px;color:var(--muted)}
+.overview-finances dd{margin:5px 0 0;font:600 clamp(17px,2.5vw,24px) Fraunces,serif;overflow-wrap:anywhere}
+.overview-finances .is-loss{color:#a23e2e}
+@media(max-width:480px){.overview-finances{grid-template-columns:1fr;gap:10px}.overview-finances div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.overview-finances dd{margin:0;text-align:right}}

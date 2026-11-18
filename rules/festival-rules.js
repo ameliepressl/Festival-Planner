@@ -102,7 +102,7 @@ function catalogueForSavedPlan(saved) {
   return (hasLegacyBooking ? LEGACY_ARTISTS : ARTISTS).map(a => ({ ...a }));
 }
 // Shared event configuration for the overview and lineup.
-const DEFAULT_EVENT = { startDate: '2026-10-15', endDate: '2026-10-16', startMinutes: 840, endMinutes: 1380 };
+const DEFAULT_EVENT = { startDate: '2026-12-30', endDate: '2026-12-31', startMinutes: 840, endMinutes: 1380 };
 const timeText = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 function eventDays(event) {
   const dates = [], d = new Date(event.startDate + 'T12:00:00Z'), end = new Date(event.endDate + 'T12:00:00Z');
@@ -314,17 +314,4 @@ function parsePlanBackup(text) {
   result.dailyHoursResetV1 = true;
   result.stageHoursResetV1 = true;
   return result;
-}
-
-
-// A task group finishes when its last scheduled subtask finishes.
-function upcomingMilestones(project, today) {
-  const milestones = [];
-  for (const area of project) {
-    for (const task of area.tasks) {
-      const date = task.subtasks.reduce((latest, step) => step.end > latest ? step.end : latest, '');
-      if (date >= today) milestones.push({ id: task.id, title: task.title, date });
-    }
-  }
-  return milestones.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
 }

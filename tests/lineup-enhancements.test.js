@@ -469,21 +469,3 @@ test('overview counts confirmed and tentative performances without counting cale
   p.run("state.bookings[1].status = 'confirmed'; renderOverview()");
   assert.equal(p.nodes.get('#overview-booking-status').textContent, '2 confirmed · 0 tentative');
 });
-
-test('upcoming milestones use each task group’s last scheduled subtask and stable ID', () => {
-  const p = rules();
-  const project = [{ tasks: [
-    { id: 'prepare', title: 'Book suppliers', subtasks: [{ end: '2026-11-19' }, { end: '2026-11-18' }] },
-    { id: 'empty', title: 'No scheduled steps', subtasks: [] },
-    { id: 'past', title: 'Past planned finish', subtasks: [{ end: '2026-11-11' }] },
-    { id: 'final', title: 'Final checks', subtasks: [{ end: '2026-11-30' }] },
-    { id: 'power', title: 'Plan power', subtasks: [{ end: '2026-11-12' }] },
-    { id: 'venue', title: 'Confirm venue', subtasks: [{ end: '2026-11-12' }] }
-  ] }];
-  assert.deepEqual(p.json(`upcomingMilestones(${JSON.stringify(project)}, '2026-11-12')`), [
-    { id: 'power', title: 'Plan power', date: '2026-11-12' },
-    { id: 'venue', title: 'Confirm venue', date: '2026-11-12' },
-    { id: 'prepare', title: 'Book suppliers', date: '2026-11-19' }
-  ]);
-  assert.deepEqual(p.json(`upcomingMilestones(${JSON.stringify(project)}, '2026-12-01')`), []);
-});

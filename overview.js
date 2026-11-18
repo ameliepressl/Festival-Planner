@@ -2,9 +2,11 @@
 const sectionViews = {
   Overview: $('#overview-view'),
   'Lineup planner': $('#lineup-view'),
-  Checklist: $('#checklist-view'),
+  'Final checklist': $('#checklist-view'),
   'Task board': $('#task-board-view'),
-  Gantt: $('#gantt-view')
+  'Site map': $('#site-map-view'),
+  Vendors: $('#vendors-view'),
+  Finances: $('#finance-view')
 };
 
 function renderOverview() {
@@ -29,29 +31,32 @@ function renderOverview() {
   $('#overview-booking-status').textContent = `${confirmed} confirmed · ${bookings.length - confirmed} tentative`;
   $('#overview-budget').textContent = euros(state.settings.budget - total());
   $('#overview-checklist').textContent = `${checklist.percent}%`;
-  renderOverviewMilestones();
+  renderOverviewFinance();
+  renderOverviewTasks();
 }
 
-const milestoneDayFormatter = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit'
-});
+function renderOverviewFinance() {
+  const finance = window.getOverviewFinance?.();
+  if (!finance) return;
+  $('#overview-revenue').textContent = euros(finance.totalRevenue);
+  $('#overview-costs').textContent = euros(finance.totalCosts);
+  const loss = finance.profit < 0;
+  $('#overview-profit-label').textContent = loss ? 'Projected loss' : 'Projected profit';
+  $('#overview-profit').textContent = euros(finance.profit);
+  $('#overview-profit').classList.toggle('is-loss', loss);
+}
 
-function renderOverviewMilestones() {
-  const project = window.getGanttProject?.();
-  $('#overview-milestones').hidden = !project;
-  if (!project) return;
-  const { year, month, day } = Object.fromEntries(
-    milestoneDayFormatter.formatToParts(new Date()).map(part => [part.type, part.value])
-  );
-  const milestones = upcomingMilestones(project, `${year}-${month}-${day}`);
-  $('#overview-milestone-list').innerHTML = milestones.map(({ id, title, date }) => `
+function renderOverviewTasks() {
+  const tasks = window.getOverviewUrgentTasks?.();
+  if (!tasks) return;
+  $('#overview-task-list').innerHTML = tasks.map(({ id, title, area, end, deadline }) => `
     <li>
-      <button type="button" data-milestone="${escapeHtml(id)}">
-        <span>${escapeHtml(title)}</span>
-        <time datetime="${date}">${dateText(date)} ${date.slice(0, 4)}</time>
+      <button type="button" data-overview-task="${escapeHtml(id)}">
+        <span>${escapeHtml(title)}<small>${escapeHtml(area)}</small></span>
+        <time datetime="${escapeHtml(end)}">${escapeHtml(deadline)}</time>
       </button>
     </li>`).join('');
-  $('#overview-milestone-empty').hidden = milestones.length > 0;
+  $('#overview-task-empty').hidden = tasks.length > 0;
 }
 
 function openFestivalDetails() {
@@ -75,14 +80,15 @@ function showSection(section) {
   for (const [name, view] of Object.entries(sectionViews)) {
     view.classList.toggle('hidden', name !== section);
   }
-  const sidebarSection = section === 'Gantt' ? 'Task board' : section;
+  $('#board-page').classList.add('hidden');
+  $('#gantt-view').classList.add('hidden');
   document.querySelectorAll('.sidebar-item').forEach(button => {
-    const selected = button.dataset.section === sidebarSection;
+    const selected = button.dataset.section === section;
     button.classList.toggle('active', selected);
     if (selected) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   });
-  $('.plan-actions').classList.toggle('hidden', section !== 'Lineup planner');
+  $('.lineup-actions').classList.toggle('hidden', section !== 'Lineup planner');
   $('.festival-meta').classList.toggle('hidden', section === 'Overview');
   if (section === 'Overview') renderOverview();
   window.scrollTo(0, 0);
@@ -98,10 +104,11 @@ document.querySelectorAll('.sidebar-item').forEach(button => {
 document.querySelectorAll('[data-open-section]').forEach(control => {
   control.addEventListener('click', event => {
     event.preventDefault();
-    showSection(control.dataset.openSection);
-    const heading = sectionViews[control.dataset.openSection].querySelector('h1');
-    heading.setAttribute('tabindex', '-1');
-    heading.focus();
+    const section = control.dataset.openSection;
+    document.querySelector(`.sidebar-item[data-section="${section}"]`).click();
+    const heading = sectionViews[section].querySelector('h1');
+    heading?.setAttribute('tabindex', '-1');
+    heading?.focus();
   });
 });
 
@@ -295,11 +302,11 @@ $('#remove-teammate-form').addEventListener('submit', event => {
   }
 });
 
-$('#overview-milestone-list').addEventListener('click', ({ target }) => {
-  const button = target.closest('[data-milestone]');
-  if (button) window.openGanttMilestone?.(button.dataset.milestone);
+$('#overview-task-list').addEventListener('click', ({ target }) => {
+  const button = target.closest('[data-overview-task]');
+  if (button) window.openOverviewTask?.(button.dataset.overviewTask);
 });
-window.addEventListener('gantt-project-changed', renderOverviewMilestones);
+window.addEventListener('work-board-updated', renderOverviewTasks);
 
 renderTeam();
 renderOverview();

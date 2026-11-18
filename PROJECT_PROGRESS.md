@@ -14,7 +14,7 @@ Use this file together with GitHub branches and pull requests so the team can se
 
 | Branch | Scope | Status | Reviewers | Date |
 | --- | --- | --- | --- | --- |
-| `homepage` | Overview opens first with a setup dialog, planning grid, local team roles and upcoming Gantt milestones. | Local review | — | 12 November 2026 |
+| `homepage` | Overview opens first with festival details, projected finances, urgent tasks and local team roles. | Local review | — | 12 November 2026 |
 | `codex/left-navigation` | Add a visual left navigation bar to the original lineup planner. No new feature pages yet. | Ready for team preview — not committed | Kira, Vicky, Fredderik | 28 October 2026 |
 
 | `codex/festival-planner-edits` | Editable artist catalogue, planning settings and vertical multi-day lineup calendar for 15–16 October 2026. | Local preview — ready for review | — | 28 October 2026 |
@@ -113,3 +113,122 @@ On `codex/fix-lineup-loading`, clicking an empty slot prefills the day, stage an
 Lineup backups use versioned JSON. Restore validates the file and previews the replacement before saving; checklist data stays separate. The internal print layout includes all appointments, fees and notes. The public layout includes only confirmed performances and omits fees, private notes and operational blocks.
 
 Verification: all 52 tests passed, including backup download payload and restore, invalid imports, conflict and changeover checks, saved-plan migration, and public output privacy. Browser checks covered empty-slot booking, precise times, suggestions, confirmed and tentative sets, and renaming stages without moving bookings. The preview loaded after restart without console errors. Native download and Save as PDF dialogs were not independently verified. No commit or push.
+## Task board placeholder — 6 November 2026
+
+Branch: `feature-task-board-placeholder`. Static placeholder only for future project progress and urgent to-dos. No dashboard or task functionality implemented. Status: local preview.
+
+## Lineup startup repair — 6 November 2026
+
+Removed an incomplete legacy single-day script prepended to the current multi-day screen. It caused a syntax error before any artists, stage totals or timetable could render. No saved data reset.
+
+Naming review: navigation, page heading and progress labels consistently identify the feature as “Final checklist”; internal IDs and saved progress unchanged.
+
+## Preliminary Gantt chart — 6 November 2026
+
+Added a Task board button opening an empty eight-week Gantt layout with task, owner and status columns. Back and sidebar navigation included. No task editing, bars or sample data.
+
+Gantt structure: added 13 numbered main categories in distinct muted colours, with sticky labels for horizontal scrolling. No subtasks or scheduled bars.
+
+Cleaning crew example: added workstream 7.1 and six numbered sequential steps (7.1.1–7.1.6), with nested indentation and the infrastructure colour. Timeline and assignments remain empty.
+
+Gantt usability: compact rows and independent expand/collapse controls for categories and workstreams with children. Collapsing a parent preserves its nested group state.
+
+Approved preparation breakdown transferred: 13 categories, 52 task groups, 209 subtasks. Compact outline with independently collapsible levels and expand/collapse-all controls. Task groups start collapsed. Scheduling and assignment remain blank.
+
+Gantt overview refinement: removed Status, reduced category rows to roughly 27px and task/subtask rows to roughly 25px, and added independent week/day toggles. Days are relative (1–56) until real dates are assigned. Hierarchy state is preserved while changing timeline detail.
+
+Proposed daily schedule: all 209 subtasks assigned sequential day ranges over 12 preparation weeks; parallel teams, opening-day final checks, and post-event wrap-up. Uses configured event dates and coloured aggregate bars, daily view by default, independent week toggles and All weeks/All days shortcuts. Dates are a draft template rather than validated supplier lead times.
+
+Gantt scrolling: sticky week/date header in a vertically scrollable chart; task column reduced to 270px with ellipsis. Sideways scrolling reduces frozen task labels to muted 160px previews; full labels remain in hover text.
+
+Sideways scrolling now shortens label previews only; font weight, text colours and category styling remain unchanged.
+
+Session handover: confirmed the current Gantt task hierarchy and daily schedule load as the default template on app opening. Future scope: project users, roles and permissions controlling task and timeline editing. All current work remains local on feature-task-board-placeholder, uncommitted and unpushed. Known validation issue: one existing integration assertion still expects the former Checklist navigation name.
+
+## Gantt controls and inline editing — 10 November 2026
+
+10 November: redesigned Gantt controls into Outline (Areas/Tasks/Subtasks) and Timeline (Weeks/Days) selectors, with selected/custom states and consistent individual chevrons. Timeline switches preserve the visible date. Local changes on feature-task-board; no commit.
+
+Head-of-project editing: browser-local plan model with stable IDs, custom subtask dates/names, add/remove and ordering controls. Explicit save/cancel, date validation, auto timeline extension and parent aggregation. No authentication/role enforcement implemented.
+
+Inline edit mode replaces modal: names, date ranges, add/remove and reorder actions now appear in Gantt rows, with live bar updates and explicit Save/Cancel. Existing persisted plans retained.
+
+Inline reordering now uses drag handles and insertion markers, replacing up/down buttons. Tasks retain subtasks when moved; subtasks retain dates. Keyboard arrows on handles remain available. No commit requested.
+
+Compact edit rows: drag handle at far left, inline name and +/× actions on the same line. × removal keeps two-click confirmation and accessible labels.
+
+Column refinement: Owner visible in overview and edit mode; Subtask dates is a separate edit-only column. Timeline rebuilds preserve the two permanent columns.
+
+Timeline page description moved beside title on wide screens to reduce header height; stacks responsively.
+
+Validation: updated the navigation test to match the approved Final checklist label, with explicit user approval. Full test suite rerun before commit.
+
+## Timeline preview and festival countdown — logged 16 November 2026
+
+Task board: live 13-area timeline preview replaces open button. Hover highlights; click or keyboard activation opens chart.
+
+Festival countdown: upper-right calendar-day and Monday–Friday workday totals, anchored to configured event start and Europe/Lisbon date. Includes today, excludes opening day; holidays not deducted. Handles opening/ongoing/ended states.
+
+Default festival now 30–31 December 2026. Empty October-default plans migrate; Gantt preparation dates follow the shifted anchor. Booked custom events are preserved.
+
+## Timeline scrolling and Today marker — logged 16 November 2026
+
+Added bottom clearance inside the Gantt scroll viewport so overlay horizontal scrollbars do not cover the final task row.
+
+Fixed sideways-scroll gap: frozen task header now shrinks together with task labels, with divider at their actual boundary.
+
+Timeline overview and preview show a Lisbon-local Today marker; preview columns carry compact project-week numbers.
+
+## Task Board and status tracking — logged 16 November 2026
+
+Added the Task board entry button below the timeline preview and a placeholder destination. Board implementation is deferred.
+
+Built the task board with five status columns, Gantt-backed subtask cards, search and work-area filtering. Status changes save separately in this browser.
+
+Task board uses Planned, In progress, Needs attention, Overdue and Done. Overdue follows Gantt dates automatically; older statuses have fallback mappings.
+
+Removed Needs attention from the task board. The four columns are Planned, In progress, Overdue and Done.
+
+Task card due dates now share a compact top row with the task number, aligned right.
+
+Task board sorts active lanes by deadline and Done by recorded completion time, preserving older saved statuses.
+
+## Task creation from the timeline and Task Board — logged 16 November 2026
+
+Gantt edit mode supports adding numbered tasks directly to each area. Their saved subtasks use the existing Task board connection.
+
+New Gantt tasks require a named first subtask with valid dates before saving.
+
+Added Task board creation for dated subtasks under existing or new parent tasks, using the shared Gantt plan.
+
+## Task creation form refinements — 16 November 2026
+
+Added space between field labels and focus outlines. The new parent name field appears only when creating a parent task.
+
+## Today marker during horizontal scrolling — 16 November 2026
+
+Adjusted the Today marker so it stays behind the frozen Task column when the timeline scrolls sideways.
+
+## Project tasks overview — 16 November 2026
+
+Added a Task overview panel beneath Project timeline. It shows the total number of subtasks and the count and percentage for Planned, In progress, Overdue, and Done. Each status and the Open Task Board shortcut open the full board. The panel uses the Project timeline typography and orange hover frame, with a distinct colour for each status.
+
+Renamed the sidebar entry and the label above the overview title to Project tasks.
+
+## Needs attention — 16 November 2026
+
+Replaced the urgent to-dos placeholder with unfinished subtasks that are overdue or due within seven calendar days, using Lisbon dates. Entries show the work area and deadline, with overdue items first. Selecting an entry opens the Task Board and focuses its card.
+
+Verified after reloading the browser by opening Attend XYC Conference from the list and returning to Project tasks. All 35 automated tests passed.
+
+## Upcoming tasks overview styling — 16 November 2026
+
+Matched the heading to Task overview, reused the Gantt work-area colours in the list, and added a warning icon to overdue entries.
+
+## Task deadline filters and grouping — 16 November 2026
+
+Added a Due soon filter to the Task Board for unfinished subtasks due today through the following seven calendar days in Lisbon. Grouped the overview into Overdue, Due today, and Next 7 days, hiding empty groups. Unfinished cards and overview entries show relative deadlines alongside calendar dates.
+
+## Section navigation after merging — 17 November 2026
+
+Updated the navigation script URLs so browsers load the merged section-switching logic. This prevents the Project tasks overview or timeline from appearing below Site map, Vendors, or Finances.
