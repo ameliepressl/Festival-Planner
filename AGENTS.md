@@ -5,16 +5,26 @@ Several of us are beginners. Explain what you change and why, in plain language.
 
 ## Running things
 
-- Open the app: open `index.html` in a browser (macOS: `open index.html`). No server needed.
-- Run the tests: `uvx --from nodejs-wheel node --test`
-  (uv downloads Node by itself; nobody has to install Node).
-- The plan is saved in the browser (localStorage). To start fresh, clear the site
-  data for the page in the browser.
+- From the Festival-Planner folder, run `python3 server.py` and open
+  `http://127.0.0.1:8000/` in a browser. Leave the terminal running while you use the app.
+- On first run the server creates `data/users.sqlite3` with demo usernames
+  `Kira`, `Amelie`, `Frederik`, and `Vicky`. To try the lookup, enter one of
+  those usernames in the Team form. The database file stays local.
+- Run the JavaScript tests: `uvx --from nodejs-wheel node --test`
+  (uv downloads Node by itself).
+- Run the Python tests: `python3 -m unittest discover -s tests -p 'test_*.py'`.
+- The festival plan, Gantt schedule, checklist and roster are saved in the browser for the
+  current address. Keep using the same address and port. If moving from
+  `index.html` opened directly, download a lineup backup from that copy and
+  restore it at the server address. Gantt changes, checklist ticks and roster entries stay
+  with the original address and need to be re-entered at the new one.
 
 ## The project
 
 - `index.html` = the page structure, `styles.css` = the look.
-- `app.js` = the screen: draws the page, reacts to clicks, calls the rules.
+- `app.js` = the planner screen. `overview.js` = Overview and the team roster.
+- `gantt-editor.js` = the saved project schedule that feeds the Gantt and Overview milestones.
+- `server.py` = the local server and SQLite username lookup.
 - `rules/festival-rules.js` = the rules (budget, times, stages, finalising). No screen code here.
 - `tests/` = automatic checks of the rules, one per scenario in the brief.
 - `product-brief/festival-architect-brief.html` = the product brief. It wins over anything else.
@@ -34,4 +44,4 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - Never edit, weaken, skip or delete a test to make it pass. If a test looks wrong,
   say so and stop.
 - After every change run the tests and paste the final output in the pull request.
-- Then open `index.html` and try the changed flow yourself, including a page reload.
+- Then open the app through the local server and try the changed flow yourself, including a page reload.

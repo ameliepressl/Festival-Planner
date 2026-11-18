@@ -75,6 +75,84 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 @container (width < 105px){.vertical-performance>span{display:none}}
 @media print{.print-calendar .vertical-performance.compact-appointment>span{display:none}.print-calendar .vertical-performance strong{line-height:10px}.print-calendar .vertical-performance>span{line-height:9px}}
 
+
+/* Extra planning controls stay grouped and the calendar remains the main focus. */
+.plan-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;padding:14px 0 0}
+.plan-tools-copy,.tools-message,.calendar-help,.field-help{color:var(--muted);font-size:12px;line-height:1.6}
+.plan-tools-copy{margin-right:auto}.tools-message{flex-basis:100%;margin:0}.tools-message:empty{display:none}
+.button.quiet{background:transparent;color:var(--muted);padding:7px 0;border-bottom:1px solid var(--line)}
+.button.quiet:hover{color:var(--ink);border-bottom-color:var(--ink)}
+.calendar-help{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.booking-legend{display:inline-flex;align-items:center;gap:6px;font:10px 'DM Mono';white-space:nowrap}
+.booking-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:8px}
+.tentative-dot{border:1px solid var(--muted);background:transparent}.confirmed-dot{background:#258371}
+#booking-dialog{width:min(560px,calc(100% - 30px));max-height:90vh;overflow:auto}
+#settings-dialog,#print-dialog,#restore-dialog{max-height:90vh;overflow:auto}
+.notes-label select{display:block;width:100%;margin-top:7px;padding:10px 8px;background:var(--white);border:1px solid var(--line);font:13px 'DM Sans';color:var(--ink)}
+.form-grid .full-width{grid-column:1/-1}.field-help{margin:0 0 16px}.slot-suggestion{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 14px}.slot-suggestion:has(.button.hidden):has(p:empty){display:none}.slot-suggestion .field-help{margin:0}
+.stage-name-settings{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:18px}
+.stage-name-settings summary{font-size:13px;font-weight:600;cursor:pointer}.stage-name-settings .field-help{margin:10px 0}.stage-name-settings .form-grid{margin-bottom:0}
+.slot-actions,.restore-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}.slot-actions .quiet{margin-left:auto}
+.vertical-track{cursor:crosshair}.vertical-track:focus-visible{outline:2px solid var(--coral);outline-offset:-2px}
+.add-stage-slot,.calendar-slot-trigger{font:11px 'DM Sans';background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 7px;cursor:pointer;margin-left:8px}
+.add-stage-slot:hover,.calendar-slot-trigger:hover{border-color:var(--ink);color:var(--ink)}
+.vertical-performance.tentative{border-left-style:dashed}.vertical-performance.confirmed{border-left-style:solid}
+.vertical-performance .entry-status{font-size:8px;line-height:10px;color:#405c54;letter-spacing:.3px;text-transform:uppercase}
+.vertical-performance.calendar-block .entry-status{color:var(--muted)}
+.linked-block-hint{color:var(--muted);font-size:11px;line-height:1.5}.booking-status-label{font:10px 'DM Mono';color:#52665e;text-transform:uppercase}
+@container (height < 52px){.vertical-performance>.entry-status{display:none}}
+@media(max-width:650px){.plan-tools-copy{flex-basis:100%}.plan-tools{gap:8px 20px}.slot-actions,.restore-actions{justify-content:flex-start}.slot-actions .quiet{margin-left:0}.calendar-help{font-size:11px}.dialog-actions .secondary{display:block}}
+@media print{.plan-tools,.calendar-help,.add-stage-slot,.calendar-slot-trigger{display:none!important}.vertical-performance .entry-status{font-size:6px;line-height:8px}.vertical-performance.tentative{border-left-style:dashed}}
+
+#overview-view{position:relative;max-width:880px;margin:0 auto;padding:54px 0}
+.overview-heading{text-align:center}
+.overview-heading h1{font:600 clamp(32px,5vw,56px)/1.05 Fraunces,serif;margin:0 40px 28px;overflow-wrap:anywhere}
+.overview-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:18px 32px;margin:0 0 28px}
+.overview-facts div{max-width:100%;overflow-wrap:anywhere}
+.overview-facts dt,.overview-stat span{font-size:13px;color:var(--muted)}
+.overview-facts dd{margin:4px 0 0;font-size:15px}
+.overview-menu{position:absolute;top:22px;right:0;z-index:2}
+.overview-menu summary{list-style:none;display:grid;place-items:center;width:40px;height:36px;border:1px solid var(--line);border-radius:6px;background:var(--white);font-size:23px;cursor:pointer}
+.overview-menu summary::-webkit-details-marker{display:none}
+.overview-menu div{position:absolute;right:0;margin-top:6px;padding:5px;background:var(--white);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 18px #17272b16}
+.overview-menu button{white-space:nowrap;border:0;background:transparent;color:var(--ink);font:inherit;padding:8px 10px;cursor:pointer}
+.overview-menu button:hover,.overview-stat:hover{background:#eeeee6}
+.overview-snapshot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:30px 0 48px}
+.overview-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:96px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:var(--ink);font:inherit;cursor:pointer}
+.overview-stat strong{font:600 27px Fraunces,serif;max-width:100%;overflow-wrap:anywhere}
+.overview-booking-counts{display:grid;justify-items:center;gap:4px}
+.overview-team h2{margin:0 0 8px}
+.overview-summary{margin:0 0 32px}
+#overview-task-list{list-style:none;margin:0;padding:0}
+#overview-task-list li{border-bottom:1px solid var(--line)}
+#overview-task-list button{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;padding:10px 0;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+#overview-task-list button:hover span{text-decoration:underline}
+#overview-task-list button span{overflow-wrap:anywhere}
+#overview-task-list small{display:block;margin-top:3px;color:var(--muted);font-size:12px}
+#overview-task-list time{flex-shrink:0;color:var(--muted);font-size:13px}
+#overview-task-empty{color:var(--muted)}
+.overview-team .field-help{color:var(--muted)}
+.overview-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--white)}
+.overview-table{width:100%;min-width:490px;border-collapse:collapse;font-size:14px;text-align:left}
+.overview-table th,.overview-table td{padding:10px 14px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.overview-table th[scope=row]{max-width:180px}
+.overview-table tr:last-child td,.overview-table tr:last-child th[scope=row]{border-bottom:0}
+#team-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,150px) auto;align-items:end;gap:12px;margin-top:16px}
+#team-form label{display:grid;gap:5px;font-size:13px}
+#team-form input,#team-form select,.overview-table select{min-width:0;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--ink);font:inherit}
+.overview-dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
+#overview-view [role=status]:empty,#overview-view .form-message:empty,#overview-form .form-message:empty{display:none}
+@media(max-width:550px){
+  #overview-view{padding:54px 0 28px}
+  .overview-facts{gap:12px 20px}
+  .overview-snapshot{grid-template-columns:1fr;gap:8px;margin-bottom:32px}
+  .overview-stat{min-height:62px;flex-direction:row;justify-content:space-between}
+  .overview-booking-counts{justify-items:end;text-align:right}
+  #overview-task-list button{flex-wrap:wrap;gap:4px 12px}
+  #team-form{grid-template-columns:minmax(0,1fr) minmax(90px,115px)}
+  #team-form button{justify-self:start}
+}
+
 /* Empty preliminary Gantt chart, styled to match the festival planner. */
 #gantt-view .checklist-hero{padding-top:32px}
 #gantt-view .checklist-hero>.button{margin-bottom:28px}
@@ -385,3 +463,13 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 .work-board-urgent-group h3{margin:12px 0 6px;font:600 13px 'DM Sans',sans-serif}
 .work-board-urgent time{flex:0 1 auto;text-align:right}
 .work-board-card .work-board-due{white-space:normal}
+
+.lineup-actions{display:flex;gap:8px;align-items:center}
+.overview-section-heading{display:flex;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap}
+.overview-section-heading h2{margin:0}
+.overview-snapshot{margin-bottom:32px}
+.overview-finances{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;background:var(--white);padding:16px;border:1px solid var(--line);border-radius:6px}
+.overview-finances dt{font-size:13px;color:var(--muted)}
+.overview-finances dd{margin:5px 0 0;font:600 clamp(17px,2.5vw,24px) Fraunces,serif;overflow-wrap:anywhere}
+.overview-finances .is-loss{color:#a23e2e}
+@media(max-width:480px){.overview-finances{grid-template-columns:1fr;gap:10px}.overview-finances div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.overview-finances dd{margin:0;text-align:right}}

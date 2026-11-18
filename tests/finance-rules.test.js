@@ -105,6 +105,23 @@ test('an empty lineup gives zeros, not errors', () => {
   assert.deepEqual([a.total, a.performances, a.averageFee, a.costPerHour, a.budgetUsed], [0, 0, 0, 0, 0]);
 });
 
+test('artist spending uses the agreed booking fee and duration when present', () => {
+  const lineup = {
+    budget: 1000,
+    artists: [{ id: 'a', name: 'Naya', fee: 300, duration: 60 }],
+    bookings: [
+      { artistId: 'a', stage: 'A', date: '2026-12-30', fee: 100, duration: 30 },
+      { artistId: 'a', stage: 'A', date: '2026-12-30', fee: 0, duration: 30 },
+      { artistId: 'a', stage: 'B', date: '2026-12-31' },
+      { type: 'block', linkedTo: 'a', stage: 'A', date: '2026-12-30', duration: 90 }
+    ]
+  };
+  const spending = artistSpending(lineup);
+  assert.equal(spending.total, 400);
+  assert.equal(spending.costPerHour, 200);
+  assert.deepEqual(spending.byStage, { A: 100, B: 300 });
+});
+
 test('assumptions are checked and survive reopening the page; broken data gives the defaults', () => {
   assert.ok(validFinanceValue('ticketPrice', 40));
   assert.ok(!validFinanceValue('ticketPrice', -1));

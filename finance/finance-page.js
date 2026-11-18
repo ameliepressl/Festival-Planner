@@ -29,6 +29,11 @@
     return { input, artists, lineup, vendorCount: Object.keys(vendors).length, model: financeModel(input) };
   }
 
+  window.getOverviewFinance = () => {
+    const { totalRevenue, totalCosts, profit } = collect().model;
+    return { totalRevenue, totalCosts, profit };
+  };
+
   // ---------- charts (plain SVG) ----------
 
   // Horizontal bars, largest first, with the value and share written next to each bar.
@@ -100,6 +105,7 @@
   function render() {
     const data = collect();
     const { model, artists, input } = data;
+    const canEditAssumptions = canFestival('budget');
     const profitText = `${model.profit >= 0 ? '' : '−'}${money(Math.abs(model.profit))}`;
     const be = model.breakEvenTickets;
     const beText = be === null ? 'Not possible' : be === 0 ? 'Covered' : `${number(be)} tickets`;
@@ -112,12 +118,12 @@
       <section class="checklist-hero">
         <p class="eyebrow">FINANCIAL OVERVIEW</p>
         <h1>Know your numbers<br /><em>before the gates open.</em></h1>
-        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size. Start with the assumptions right below; everything updates at once.</p>
+        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size.${canEditAssumptions ? ' Start with the assumptions right below; everything updates at once.' : ''}</p>
       </section>
-      <section class="fin-card fin-assumptions"><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset>Reset</button></header>
+      <section class="fin-card fin-assumptions"><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
         <div class="fin-groups">${['Revenue', 'Costs'].map((group) => `<div><h3>${group}</h3><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
-          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" /><small>${f.unit}</small></label>`).join('')}</div></div>`).join('')}</div>
-        <p class="fin-note">Change any value: all numbers below update at once. Toilets, water points, first aiders and security follow the festival size on the Site map. Example prices, not quotes: replace them with your real offers.</p>
+          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></div>`).join('')}</div>
+        <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
       </section>
       <div class="fin-sources">
         <span>DATA FROM</span>
@@ -207,6 +213,10 @@
   view.addEventListener('change', (event) => {
     const id = event.target.dataset.field;
     if (!id) return;
+    if (!canFestival('budget')) {
+      event.target.value = settings[id];
+      return;
+    }
     if (!validFinanceValue(id, event.target.value)) {
       const field = FINANCE_FIELDS.find((f) => f.id === id);
       toast(`${field.label}: please enter a number from ${number(field.min)} to ${number(field.max)}.`);
@@ -224,7 +234,12 @@
   view.addEventListener('click', (event) => {
     const go = event.target.closest('[data-go]');
     if (go) { event.preventDefault(); document.querySelector(`.sidebar-item[data-section="${go.dataset.go}"]`).click(); return; }
-    if (event.target.closest('[data-reset]')) { settings = { ...DEFAULT_FINANCE }; save(); render(); toast('Assumptions reset to the example values.'); }
+    if (event.target.closest('[data-reset]') && canFestival('budget')) {
+      settings = { ...DEFAULT_FINANCE };
+      save();
+      render();
+      toast('Assumptions reset to the example values.');
+    }
   });
 
   // Left navigation: "Finances" shows this page (freshly calculated), anything else hides it.

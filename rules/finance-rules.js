@@ -47,7 +47,13 @@ function parseFinance(text) {
 function artistSpending(lineup) {
   const byId = Object.fromEntries(lineup.artists.map((a) => [a.id, a]));
   const shows = lineup.bookings.filter((b) => b.type !== 'block' && byId[b.artistId])
-    .map((b) => ({ name: byId[b.artistId].name, fee: byId[b.artistId].fee, minutes: byId[b.artistId].duration, stage: b.stage, date: b.date }));
+    .map((b) => ({
+      name: byId[b.artistId].name,
+      fee: b.fee ?? byId[b.artistId].fee,
+      minutes: b.duration ?? byId[b.artistId].duration,
+      stage: b.stage,
+      date: b.date
+    }));
   const total = shows.reduce((sum, s) => sum + s.fee, 0);
   const minutes = shows.reduce((sum, s) => sum + s.minutes, 0);
   const sumBy = (key) => shows.reduce((acc, s) => ({ ...acc, [s[key]]: (acc[s[key]] || 0) + s.fee }), {});

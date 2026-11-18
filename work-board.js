@@ -18,6 +18,7 @@
     return year + '-' + month + '-' + day;
   }
   let renderedDate;
+  let summaryDate = today();
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(key)) || {}; } catch {}
   let dragged = null;
@@ -64,9 +65,33 @@
     return 'Due in ' + days + ' days · ' + absolute;
   }
 
-  function renderAttention(steps, date) {
-    const urgent = steps.filter(step => daysUntil(step.end, date) <= 7 && statusOf(step, date) !== 'done')
+  function projectSteps(plan = window.getSavedGanttPlan()) {
+    return plan.flatMap((area, ai) => area.tasks.flatMap((task, ti) =>
+      task.subtasks.map((step, si) => ({
+        ...step, area: area.title, areaStyle: area.style, areaId: String(area.id), task: task.title,
+        number: [ai + 1, ti + 1, si + 1].join('.')
+      }))
+    ));
+  }
+
+  function urgentSteps(steps, date) {
+    return steps.filter(step => daysUntil(step.end, date) <= 7 && statusOf(step, date) !== 'done')
       .sort((a, b) => a.end.localeCompare(b.end));
+  }
+
+  function publishBoardUpdate() {
+    window.dispatchEvent(new Event('work-board-updated'));
+  }
+
+  window.getOverviewUrgentTasks = () => {
+    const date = today();
+    return urgentSteps(projectSteps(), date).slice(0, 3).map(({ id, title, area, end }) => ({
+      id, title, area, end, deadline: deadlineText(end, date)
+    }));
+  };
+
+  function renderAttention(steps, date) {
+    const urgent = urgentSteps(steps, date);
     const previous = document.activeElement.closest('.work-board-urgent')?.dataset.cardId;
     const groups = [
       ['Overdue', urgent.filter(step => step.end < date)],
@@ -108,7 +133,7 @@
 
   function renderStats() {
     const date = today();
-    const steps = window.getSavedGanttPlan().flatMap(area => area.tasks.flatMap(task => task.subtasks.map(step => ({...step, area:area.title, areaStyle:area.style}))));
+    const steps = projectSteps();
     renderAttention(steps, date);
     document.querySelector('#task-overview-total').textContent = steps.length + (steps.length === 1 ? ' subtask total' : ' subtasks total');
     const counts = {planned:0, progress:0, overdue:0, done:0};
@@ -123,14 +148,10 @@
     const selection = areaSelect.value;
     const query = search.value.trim().toLowerCase();
     const plan = window.getSavedGanttPlan();
+    const canEditTasks = canFestival('lineup');
     areaSelect.replaceChildren(new Option('All areas', ''));
-    const cards = plan.flatMap((area, ai) => {
-      areaSelect.add(new Option(area.title, String(area.id)));
-      return area.tasks.flatMap((task, ti) => task.subtasks.map((step, si) => ({
-        ...step, area:area.title, areaId:String(area.id), task:task.title,
-        number:[ai+1, ti+1, si+1].join('.')
-      })));
-    });
+    plan.forEach(area => areaSelect.add(new Option(area.title, String(area.id))));
+    const cards = projectSteps(plan);
     areaSelect.value = selection;
     const visible = cards.filter(card => {
       const days = daysUntil(card.end, renderedDate);
@@ -140,6 +161,7 @@
     });
 
     function move(id, status, focus = false) {
+      if (!canFestival('lineup')) return false;
       const card = cards.find(card => card.id === id);
       if (card?.end < renderedDate && (saved[id]?.status ?? saved[id]) !== 'done' && status !== 'done') {
         summary.textContent = 'An overdue subtask stays overdue until it is done or its due date changes.';
@@ -153,6 +175,7 @@
       catch { summary.textContent = 'Could not save the status in this browser.'; return false; }
       saved = next;
       render();
+      publishBoardUpdate();
       if (focus) Array.from(columns.querySelectorAll('select')).find(control => control.dataset.cardId === id)?.focus();
       return true;
     }
@@ -183,7 +206,7 @@
       };
       items.forEach(card => {
         const item = element('article', 'work-board-card');
-        item.draggable = true;
+        item.draggable = canEditTasks;
         item.dataset.cardId = card.id;
         item.tabIndex = -1;
         item.ondragstart = event => {
@@ -196,6 +219,7 @@
         };
         const control = element('select', 'work-board-status');
         control.dataset.cardId = card.id;
+        control.disabled = !canEditTasks;
         control.setAttribute('aria-label', 'Status for ' + card.number + ' ' + card.title);
         if (id === 'overdue') {
           const automatic = new Option('Overdue (automatic)', 'overdue');
@@ -218,9 +242,16 @@
     });
   }
   const overview = document.querySelector('#task-board-view');
+  const board = document.querySelector('#board-page');
+  let boardTrigger;
   overview.addEventListener('click', event => {
     const trigger = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
     if (!trigger) return;
+    boardTrigger = trigger;
+    overview.classList.add('hidden');
+    board.classList.remove('hidden');
+    window.scrollTo(0, 0);
+    document.querySelector('#board-page-title').focus();
     search.value = '';
     areaSelect.value = '';
     dueSoon.checked = false;
@@ -232,11 +263,33 @@
       card?.scrollIntoView({block:'center', inline:'nearest'});
     }
   });
-  document.querySelector('[data-section="Task board"]').addEventListener('click', renderStats);
-  document.querySelector('#back-board-overview').addEventListener('click', renderStats);
+  const projectTasksButton = document.querySelector('[data-section="Task board"]');
+  window.openOverviewTask = id => {
+    projectTasksButton.click();
+    Array.from(attention.querySelectorAll('.work-board-urgent'))
+      .find(button => button.dataset.cardId === String(id))?.click();
+  };
+  projectTasksButton.addEventListener('click', renderStats);
+  document.querySelector('#back-board-overview').addEventListener('click', () => {
+    projectTasksButton.click();
+    const trigger = boardTrigger?.dataset.cardId
+      ? Array.from(attention.querySelectorAll('.work-board-urgent'))
+        .find(button => button.dataset.cardId === boardTrigger.dataset.cardId)
+      : boardTrigger;
+    (trigger ?? overview.querySelector('.work-board-open')).focus();
+  });
   document.querySelector('#back-task-board').addEventListener('click', renderStats);
+  window.addEventListener('gantt-project-changed', () => {
+    if (!overview.classList.contains('hidden')) renderStats();
+    publishBoardUpdate();
+  });
   setInterval(() => {
-    if (!document.querySelector('#task-board-view').classList.contains('hidden')) renderStats();
+    if (!overview.classList.contains('hidden')) renderStats();
+    const date = today();
+    if (date !== summaryDate) {
+      summaryDate = date;
+      publishBoardUpdate();
+    }
   }, 60000);
   renderStats();
   setInterval(() => { if (!document.querySelector('#board-page').classList.contains('hidden') && today() !== renderedDate) render(); }, 60000);
@@ -244,6 +297,8 @@
   const form = document.querySelector('#board-create-form');
   const fields = form.elements;
   const error = document.querySelector('#board-create-error');
+  const addTaskButton = document.querySelector('#board-add-task');
+  addTaskButton.hidden = !canFestival('lineup');
 
   function updateParentName() {
     const creating = fields.parent.value === 'new';
@@ -261,7 +316,8 @@
     fields.parent.disabled = !area;
     updateParentName();
   }
-  document.querySelector('#board-add-task').onclick = () => {
+  addTaskButton.onclick = () => {
+    if (!canFestival('lineup')) return;
     form.reset();
     error.textContent = '';
     fields.area.replaceChildren(new Option('Choose an area', ''));
@@ -275,6 +331,7 @@
   document.querySelector('#board-create-cancel').onclick = () => dialog.close();
   form.onsubmit = event => {
     event.preventDefault();
+    if (!canFestival('lineup')) return;
     try {
       window.addBoardSubtask({
         areaId:fields.area.value, taskId:fields.parent.value === 'new' ? '' : fields.parent.value,

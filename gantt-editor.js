@@ -1,11 +1,12 @@
-// Browser-local project plan. User accounts and enforced permissions are future work.
+// Browser-local Gantt project and committed schedule shared with Overview.
 (function () {
   const KEY='festival-gantt-project-v1';
   const DAY=86400000;
   const iso=date=>date.toISOString().slice(0,10);
-  const opening=new Date(state.event.startDate+'T12:00:00Z');
-  const afterEvent=Math.round((new Date(state.event.endDate+'T12:00:00Z')-opening)/DAY)+1;
-  const dateAt=offset=>iso(new Date(opening.getTime()+offset*DAY));
+  const dateMillis=value=>new Date(value+'T12:00:00Z').getTime();
+  const shiftDate=(value,days)=>iso(new Date(dateMillis(value)+days*DAY));
+  const dayDifference=(from,to)=>Math.round((dateMillis(to)-dateMillis(from))/DAY);
+  const cloneProject=value=>JSON.parse(JSON.stringify(value));
   const tbody=document.querySelector('#gantt-view tbody');
   const defaults=[];let area,task;
   Array.from(tbody.rows).forEach(row=>{
@@ -19,31 +20,87 @@
     }else{
       const index=Number(number.split('.')[2])-1;
       const boundaries=window.ganttDefaultBoundaries[task.id];
-      const shift=task.id.startsWith('13.')?afterEvent:0;
-      task.subtasks.push({id:number,title,start:dateAt(boundaries[index]+shift),end:dateAt(boundaries[index+1]-1+shift)});
+      task.subtasks.push({id:number,title,start:boundaries[index],end:boundaries[index+1]-1});
     }
   });
   function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&iso(new Date(value+'T12:00:00Z'))===value;}
   function validPlan(plan){return Array.isArray(plan)&&plan.length===13&&plan.every(a=>typeof a.title==='string'&&Array.isArray(a.tasks)&&a.tasks.every(t=>typeof t.title==='string'&&Array.isArray(t.subtasks)&&t.subtasks.every(s=>typeof s.title==='string'&&s.title.trim()&&validDate(s.start)&&validDate(s.end)&&s.start<=s.end)));}
-  let project=defaults;
-  try{const saved=JSON.parse(localStorage.getItem(KEY));if(validPlan(saved))project=saved;}catch{}
-  // Preserve preparation lead times when the default festival dates move.
-  const anchorKey='festival-gantt-date-anchor';
-  const previousAnchor=localStorage.getItem(anchorKey)||'2026-10-15';
-  if(project!==defaults&&previousAnchor!==state.event.startDate){
-    const shift=Math.round((opening-new Date(previousAnchor+'T12:00:00Z'))/DAY);
-    project.forEach(a=>a.tasks.forEach(t=>t.subtasks.forEach(step=>{
-      step.start=iso(new Date(new Date(step.start+'T12:00:00Z').getTime()+shift*DAY));
-      step.end=iso(new Date(new Date(step.end+'T12:00:00Z').getTime()+shift*DAY));
-    })));
-    localStorage.setItem(KEY,JSON.stringify(project));
+  function defaultProject() {
+    const current = cloneProject(defaults);
+    current.forEach(area => {
+      const anchor = area.id === '13' ? shiftDate(state.event.endDate, 1) : state.event.startDate;
+      area.tasks.forEach(task => task.subtasks.forEach(step => {
+        step.start = shiftDate(anchor, step.start);
+        step.end = shiftDate(anchor, step.end);
+      }));
+    });
+    return current;
   }
-  localStorage.setItem(anchorKey,state.event.startDate);
-  let editing=false;
-  const chart=document.querySelector('#gantt-view');
+
+  function shiftProject(plan, previousStart, previousEnd) {
+    const startShift = dayDifference(previousStart, state.event.startDate);
+    const endShift = previousEnd ? dayDifference(previousEnd, state.event.endDate) : startShift;
+    const next = cloneProject(plan);
+    next.forEach(area => {
+      const shift = area.id === '13' ? endShift : startShift;
+      if (!shift) return;
+      area.tasks.forEach(task => task.subtasks.forEach(step => {
+        step.start = shiftDate(step.start, shift);
+        step.end = shiftDate(step.end, shift);
+      }));
+    });
+    return next;
+  }
+
+  const anchorKey = 'festival-gantt-date-anchor';
+  const endAnchorKey = 'festival-gantt-end-date-anchor';
+  let project = defaultProject();
+  let customPlan = false;
+  let eventStart = state.event.startDate;
+  let eventEnd = state.event.endDate;
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (validPlan(saved)) {
+      const storedStart = localStorage.getItem(anchorKey);
+      const storedEnd = localStorage.getItem(endAnchorKey);
+      project = shiftProject(saved, validDate(storedStart) ? storedStart : '2026-10-15', validDate(storedEnd) ? storedEnd : null);
+      customPlan = true;
+    }
+  } catch {}
+  let editing = false;
+  const chart = document.querySelector('#gantt-view');
   let savedProject;
-  window.getSavedGanttPlan = () => editing ? savedProject : project;
+
+  window.getSavedGanttPlan = () => cloneProject(editing ? savedProject : project);
+  const publishProject = () => window.dispatchEvent(new Event('gantt-project-changed'));
+  window.refreshGanttFestivalDates = () => {
+    if (eventStart === state.event.startDate && eventEnd === state.event.endDate) return;
+    const committed = editing ? savedProject : project;
+    const next = customPlan ? shiftProject(committed, eventStart, eventEnd) : defaultProject();
+    if (customPlan) {
+      try { persistProject(next); }
+      catch { toast('The updated timeline dates could not be saved in this browser.'); }
+    }
+    if (editing) {
+      project = shiftProject(project, eventStart, eventEnd);
+      savedProject = next;
+    } else {
+      project = next;
+    }
+    eventStart = state.event.startDate;
+    eventEnd = state.event.endDate;
+    refresh();
+    publishProject();
+  };
+  function persistProject(plan) {
+    localStorage.setItem(KEY, JSON.stringify(plan));
+    localStorage.setItem(anchorKey, state.event.startDate);
+    localStorage.setItem(endAnchorKey, state.event.endDate);
+    customPlan = true;
+  }
+
   window.addBoardSubtask = ({areaId, taskId, parentName, title, start, end}) => {
+    if (!canFestival('lineup')) throw new Error('Your role cannot add tasks.');
     if (editing) throw new Error('Save or cancel your timeline edits before adding a task here.');
     if (!title.trim() || !validDate(start) || !validDate(end) || start > end) {
       throw new Error('Enter a task name and valid dates. The end date must be on or after the start date.');
@@ -60,12 +117,13 @@
     if (!task) throw new Error('Choose a parent task.');
     const step = {id:crypto.randomUUID(),title:title.trim(),start,end};
     task.subtasks.push(step);
-    try { localStorage.setItem(KEY, JSON.stringify(next)); }
+    try { persistProject(next); }
     catch { throw new Error('Could not save the task in this browser.'); }
     project = next;
     window.ganttOutlineState['area-'+area.id] = true;
     window.ganttOutlineState['task-'+task.id] = true;
     refresh();
+    publishProject();
     return step.id;
   };
   function renderProject(){
@@ -89,7 +147,7 @@
   }
   renderProject();
 
-  const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';document.querySelector('.gantt-heading').append(editButton);
+  const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';editButton.hidden=!canFestival('lineup');document.querySelector('.gantt-heading').append(editButton);
   const toolbar=document.createElement('div');toolbar.className='gantt-inline-toolbar';toolbar.hidden=true;
   toolbar.innerHTML='<div><strong>Editing plan</strong><span>Change names and dates in the chart. Drag the dotted handles to reorder rows; add steps beside each task.</span></div><button type="button" class="button secondary" id="inline-cancel">Cancel</button><button type="button" class="button primary" id="inline-save">Save changes</button><p id="inline-error" role="alert"></p>';
   document.querySelector('.gantt-controls').after(toolbar);
@@ -218,15 +276,19 @@
   }
   function invalid(){return Array.from(chart.querySelectorAll('input')).some(input=>!input.checkValidity())||!validPlan(project)||project.some(a=>a.tasks.some(t=>!t.title.trim()||!t.subtasks.length));}
   editButton.onclick=()=>{
-    savedProject=JSON.parse(JSON.stringify(project));editing=true;chart.classList.add('gantt-editing');toolbar.hidden=false;editButton.hidden=true;message('');refresh();
+    if (editing || !canFestival('lineup')) return;
+    savedProject=cloneProject(project);editing=true;chart.classList.add('gantt-editing');toolbar.hidden=false;editButton.hidden=true;message('');refresh();
   };
   toolbar.querySelector('#inline-cancel').onclick=()=>{
+    if (!editing) return;
     project=savedProject;editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
   };
   toolbar.querySelector('#inline-save').onclick=()=>{
+    if (!editing || !canFestival('lineup')) return;
     if(invalid()){message('Each task needs at least one subtask. Enter all names and both dates, with the end on or after the start.');return;}
-    try{localStorage.setItem(KEY,JSON.stringify(project));}catch{message('Could not save: browser storage is unavailable or full.');return;}
+    try{persistProject(project);}catch{message('Could not save: browser storage is unavailable or full.');return;}
     editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
+    publishProject();
   };
   window.addEventListener('beforeunload',event=>{if(editing&&JSON.stringify(project)!==JSON.stringify(savedProject)){event.preventDefault();event.returnValue='';}});
 })();

@@ -14,6 +14,7 @@ Use this file together with GitHub branches and pull requests so the team can se
 
 | Branch | Scope | Status | Reviewers | Date |
 | --- | --- | --- | --- | --- |
+| `homepage` | Overview opens first with festival details, projected finances, urgent tasks and local team roles. | Local review | — | 12 November 2026 |
 | `codex/left-navigation` | Add a visual left navigation bar to the original lineup planner. No new feature pages yet. | Ready for team preview — not committed | Kira, Vicky, Fredderik | 28 October 2026 |
 
 | `codex/festival-planner-edits` | Editable artist catalogue, planning settings and vertical multi-day lineup calendar for 15–16 October 2026. | Local preview — ready for review | — | 28 October 2026 |
@@ -93,6 +94,25 @@ Merged lineup-planner-update-1 with main while preserving the crew checklist and
 
 Validation: all 30 tests passed (26 original and 4 integration tests). Browser checks passed for lineup rendering, checklist navigation, booking dialog and reload; no console errors.
 
+## Local loading repair — 11 November 2026
+
+Branch: codex/fix-lineup-loading. Removed the incomplete legacy single-day prefix from app.js, leaving the current planner as the single screen implementation. Verified that minute-precision time parsing in rules/festival-rules.js works; no rule-file change was needed. Retained the visible Final checklist label while using the stable Checklist navigation identifier consistently in HTML and the checklist screen.
+
+Checks: JavaScript syntax passes; all 32 tests pass (30 existing unchanged plus booking-save/reload and settings-save regressions). Browser checks: summary and eight artist cards render after reload, settings dialog opens, 15:11 start previews 16:11 end, and Final checklist navigation works. No commit or push authorised yet.
+
+## One example artist — 11 November 2026
+
+On codex/fix-lineup-loading, new plans now start with one editable Example Artist (€0, 60 minutes). The default is in rules/festival-rules.js; app.js loads existing saved catalogues first and keeps legacy artists for older booked plans that did not store their own catalogue.
+
+Tests: all 35 passed, including new defaults, editing/adding and persistence, empty saved catalogues, and legacy booking preservation. Existing booking scenarios use explicit artist fixtures so their assertions stay independent of starter content. Browser: fresh preview at localhost:8001 shows one example after reload; Add and Edit dialogs open; no console errors. localhost:8000 data is preserved. No commit or push.
+
+## Lineup workflow enhancements — 11 November 2026
+
+On `codex/fix-lineup-loading`, clicking an empty slot prefills the day, stage and start time. The planner suggests the next fitting time on that stage, including any changeover. Performances now keep their own status, duration and fee, and linked changeovers follow their performance when it moves or is removed. Stage names can change without changing booked stage IDs. Separate sets by one artist are allowed; simultaneous sets are rejected.
+
+Lineup backups use versioned JSON. Restore validates the file and previews the replacement before saving; checklist data stays separate. The internal print layout includes all appointments, fees and notes. The public layout includes only confirmed performances and omits fees, private notes and operational blocks.
+
+Verification: all 52 tests passed, including backup download payload and restore, invalid imports, conflict and changeover checks, saved-plan migration, and public output privacy. Browser checks covered empty-slot booking, precise times, suggestions, confirmed and tentative sets, and renaming stages without moving bookings. The preview loaded after restart without console errors. Native download and Save as PDF dialogs were not independently verified. No commit or push.
 ## Task board placeholder — 6 November 2026
 
 Branch: `feature-task-board-placeholder`. Static placeholder only for future project progress and urgent to-dos. No dashboard or task functionality implemented. Status: local preview.
