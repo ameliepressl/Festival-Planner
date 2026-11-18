@@ -13,7 +13,11 @@
 Team project · *Introduction to Programming* · **Nova SBE**
 Kira · Amelie · Frederik · Vicky
 
-[Quick start](#-quick-start) · [Features](#-features) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+[Quick start](#-quick-start) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+
+<br />
+
+<img src="docs/screenshots/overview.png" alt="Festival Architect overview page for the example Lisbon Sound Festival: performances booked, artist budget, projected finances and tasks needing attention" width="900" />
 
 </div>
 
@@ -68,6 +72,17 @@ Stop the server with `Ctrl + C`.
 ### Get ready for the day
 - **Final checklist** — event-day checks for 12 teams, from security to radios, with a
   progress bar.
+
+## 📸 Screenshots
+
+All screenshots show the example festival *Lisbon Sound Festival* (2 days, 2 stages,
+5,000 visitors).
+
+| Lineup planner | Site map |
+| --- | --- |
+| <img src="docs/screenshots/lineup.png" alt="Lineup planner with the artist budget and a two-stage timetable for 30 December" /> | <img src="docs/screenshots/sitemap.png" alt="Site map: aerial view with pins for stages, food court, toilets, water and exits, the festival size card and a layout check at 100 percent" /> |
+| **Vendors** | **Finances** |
+| <img src="docs/screenshots/vendors.png" alt="Vendors page: 11 of 13 pitches used, pitch income, visitor needs check and vendor cards" /> | <img src="docs/screenshots/finances.png" alt="Financial overview: assumptions, profit, revenue, costs, break-even and where the money goes and comes from" /> |
 
 ## 🔗 How it fits together
 
