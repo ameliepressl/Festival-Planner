@@ -42,6 +42,8 @@ STATIC_FILES = {
     "/rules/checklist-rules.js": "text/javascript; charset=utf-8",
     "/checkliste-festivalplanung/checklist.css": "text/css; charset=utf-8",
     "/checkliste-festivalplanung/checklist-page.js": "text/javascript; charset=utf-8",
+    "/rules/demo-festival.js": "text/javascript; charset=utf-8",
+    "/demo/demo-loader.js": "text/javascript; charset=utf-8",
 }
 
 

@@ -1,0 +1,30 @@
+# Runs all automatic tests on every pull request and on every push to main.
+# A green check in the pull request means both test suites passed (see AGENTS.md).
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: JavaScript tests
+        run: node --test
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python tests
+        run: python -m unittest discover -s tests -p 'test_*.py'
