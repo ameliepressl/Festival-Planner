@@ -1,15 +1,20 @@
 // Checks for the financial overview (rules/finance-rules.js), see feature-plans/financial-overview.md.
 // Run with:  uvx --from nodejs-wheel node --test
 // The expected numbers were worked out by hand from the default assumptions.
+// The tests below check the BASE model (one ticket price, no bars, no reserve). The extras added
+// later (ticket tiers, bars, contingency reserve) are switched off here and have their own tests in
+// tests/finance-extras.test.js, so these hand-calculated numbers stay exactly as they were.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { DEFAULT_FINANCE, validFinanceValue, parseFinance, artistSpending, financeModel, scenarios, priceCurve } = require('../rules/finance-rules.js');
 const { capacityNeeds } = require('../rules/capacity-rules.js');
 
+const BASE_MODEL = { earlyBirdShare: 0, doorShare: 0, barSpend: 0, contingency: 0 };
+
 // A 2-day festival with 2 stages for 5,000 visitors, €9,000 of artists and €2,400 of pitch fees.
 const input = {
-  settings: { ...DEFAULT_FINANCE }, visitors: 5000, days: 2, stages: 2,
+  settings: { ...DEFAULT_FINANCE, ...BASE_MODEL }, visitors: 5000, days: 2, stages: 2,
   needs: capacityNeeds(5000), artistFees: 9000, pitchIncome: 2400
 };
 

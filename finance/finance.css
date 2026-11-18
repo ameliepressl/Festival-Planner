@@ -98,13 +98,40 @@
 .fin-form small{display:block;font:11px 'DM Sans';letter-spacing:0;margin-top:3px}
 
 /* Assumptions at the top: revenue and costs side by side, fields in several columns */
-.fin-assumptions .fin-groups{display:grid;grid-template-columns:1fr 2fr;gap:24px}
-.fin-assumptions .fin-form{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.fin-assumptions .fin-groups{display:grid;grid-template-columns:1.5fr 0.8fr 2fr;gap:24px}
+.fin-assumptions .fin-form{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
 @media(max-width:900px){.fin-assumptions .fin-groups{grid-template-columns:1fr}}
+
+/* Five headline numbers */
+.fin-kpis.five{grid-template-columns:repeat(5,1fr)}
+.fin-kpis.five .fin-kpi strong{font-size:25px}
+
+/* Per visitor */
+.fin-per{margin-top:0}
+.fin-per dd{font-size:20px}
+
+/* Profit matrix: diverging colours (green profit, red loss), outlined cell = your plan */
+.fin-matrix-wrap{overflow-x:auto}
+.fin-matrix{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;font:500 12px 'DM Mono'}
+.fin-matrix thead th:first-child{width:150px}
+.fin-matrix th{font:10px 'DM Mono';color:var(--muted);font-weight:500;padding:6px;text-align:center}
+.fin-matrix thead th:first-child{text-align:left}
+.fin-matrix tbody th{text-align:left;color:var(--ink)}
+.fin-matrix td{text-align:center;padding:10px 6px;color:var(--ink);border-radius:3px;cursor:default}
+.fin-matrix td.mine{outline:2px solid var(--ink);outline-offset:-2px;font-weight:700}
+
+/* Secure vs planned artist fees: solid = confirmed, hatched = tentative (not colour alone) */
+.fin-secure{margin-top:16px}
+.fin-secure-bar{display:flex;gap:2px;height:10px;margin:6px 0;background:var(--line);border-radius:5px;overflow:hidden}
+.fin-secure-bar i{display:block;height:100%}
+.fin-secure-bar i.maybe{background:repeating-linear-gradient(135deg,#1a9a7c 0 3px,#cde9e1 3px 6px)}
+.fin-secure small{font-size:12px;color:var(--muted)}
+.fin-secure small b{color:var(--ink)}
 
 /* Tooltip */
 #finance-view{position:relative}
 .fin-tip{position:absolute;z-index:5;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;line-height:1.45;padding:8px 10px;max-width:260px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 
-@media(max-width:1100px){.fin-artists{grid-template-columns:1fr}.fin-grid2,.fin-grid2.wide-left{grid-template-columns:1fr}}
+@media(max-width:1100px){.fin-kpis.five{grid-template-columns:repeat(3,1fr)}.fin-assumptions .fin-groups{grid-template-columns:1fr}.fin-artists{grid-template-columns:1fr}.fin-grid2,.fin-grid2.wide-left{grid-template-columns:1fr}}
 @media(max-width:700px){.fin-kpis{grid-template-columns:1fr 1fr}.fin-kpi:nth-child(2){border-right:0}.fin-form{grid-template-columns:1fr}.fin-bar-row{grid-template-columns:100px 1fr 64px}}
+@media(max-width:700px){.fin-kpis.five{grid-template-columns:1fr 1fr}}
