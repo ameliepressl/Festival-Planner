@@ -13,6 +13,7 @@ function renderOverview() {
   const event = state.event;
   const checklist = progress(parseChecked(localStorage.getItem(CHECKLIST_STORAGE_KEY)));
   $('#overview-title').textContent = event.name || 'Overview';
+  $('#overview-tagline').textContent = event.name ? festivalTagline(event) : '';
   $('#overview-venue').textContent = event.venue || '';
   $('#overview-venue-fact').hidden = !event.venue;
   const firstDay = `${dateText(event.startDate)} ${event.startDate.slice(0, 4)}`;
@@ -30,7 +31,9 @@ function renderOverview() {
   $('#overview-performances').textContent = bookings.length;
   $('#overview-booking-status').textContent = `${confirmed} confirmed · ${bookings.length - confirmed} tentative`;
   $('#overview-budget').textContent = euros(state.settings.budget - total());
+  $('#overview-budget-total').textContent = `of ${euros(state.settings.budget)}`;
   $('#overview-checklist').textContent = `${checklist.percent}%`;
+  $('#overview-checklist-count').textContent = `${checklist.done} of ${checklist.total} checks`;
   renderOverviewFinance();
   renderOverviewTasks();
 }
@@ -46,7 +49,30 @@ function renderOverviewFinance() {
   $('#overview-profit').classList.toggle('is-loss', loss);
 }
 
+// The orange second line of the headline: how long until the festival (Lisbon date).
+function festivalTagline(event) {
+  if (typeof festivalCountdown !== 'function') return '';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  try {
+    const { days, status } = festivalCountdown(today, event.startDate, event.endDate);
+    if (status === 'today') return 'Gates open today.';
+    if (status === 'ongoing') return 'Happening right now.';
+    if (status === 'ended') return 'That’s a wrap.';
+    return days === 1 ? '1 day to go.' : `${days} days to go.`;
+  } catch {
+    return '';
+  }
+}
+
+function renderOverviewTaskProgress() {
+  const tasks = window.getOverviewTaskProgress?.();
+  if (!tasks) return;
+  $('#overview-tasks-done').textContent = tasks.total ? `${Math.round((tasks.done / tasks.total) * 100)}%` : '–';
+  $('#overview-tasks-count').textContent = `${tasks.done} of ${tasks.total} tasks`;
+}
+
 function renderOverviewTasks() {
+  renderOverviewTaskProgress();
   const tasks = window.getOverviewUrgentTasks?.();
   if (!tasks) return;
   $('#overview-task-list').innerHTML = tasks.map(({ id, title, area, end, deadline }) => `
@@ -116,7 +142,7 @@ $('#overview-setup').onclick = openFestivalDetails;
 $('#overview-edit').onclick = openFestivalDetails;
 $('#overview-cancel').onclick = () => $('#overview-dialog').close();
 $('#overview-dialog').addEventListener('close', () => {
-  if (state.event.name) $('#overview-menu summary').focus();
+  if (state.event.name) $('#overview-edit').focus();
   else $('#overview-setup').focus();
 });
 $('#overview-form').addEventListener('submit', event => {
