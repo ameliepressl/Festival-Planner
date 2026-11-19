@@ -27,12 +27,12 @@ Kira · Amelie · Frederik · Vicky
 
 ## 👥 Team
 
-| Name     | Student number | GitHub |
-| -------- | -------------- | ------ |
-| Kira     | 77848          | [kira-456](https://github.com/kira-456) |
-| Amelie   | 83360          | [ameliepressl](https://github.com/ameliepressl) |
-| Frederik | 79575          | [FrederikRonning](https://github.com/FrederikRonning) |
-| Vicky    | 78290          | [vfritsches](https://github.com/vfritsches) |
+| Name               | Student number | GitHub |
+| ------------------ | -------------- | ------ |
+| Kira Fraunhoffer   | 77848          | [kira-456](https://github.com/kira-456) |
+| Amelie Pressl      | 83360          | [ameliepressl](https://github.com/ameliepressl) |
+| Frederik Ronning   | 79575          | [FrederikRonning](https://github.com/FrederikRonning) |
+| Victoria Fritsches | 78290          | [vfritsches](https://github.com/vfritsches) |
 
 ## 🚀 Quick start
 
