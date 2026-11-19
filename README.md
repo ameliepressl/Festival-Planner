@@ -13,7 +13,9 @@
 Team project · *Introduction to Programming* · **Nova SBE**
 Kira · Amelie · Frederik · Vicky
 
-[Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+**▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
+
+[Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -23,7 +25,21 @@ Kira · Amelie · Frederik · Vicky
 
 ---
 
+## 👥 Team
+
+| Name               | Student number | GitHub |
+| ------------------ | -------------- | ------ |
+| Kira Fraunhoffer   | 77848          | [kira-456](https://github.com/kira-456) |
+| Amelie Pressl      | 83360          | [ameliepressl](https://github.com/ameliepressl) |
+| Frederik Ronning   | 79575          | [FrederikRonning](https://github.com/FrederikRonning) |
+| Victoria Fritsches | 78290          | [vfritsches](https://github.com/vfritsches) |
+
 ## 🚀 Quick start
+
+**Use it online:** open <https://ameliepressl.github.io/Festival-Planner/> and create an account.
+Nothing to install.
+
+**Run it on your own computer:**
 
 The app is plain files. Serve the folder with any static file server — Python's is already
 installed on macOS:
