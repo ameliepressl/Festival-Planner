@@ -284,4 +284,6 @@ Branch: `feature-task-assignments` (owner: Amelie). Plan: `feature-plans/task-as
 
 Owner and Admins give each task group to a person in the Gantt's Owner column and can give single subtasks to someone else (or nobody) on the Task board. The board has an "Assigned to" filter (everyone, my tasks, nobody, one person), every card shows its person, and Done cards say who finished them. The Overview's new Team progress card shows per person: assigned, done in %, overdue and the next deadline, plus how many subtasks have nobody; a click opens the board filtered to that person. Saved as `festival-task-assignments-v1`; rules in `rules/task-rules.js`. Editors still change statuses but cannot assign: the browser does not send it and `migrations/004_task_assignments.sql` makes the database refuse it.
 
+Migration 004 applied in Supabase on 19 November 2026 (with Amelie's OK); the security advisor reports nothing new.
+
 Validation: all JavaScript tests pass (10 new task tests, 1 new account test). Migration 004 tested in PGlite (42 database checks, also with Supabase's default grants). Browser check with two accounts (26 checks): assigning in the Gantt and on the board, filters, an Editor finishing a task, an Editor's assignment change not being sent, Team progress numbers, a teammate leaving.
