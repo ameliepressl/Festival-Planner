@@ -135,3 +135,20 @@
 @media(max-width:1100px){.fin-kpis.five{grid-template-columns:repeat(3,1fr)}.fin-assumptions .fin-groups{grid-template-columns:1fr}.fin-artists{grid-template-columns:1fr}.fin-grid2,.fin-grid2.wide-left{grid-template-columns:1fr}}
 @media(max-width:700px){.fin-kpis{grid-template-columns:1fr 1fr}.fin-kpi:nth-child(2){border-right:0}.fin-form{grid-template-columns:1fr}.fin-bar-row{grid-template-columns:100px 1fr 64px}}
 @media(max-width:700px){.fin-kpis.five{grid-template-columns:1fr 1fr}}
+
+/* cash-flow plan */
+.fin-cash-callout{display:grid;gap:4px;padding:12px 14px;border-radius:8px;margin-bottom:12px;border-left:4px solid}
+.fin-cash-callout.warn{background:rgba(224,86,59,.08);border-color:#e0563b}
+.fin-cash-callout.ok{background:rgba(26,154,124,.08);border-color:#1a9a7c}
+.fin-cash-callout strong{font-size:15px}
+.fin-cash-callout span{font-size:13px;color:var(--muted)}
+.fin-cash-callout .fin-cash-peak{font:11px 'DM Mono'}
+.fin-legend{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 0;font:11px 'DM Mono';color:var(--muted)}
+.fin-legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-2px}
+.fin-legend i.hatch{background:repeating-linear-gradient(45deg,#e0563b 0 3px,#f0a998 3px 5px)}
+.fin-legend i.line{height:2px;background:#17272b;vertical-align:3px}
+.fin-cash{min-width:560px}
+.fin-cash td{padding:8px 4px;background:var(--paper,#f6f3ea)}
+.fin-cash tr.balance td{font-weight:700}
+.fin-cash tr.balance td.neg{background:rgba(224,86,59,.15)}
+.fin-cash thead th:first-child{width:90px}

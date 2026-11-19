@@ -207,11 +207,110 @@ function profitMatrix(input, prices, sellThroughs) {
   }));
 }
 
+// ---------- cash-flow plan ----------
+
+// Profit says whether the festival pays off in the end; cash flow says whether there is enough money in
+// the account on the way there. Deposits and the venue are due months before most tickets are sold.
+// The months run from 6 months before the festival to the month after (invoices that arrive late).
+const CASH_MONTHS = [
+  { offset: -6, label: '6 months before', short: '−6' },
+  { offset: -5, label: '5 months before', short: '−5' },
+  { offset: -4, label: '4 months before', short: '−4' },
+  { offset: -3, label: '3 months before', short: '−3' },
+  { offset: -2, label: '2 months before', short: '−2' },
+  { offset: -1, label: '1 month before', short: '−1' },
+  { offset: 0, label: 'Festival month', short: 'Festival' },
+  { offset: 1, label: 'Month after', short: 'After' }
+];
+
+// When each line of the profit and loss model is paid or received: [month offset, weight].
+// Typical timing for a festival; the weights say how an amount is split over its months.
+const CASH_TIMING = {
+  early: [[-6, 1], [-5, 1], [-4, 1]],       // early bird tickets sell in the first three months
+  regular: [[-3, 1], [-2, 1], [-1, 1]],     // regular tickets in the three months before
+  door: [[0, 1]],                           // box office at the festival
+  bar: [[0, 1]],
+  sponsorship: [[-5, 1], [0, 1]],           // half when the contract is signed, half at the festival
+  pitches: [[-2, 1]],                       // vendors pay their pitch before the festival
+  artists: [[-4, 1], [0, 1]],               // 50 % deposit when booking, the rest on the day
+  stages: [[-2, 3], [0, 7]],                // 30 % deposit, 70 % at the festival
+  venue: [[-6, 1]],                         // venue, permits and insurance are paid first
+  marketing: [[-5, 1], [-4, 1], [-3, 1], [-2, 1], [-1, 1]],
+  security: [[0, 1]],
+  firstAid: [[0, 1]],
+  toilets: [[1, 1]],                        // rental invoices arrive after the festival
+  water: [[1, 1]],
+  contingency: [[0, 1]],                    // the reserve is counted as spent at the festival
+  barStock: [[0, 1]]
+};
+
+// Split an amount over months by weight. Whole euros; the last month takes the rounding rest,
+// so the parts always add up to exactly the amount.
+function splitByWeight(amount, timing) {
+  const total = timing.reduce((sum, [, w]) => sum + w, 0);
+  let given = 0;
+  return timing.map(([offset, weight], i) => {
+    const part = i === timing.length - 1 ? amount - given : Math.round((amount * weight) / total);
+    given += part;
+    return [offset, part];
+  });
+}
+
+// model = the result of financeModel, ticketingFee = the % from the assumptions.
+// Returns one row per money line (in or out, per month), the months with inflow, outflow, net and the
+// running balance (starting from €0), and the lowest balance: if it is below zero, that is how much
+// starting money or credit the festival needs before the ticket money arrives.
+function cashFlow(model, ticketingFee) {
+  const index = Object.fromEntries(CASH_MONTHS.map((m, i) => [m.offset, i]));
+  const spread = (amount, timing) => {
+    const amounts = CASH_MONTHS.map(() => 0);
+    splitByWeight(amount, timing).forEach(([offset, part]) => { amounts[index[offset]] += part; });
+    return amounts;
+  };
+  const rows = [];
+  model.tiers.forEach((t) => rows.push({ id: `tickets-${t.id}`, label: `${t.label} tickets`, kind: 'in', amounts: spread(t.revenue, CASH_TIMING[t.id]) }));
+  model.revenue.filter((r) => r.id !== 'tickets').forEach((r) => rows.push({ id: r.id, label: r.label, kind: 'in', amounts: spread(r.amount, CASH_TIMING[r.id]) }));
+  model.costs.filter((c) => c.id !== 'ticketing').forEach((c) => rows.push({ id: c.id, label: c.label, kind: 'out', amounts: spread(c.amount, CASH_TIMING[c.id]) }));
+
+  // The ticketing fee is paid in the same months as the ticket sales; the last sales month takes the
+  // rounding rest, so the fees add up to exactly the model's ticketing cost.
+  const ticketIn = CASH_MONTHS.map((m, i) => rows.filter((r) => r.id.startsWith('tickets-')).reduce((sum, r) => sum + r.amounts[i], 0));
+  const ticketingTotal = model.costs.find((c) => c.id === 'ticketing').amount;
+  const lastSale = ticketIn.reduce((last, v, i) => (v > 0 ? i : last), CASH_MONTHS.length - 1);
+  let feeGiven = 0;
+  const fees = ticketIn.map((v, i) => {
+    const part = i === lastSale ? ticketingTotal - feeGiven : Math.round((v * ticketingFee) / 100);
+    feeGiven += part;
+    return part;
+  });
+  rows.push({ id: 'ticketing', label: 'Ticketing fees', kind: 'out', amounts: fees });
+
+  let balance = 0;
+  const months = CASH_MONTHS.map((m, i) => {
+    const inflow = rows.filter((r) => r.kind === 'in').reduce((sum, r) => sum + r.amounts[i], 0);
+    const outflow = rows.filter((r) => r.kind === 'out').reduce((sum, r) => sum + r.amounts[i], 0);
+    balance += inflow - outflow;
+    return { ...m, inflow, outflow, net: inflow - outflow, balance };
+  });
+  const lowest = months.reduce((low, m) => (m.balance < low.balance ? m : low), months[0]);
+  const highest = months.reduce((high, m) => (m.balance > high.balance ? m : high), months[0]);
+  return {
+    rows,
+    months,
+    lowestBalance: lowest.balance,
+    lowestMonth: lowest.label,
+    highestBalance: highest.balance,
+    highestMonth: highest.label,
+    cashNeeded: Math.max(0, -lowest.balance),
+    finalBalance: balance // always equals the profit: every euro of the model is paid or received in some month
+  };
+}
+
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
     FINANCE_STORAGE_KEY, FINANCE_FIELDS, DEFAULT_FINANCE, validFinanceValue, parseFinance, financeProblem,
-    ticketTiers, averagePriceFactor, profitMatrix,
+    ticketTiers, averagePriceFactor, profitMatrix, CASH_MONTHS, CASH_TIMING, splitByWeight, cashFlow,
     artistSpending, financeModel, scenarios, priceCurve
   };
 }

@@ -121,6 +121,43 @@
       }).join('')}</tr>`).join('')}</tbody></table>`;
   }
 
+  // Cash flow per month: money in grows up (green), money out grows down (red, hatched so it does not rely
+  // on colour alone), and the line is the account balance. Below the zero line the festival needs credit.
+  function cashChart(cf) {
+    const W = 640; const H = 260; const L = 58; const R = 12; const T = 16; const B = 30;
+    const values = cf.months.flatMap((m) => [m.inflow, -m.outflow, m.balance]);
+    const min = Math.min(0, ...values); const max = Math.max(0, ...values);
+    const pad = (max - min) * 0.06 || 1000;
+    const y = (v) => T + ((max + pad - v) / (max - min + 2 * pad)) * (H - T - B);
+    const band = (W - L - R) / cf.months.length;
+    const cx = (i) => L + band * (i + 0.5);
+    const bar = Math.min(18, band * 0.28);
+    const ticks = niceTicks(min - pad, max + pad, 5);
+    const line = cf.months.map((m, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)} ${y(m.balance).toFixed(1)}`).join(' ');
+    return `<div class="fin-chart">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cash flow per month from 6 months before the festival to the month after; lowest balance ${money(cf.lowestBalance)} (${cf.lowestMonth})">
+        <defs><pattern id="fin-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="${COST}" /><line x1="0" y1="0" x2="0" y2="6" stroke="#fffefa" stroke-width="2" opacity="0.45" /></pattern></defs>
+        ${ticks.map((t) => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" class="fin-grid ${t === 0 ? 'zero' : ''}" /><text x="${L - 8}" y="${y(t)}" dy="0.32em" class="fin-axis" text-anchor="end">${short(t)}</text>`).join('')}
+        ${cf.months.map((m, i) => `<g data-tip="${m.label}: in ${money(m.inflow)} · out ${money(m.outflow)} · balance ${m.balance < 0 ? '−' : ''}${money(Math.abs(m.balance))}">
+          <rect x="${cx(i) - band / 2}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent" />
+          <rect x="${cx(i) - bar - 1}" y="${y(m.inflow)}" width="${bar}" height="${Math.max(0, y(0) - y(m.inflow))}" fill="${PROFIT}" rx="2" />
+          <rect x="${cx(i) + 1}" y="${y(0)}" width="${bar}" height="${Math.max(0, y(-m.outflow) - y(0))}" fill="url(#fin-hatch)" rx="2" />
+          <text x="${cx(i)}" y="${H - 8}" class="fin-axis ${m.offset === 0 ? 'strong' : ''}" text-anchor="middle">${m.short}</text></g>`).join('')}
+        <path d="${line}" fill="none" stroke="#17272b" stroke-width="2" stroke-linejoin="round" pointer-events="none" />
+        ${cf.months.map((m, i) => `<circle cx="${cx(i)}" cy="${y(m.balance)}" r="${m.label === cf.lowestMonth && cf.cashNeeded ? 5 : 3.5}" fill="${m.balance < 0 ? COST : '#17272b'}" stroke="#fffefa" stroke-width="1.5" pointer-events="none" />`).join('')}
+      </svg>
+      <p class="fin-legend"><span><i style="background:${PROFIT}"></i>Money in</span><span><i class="hatch"></i>Money out</span><span><i class="line"></i>Account balance</span></p></div>`;
+  }
+
+  function cashTable(cf) {
+    const cell = (v) => `${v < 0 ? '−' : ''}${short(Math.abs(v))}`;
+    return `<table class="fin-matrix fin-cash"><thead><tr><th>Month</th>${cf.months.map((m) => `<th>${m.short}</th>`).join('')}</tr></thead><tbody>
+      <tr><th>Money in</th>${cf.months.map((m) => `<td>${cell(m.inflow)}</td>`).join('')}</tr>
+      <tr><th>Money out</th>${cf.months.map((m) => `<td>${m.outflow ? '−' : ''}${short(m.outflow)}</td>`).join('')}</tr>
+      <tr class="balance"><th>Balance</th>${cf.months.map((m) => `<td class="${m.balance < 0 ? 'neg' : ''}">${cell(m.balance)}</td>`).join('')}</tr>
+    </tbody></table>`;
+  }
+
   // ---------- the page ----------
   function render() {
     const data = collect();
@@ -138,6 +175,7 @@
     const fixedIds = ['artists', 'stages', 'venue', 'security', 'toilets', 'marketing', 'firstAid', 'water'];
     const stageRows = Object.entries(artists.byStage).sort().map(([stage, amount]) => ({ label: `Stage ${stage}`, amount }));
     const dayRows = Object.entries(artists.byDay).sort().map(([day, amount]) => ({ label: dayName(day), amount }));
+    const cash = cashFlow(model, input.settings.ticketingFee);
 
     view.innerHTML = `
       <section class="checklist-hero">
@@ -188,6 +226,17 @@
       <section class="fin-card"><header><h2>Profit matrix</h2><span>regular price × tickets sold</span></header>
         <div class="fin-matrix-wrap">${matrixTable(data)}</div>
         <p class="fin-note">Read across to see what happens if fewer or more tickets sell, down to see a different price. Green is profit, red is loss; the outlined cell is your plan.</p>
+      </section>
+      <section class="fin-card"><header><h2>Cash-flow plan</h2><span>account balance month by month</span></header>
+        <div class="fin-cash-callout ${cash.cashNeeded ? 'warn' : 'ok'}">${cash.cashNeeded
+          ? `<strong>${money(cash.cashNeeded)} starting money needed</strong><span>Lowest point: <b>${cash.lowestMonth}</b>. ${cash.months.find((m) => m.label === cash.lowestMonth).offset < 0
+            ? 'Deposits and the venue are due before enough tickets are sold. Plan a loan, an earlier sponsor payment or more early bird tickets.'
+            : 'The festival does not earn back its costs, so the loss has to come from your own money or a loan. Look at the price, the bars or the costs.'}</span>`
+          : `<strong>No starting money needed</strong><span>Ticket and sponsor money always arrives before the bills; the account never goes below zero.</span>`}
+          <span class="fin-cash-peak">Highest balance <b>${money(cash.highestBalance)}</b> (${cash.highestMonth.toLowerCase()}) · at the end <b class="${cash.finalBalance >= 0 ? 'pos' : 'neg'}">${cash.finalBalance < 0 ? '−' : ''}${money(Math.abs(cash.finalBalance))}</b> = the ${cash.finalBalance >= 0 ? 'profit' : 'loss'}</span></div>
+        ${cashChart(cash)}
+        <div class="fin-matrix-wrap">${cashTable(cash)}</div>
+        <p class="fin-note">Typical timing: early bird tickets sell 6–4 months before, regular tickets 3–1 months before, box office and bars at the festival. Venue first, 50 % artist deposits when booking, 30 % stage deposit, toilet and water invoices after the festival.</p>
       </section>
       <section class="fin-card">
         <header><h2>Artist spending</h2><span>from the lineup planner</span></header>

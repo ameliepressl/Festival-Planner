@@ -24,6 +24,10 @@ profit turns into loss.
       red for loss, the current plan outlined, hover for details.
 - [ ] **Secure vs planned artist fees:** confirmed bookings vs tentative ones (booking status
       from the lineup planner), solid vs hatched bar so it does not rely on colour alone.
+- [ ] **Cash-flow plan:** the account balance month by month, from 6 months before the festival to the
+      month after, with typical timing (early bird → regular → box office; venue first, 50 % artist
+      deposits, 30 % stage deposit, toilet and water invoices afterwards). Shows the lowest balance and
+      how much starting money is needed; the final balance always equals the profit.
 - [ ] **Profit & loss statement** split into fixed costs and costs that grow with sales.
 - [ ] Existing behaviour kept: edit rights for the assumptions (`canFestival('budget')`) and
       `window.getOverviewFinance()` for the Overview.
@@ -31,13 +35,13 @@ profit turns into loss.
 
 ## Out of scope
 
-- Cash-flow over time, VAT, actual vs plan (later roadmap items)
+- Changing the payment timing on the page, VAT, actual vs plan (later roadmap items)
 
 ## Done when
 
 1. `uvx --from nodejs-wheel node --test` passes. The existing finance tests keep all their
    hand-calculated numbers by checking the base model (extras switched off); the extras have
-   their own tests in `tests/finance-extras.test.js`.
+   their own tests in `tests/finance-extras.test.js`, the cash-flow plan in `tests/finance-cashflow.test.js`.
 2. With the default assumptions for 5,000 visitors, 2 days, 2 stages, €9,000 artists and
    €2,400 pitch fees: revenue €242,100, costs €135,755, profit €106,345 (44 %),
    break-even 1,570 tickets or a regular price of €6, safety margin 61 %.
@@ -45,4 +49,6 @@ profit turns into loss.
 4. A regular price of €12 with €2 bar spend shows a loss, red cells in the matrix and a
    negative safety margin.
 5. The Overview shows the same revenue, costs and profit as the Finances page.
-6. No horizontal scrolling at phone width.
+6. Cash-flow plan with the default assumptions: lowest balance −€1,360 six months before (€1,360
+   starting money needed), highest €117,845 in the festival month, €106,345 at the end = the profit.
+7. No horizontal scrolling at phone width.
