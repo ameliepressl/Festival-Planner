@@ -473,3 +473,6 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 .overview-finances dd{margin:5px 0 0;font:600 clamp(17px,2.5vw,24px) Fraunces,serif;overflow-wrap:anywhere}
 .overview-finances .is-loss{color:#a23e2e}
 @media(max-width:480px){.overview-finances{grid-template-columns:1fr;gap:10px}.overview-finances div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.overview-finances dd{margin:0;text-align:right}}
+/* Load demo festival (left sidebar) */
+.sidebar-demo{margin:18px 9px 0;border:1px dashed #5d6f70;background:transparent;color:#bdccca;font:500 12px 'DM Sans';text-align:left;padding:9px 10px;border-radius:4px;cursor:pointer}
+.sidebar-demo:hover{border-color:#ff684c;color:#fff}
