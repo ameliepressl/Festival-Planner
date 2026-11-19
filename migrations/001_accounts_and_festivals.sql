@@ -47,6 +47,10 @@ create trigger create_profile_after_sign_up
   after insert on auth.users
   for each row execute function public.create_profile_for_new_user();
 
+-- Only the trigger may run this function, never a request through the API
+-- (Supabase's security check warns about SECURITY DEFINER functions anyone could call).
+revoke execute on function public.create_profile_for_new_user() from public, anon, authenticated;
+
 alter table public.profiles enable row level security;
 
 -- Signed-in users may look up usernames (Team form on the Overview).
@@ -84,6 +88,8 @@ $$;
 create trigger touch_festival_updated_at
   before update on public.festivals
   for each row execute function public.touch_festival_updated_at();
+
+revoke execute on function public.touch_festival_updated_at() from public, anon, authenticated;
 
 alter table public.festivals enable row level security;
 
