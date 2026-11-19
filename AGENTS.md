@@ -5,32 +5,56 @@ Several of us are beginners. Explain what you change and why, in plain language.
 
 ## Running things
 
-- From the Festival-Planner folder, run `python3 server.py` and open
-  `http://127.0.0.1:8000/` in a browser. Leave the terminal running while you use the app.
-- On first run the server creates `data/users.sqlite3` with demo usernames
-  `Kira`, `Amelie`, `Frederik`, and `Vicky`. To try the lookup, enter one of
-  those usernames in the Team form. The database file stays local.
-- Run the JavaScript tests: `uvx --from nodejs-wheel node --test`
-  (uv downloads Node by itself).
-- Run the Python tests: `python3 -m unittest discover -s tests -p 'test_*.py'`.
-- The festival plan, Gantt schedule, checklist and roster are saved in the browser for the
-  current address. Keep using the same address and port. If moving from
-  `index.html` opened directly, download a lineup backup from that copy and
-  restore it at the server address. Gantt changes, checklist ticks and roster entries stay
-  with the original address and need to be re-entered at the new one.
+- From the Festival-Planner folder, run `python3 -m http.server 8000` and open
+  `http://localhost:8000/` in a browser. This only serves the files; there is no project
+  server any more. The deployed version is plain files too.
+- Sign in or create an account on the first screen. Accounts and saved festivals live in
+  Supabase (see "Accounts and data" below).
+- Run the tests: `uvx --from nodejs-wheel node --test` (uv downloads Node by itself).
+  The tests never talk to Supabase.
 
 ## The project
 
 - `index.html` = the page structure, `styles.css` = the look.
 - `app.js` = the planner screen. `overview.js` = Overview and the team roster.
 - `gantt-editor.js` = the saved project schedule that feeds the Gantt and Overview milestones.
-- `server.py` = the local server and SQLite username lookup.
+- `account/account.js` = sign-in screen, saving the plan to the account, Sign out, teammate lookup.
+- `rules/account-rules.js` = the account rules (input checks, which data is synced). No screen code.
+- `supabase-config.js` = the Supabase project URL and publishable key (public by design).
+- `migrations/` = every change to the Supabase database, as SQL, in order.
+- `vendor/` = the only third-party library (supabase-js), pinned; see `vendor/README.md`.
 - `rules/festival-rules.js` = the rules (budget, times, stages, finalising). No screen code here.
 - `tests/` = automatic checks of the rules, one per scenario in the brief.
 - `product-brief/festival-architect-brief.html` = the product brief. It wins over anything else.
 - `feature-plans/` = one plan per feature: Why, What, Out of scope, Done when.
 - `PROJECT_PROGRESS.md` = who owns which branch and its status.
 - Rules are always checked in `rules/festival-rules.js`, never only in the screen.
+
+## Accounts and data
+
+- Storage: Supabase (Postgres) holds the accounts (`profiles`) and one festival plan per
+  account (`festivals`). The pages still save in the browser; `account/account.js` copies
+  every key that starts with `festival-` to the account. **New saved data must use a key
+  that starts with `festival-`**, otherwise it is not saved to the account.
+- Access control is enforced in the database with Row Level Security
+  (`migrations/001_accounts_and_festivals.sql`): an account only reaches its own festival.
+  Never rely on hiding buttons alone.
+- Changes to tables or rules are written as a new numbered SQL file in `migrations/` and run
+  in the Supabase SQL Editor by the database owner (Amelie). Never change or delete tables or
+  rows in Supabase unless the task says so.
+- To start your own plan from scratch: delete your row in Supabase → Table Editor → festivals,
+  then sign out and sign in again. Signing out only removes the plan from that browser.
+
+## Secrets
+
+- `supabase-config.js` contains only the **publishable** key. It is meant for browser code and
+  only allows what Row Level Security allows.
+- The **secret** / `service_role` key, database passwords and personal access tokens are never
+  written into code, never committed and never pasted into chats, issues or agent
+  conversations. If one is ever needed, it comes from an environment variable or a local
+  `.env` file, which is listed in `.gitignore` before it is created.
+- If a secret leaks: revoke it in the provider's dashboard at once and create a new one.
+  Deleting the commit is not enough.
 
 ## Working together
 
@@ -44,4 +68,4 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - Never edit, weaken, skip or delete a test to make it pass. If a test looks wrong,
   say so and stop.
 - After every change run the tests and paste the final output in the pull request.
-- Then open the app through the local server and try the changed flow yourself, including a page reload.
+- Then open the app through a local file server and try the changed flow yourself, including a page reload.

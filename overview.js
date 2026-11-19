@@ -220,10 +220,6 @@ $('#team-form').addEventListener('submit', async event => {
     return;
   }
   if (!Object.hasOwn(TEAM_PERMISSIONS, role)) return;
-  if (window.location.protocol === 'file:') {
-    errorMessage.textContent = 'Start the local planner with python3 server.py and open http://127.0.0.1:8000/ to look up teammates.';
-    return;
-  }
 
   addButton.disabled = true;
   usernameInput.readOnly = true;
@@ -231,23 +227,24 @@ $('#team-form').addEventListener('submit', async event => {
   status.textContent = 'Checking username…';
   let user;
   try {
-    const query = new URLSearchParams({ username });
-    const response = await fetch(`/api/users?${query}`);
-    if (response.status === 404) {
+    // The user directory is the list of accounts in Supabase (account/account.js).
+    if (typeof window.lookupTeammate !== 'function') throw new Error('User directory unavailable');
+    const result = await window.lookupTeammate(username);
+    if (result?.status === 'not-found') {
       errorMessage.textContent = 'Username not found. Check the spelling and try again.';
       return;
     }
-    if (response.status === 400) {
+    if (result?.status === 'invalid') {
       errorMessage.textContent = 'Enter a valid username.';
       return;
     }
-    if (!response.ok) throw new Error('User directory unavailable');
-    user = await response.json();
-    if (!validText(user?.username, 64) || !Number.isSafeInteger(user.id) || user.id < 1) {
+    if (result?.status !== 'found') throw new Error('User directory unavailable');
+    user = result.user;
+    if (!validText(user?.username, 64) || typeof user.id !== 'string' || !user.id) {
       throw new Error('Invalid user directory response');
     }
   } catch {
-    errorMessage.textContent = 'Could not reach the user directory. Check that the local planner server is running and try again.';
+    errorMessage.textContent = 'Could not reach the user directory. Check your internet connection and try again.';
     return;
   } finally {
     addButton.disabled = false;
@@ -310,4 +307,9 @@ window.addEventListener('work-board-updated', renderOverviewTasks);
 
 renderTeam();
 renderOverview();
-if (canFestival('overview') && !state.event.name && !state.final) openFestivalDetails();
+// First-time setup: wait until the signed-in account's plan is shown (account/account.js).
+const openFirstSetup = () => {
+  if (canFestival('overview') && !state.event.name && !state.final) openFestivalDetails();
+};
+if (typeof window.whenAccountReady === 'function') window.whenAccountReady(openFirstSetup);
+else openFirstSetup();

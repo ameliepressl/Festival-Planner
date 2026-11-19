@@ -232,3 +232,23 @@ Added a Due soon filter to the Task Board for unfinished subtasks due today thro
 ## Section navigation after merging — 17 November 2026
 
 Updated the navigation script URLs so browsers load the merged section-switching logic. This prevents the Project tasks overview or timeline from appearing below Site map, Vendors, or Finances.
+
+## Login with Supabase accounts — 19 November 2026
+
+Branch: `feature-login` (owner: Amelie). Plan: `feature-plans/login.md`.
+
+- Sign-in screen first: create an account (username, email, password) or sign in. Inputs are checked in `rules/account-rules.js` before anything is sent; Supabase errors become clear messages.
+- Each account has one festival plan in Supabase. The pages keep saving in the browser; `account/account.js` copies every `festival-…` key to the account a moment after each change. The sidebar shows who is signed in, the save status and Sign out. Signing out removes the plan from that browser.
+- A plan from before accounts is not lost: the first sign-in asks whether to keep it or use the account's plan.
+- Row Level Security (`migrations/001_accounts_and_festivals.sql`): an account can only read, create, change or delete its own festival; usernames are visible to signed-in users only and cannot be changed through the app.
+- The Team form looks up usernames in Supabase. `server.py` and its SQLite Python tests are removed; the app is plain files again (deployable on GitHub Pages).
+- Offline: the app keeps working in the browser, shows "Not saved yet" and saves when the connection is back.
+- Supabase library pinned in `vendor/` (2.119.2, integrity hash; `npm audit`: 0 vulnerabilities). Only the publishable key is in the repository.
+
+**Tests changed with the team's approval (Amelie, 19 November):** three team-roster tests in `tests/lineup-enhancements.test.js` used the Python server (`fetch('/api/users')`, numeric ids, "python3 server.py" hint). They now give the same cases to the Supabase lookup — found, duplicate, unknown username, directory unavailable, roster kept, editors cannot look up — with UUID account ids. No case was removed. `tests/test_user_directory.py` was removed together with `server.py`; the same rules (case-insensitive unique usernames, invalid input, unknown user) are now checked by `tests/account-rules.test.js` and the database constraints.
+
+Validation: all 150 JavaScript tests pass (after merging #13–#16). Browser check in Chrome against a simulated Supabase: 35 checks (locking, sign-up/sign-in errors, saving, reload, demo festival, second device, sign-out privacy, offline, old plan choice, no console errors). Database rules checked in a real Postgres (PGlite) with Supabase's default grants: 22 checks, including that another account cannot read, change, delete or take over a festival.
+
+Merging `main` (#13–#16) into `feature-login`: the CI workflow no longer runs Python tests (there are none left; Python 3.12's `unittest` would fail with "no tests ran"). The README's quick start, tests, structure and privacy sections now describe the account setup instead of `server.py`. The demo festival button works with accounts: its data is saved to the account after the reload.
+
+Supabase project `Festival-Architect` (eu-west-1): migrations 001 and 002 applied on 19 November through the Supabase connector, with Amelie's approval. 002 removes API access to `rls_auto_enable()`, a helper Supabase adds for "Enable RLS on new tables automatically", which its security check flagged. 001 also removes API access to the two trigger functions. Afterwards: both tables have RLS on (1 and 4 policies), signed-out visitors have no table access, and Supabase's security and performance checks report no issues.

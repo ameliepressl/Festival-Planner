@@ -1,5 +1,6 @@
 # Runs all automatic tests on every pull request and on every push to main.
-# A green check in the pull request means both test suites passed (see AGENTS.md).
+# A green check in the pull request means all tests passed (see AGENTS.md).
+# The Python tests were removed together with server.py (feature-plans/login.md).
 name: Tests
 
 on:
@@ -20,11 +21,3 @@ jobs:
 
       - name: JavaScript tests
         run: node --test
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Python tests
-        run: python -m unittest discover -s tests -p 'test_*.py'

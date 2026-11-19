@@ -5,15 +5,15 @@
 **Plan a complete music festival in one place —**
 **from the first artist booking to the last check before the gates open.**
 
-![Python](https://img.shields.io/badge/server-Python%203-17272b)
 ![JavaScript](https://img.shields.io/badge/app-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript-17272b)
-![Dependencies](https://img.shields.io/badge/dependencies-none-ff684c)
-![Tests](https://img.shields.io/badge/tests-JavaScript%20%2B%20Python-1a9a7c)
+![Supabase](https://img.shields.io/badge/accounts%20%26%20data-Supabase-17272b)
+![Dependencies](https://img.shields.io/badge/dependencies-1%2C%20pinned-ff684c)
+![Tests](https://img.shields.io/badge/tests-JavaScript-1a9a7c)
 
 Team project · *Introduction to Programming* · **Nova SBE**
 Kira · Amelie · Frederik · Vicky
 
-[Quick start](#-quick-start) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+[Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -25,18 +25,36 @@ Kira · Amelie · Frederik · Vicky
 
 ## 🚀 Quick start
 
-You only need **Python 3** (already installed on macOS). No packages, no setup.
+The app is plain files. Serve the folder with any static file server — Python's is already
+installed on macOS:
 
 ```bash
-python3 server.py
+python3 -m http.server 8000
 ```
 
-Open **<http://127.0.0.1:8000/>** and keep the terminal running while you use the app.
-Stop the server with `Ctrl + C`.
+Open **<http://localhost:8000/>**, create an account (username, email, password) or sign in,
+and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
 
 > [!TIP]
-> On the first visit the Overview asks for the festival name, dates and opening hours —
+> After creating an account the Overview asks for the festival name, dates and opening hours —
 > after that every section is ready to use.
+
+## 🔐 Accounts
+
+Every person signs in and plans **their own festival**. The plan is saved to the account, so
+it is the same on every device, and the database itself only lets each account reach its own
+festival (Row Level Security). Details: [feature-plans/login.md](feature-plans/login.md).
+
+Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
+
+1. Create a Supabase project. In *Authentication → Sign In / Providers → Email*, switch off
+   "Confirm email" (the free plan only sends a few emails per hour).
+2. Run [`migrations/001_accounts_and_festivals.sql`](migrations/001_accounts_and_festivals.sql)
+   in the Supabase *SQL Editor*.
+3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
+   Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
+4. In *Authentication → URL Configuration*, add the deployed address and
+   `http://localhost:8000`.
 
 ## ✨ Features
 
@@ -106,9 +124,11 @@ flowchart LR
 All rules and calculations are covered by automatic tests.
 
 ```bash
-uvx --from nodejs-wheel node --test                     # JavaScript
-python3 -m unittest discover -s tests -p 'test_*.py'    # Python
+uvx --from nodejs-wheel node --test
 ```
+
+The tests never talk to Supabase. The database access rules are written down in
+[`migrations/`](migrations/001_accounts_and_festivals.sql).
 
 `uv` downloads Node by itself — nobody has to install Node.
 
@@ -117,7 +137,10 @@ python3 -m unittest discover -s tests -p 'test_*.py'    # Python
 ```text
 index.html                    page structure for all sections
 styles.css                    shared look
-server.py                     local server + SQLite username lookup
+account/                      sign-in screen, saving the plan to the account, sign out
+supabase-config.js            Supabase project URL + publishable key (public by design)
+migrations/                   database tables and access rules (SQL, run in Supabase)
+vendor/                       the pinned Supabase library
 app.js                        lineup planner
 overview.js                   overview and team roster
 work-board.js · gantt-*.js    task board and Gantt chart
@@ -127,7 +150,7 @@ vendors/                      vendors
 finance/                      financial overview
 checkliste-festivalplanung/   final checklist
 rules/                        all rules and calculations — no screen code
-tests/                        automatic tests (JavaScript and Python)
+tests/                        automatic tests (JavaScript)
 feature-plans/                one plan per feature, plus the roadmap
 product-brief/                the product brief
 ```
@@ -137,20 +160,22 @@ product-brief/                the product brief
 - **Rules are separate from screens.** Every rule and calculation lives in `rules/`; the
   screens only show things and pass clicks on. That is why everything can be tested
   without a browser.
-- **No dependencies.** Plain HTML, CSS and JavaScript in the browser, the Python standard
-  library on the server. Nothing to install, nothing that breaks on update.
+- **One pinned dependency.** Plain HTML, CSS and JavaScript in the browser. The only
+  third-party code is the Supabase library, copied into [`vendor/`](vendor/README.md) at an
+  exact version with an integrity hash. Nothing to install, nothing that changes by itself.
 - **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
   wins over anything else.
 
 ## 🔒 Data & privacy
 
-Everything stays on your computer. The festival plan is saved in your browser
-(localStorage) for the address you use, and the team directory in `data/users.sqlite3`,
-which is not part of git.
+Each festival plan is saved in Supabase under its account, and Row Level Security lets
+only that account read or change it. While you work, the pages also keep a copy in your
+browser; **signing out removes it**, so the next person on the same computer cannot see your
+plan. Passwords are handled by Supabase and never stored by the app.
 
 > [!NOTE]
-> Because the plan lives in the browser, another browser or device starts with an empty
-> festival. Sharing one festival across devices is on the [roadmap](feature-plans/roadmap.md).
+> Sharing one festival between several accounts (with Admin / Editor / Viewer enforced in the
+> database) is on the [roadmap](feature-plans/roadmap.md).
 
 ## 🤝 How we work
 

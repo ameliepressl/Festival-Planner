@@ -24,7 +24,7 @@ function rules(plan = seed()) {
   vm.runInContext('let state = normalizePlan(seedPlan)', context);
   return { run: code => vm.runInContext(code, context), json: code => JSON.parse(vm.runInContext(`JSON.stringify(${code})`, context)) };
 }
-function app(plan = seed(), { overview = false, savedTeam = null, fetch, protocol = 'http:', role } = {}) {
+function app(plan = seed(), { overview = false, savedTeam = null, lookupTeammate, protocol = 'http:', role } = {}) {
   const nodes = new Map();
   function element() {
     return {
@@ -41,8 +41,8 @@ function app(plan = seed(), { overview = false, savedTeam = null, fetch, protoco
   }
   const storage = new Map([['festival-architect-v2', JSON.stringify(plan)], ['festival-architect-team-v1', savedTeam]]);
   const context = vm.createContext({ console, Intl, Date, Set, Number, String, Array, JSON, Math, role,
-    crypto: require('node:crypto').webcrypto, setTimeout() {}, Blob, URL, URLSearchParams, fetch,
-    window: { location: { protocol }, addEventListener() {}, print() {}, innerWidth: 1024, innerHeight: 768 },
+    crypto: require('node:crypto').webcrypto, setTimeout() {}, Blob, URL, URLSearchParams,
+    window: { location: { protocol }, addEventListener() {}, print() {}, innerWidth: 1024, innerHeight: 768, lookupTeammate },
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     document: { querySelector: nodeFor,
       querySelectorAll() { return []; }, createElement() { return element(); }, body: { appendChild() {}, append() {} } }
@@ -338,13 +338,13 @@ test('overview saves event details, refreshes the lineup and restores the detail
 });
 
 test('overview team saves roles, blocks duplicate usernames and restores the roster', async () => {
-  const fetch = async path => {
-    const request = new URL(path, 'http://127.0.0.1:8000');
-    assert.equal(request.pathname, '/api/users');
-    assert.equal(request.searchParams.get('username').toLowerCase(), 'vicky');
-    return { ok: true, json: async () => ({ id: 4, username: 'Vicky' }) };
+  // The user directory is Supabase (account/account.js); account ids are UUIDs.
+  const vickyId = '6f1c2b3a-4d5e-4f60-8a7b-9c0d1e2f3a4b';
+  const lookupTeammate = async username => {
+    assert.equal(username.toLowerCase(), 'vicky');
+    return { status: 'found', user: { id: vickyId, username: 'Vicky' } };
   };
-  const p = app(seed(), { overview: true, fetch });
+  const p = app(seed(), { overview: true, lookupTeammate });
   const submit = () => p.nodes.get('#team-form').onsubmit({ preventDefault() {} });
   p.run("$('#team-username').value = 'vicky'; $('#team-role').value = 'Viewer';");
   await submit();
@@ -356,7 +356,7 @@ test('overview team saves roles, blocks duplicate usernames and restores the ros
   p.nodes.get('#team-rows').onchange({ target: { dataset: { teamIndex: '0' }, value: 'Admin' } });
   assert.match(p.nodes.get('#team-rows').innerHTML, /Role for Vicky[^]*<option selected>Admin<\/option>/);
   const savedTeam = p.storage.get('festival-architect-team-v1');
-  assert.deepEqual(JSON.parse(savedTeam), [{ userId: 4, username: 'Vicky', role: 'Admin' }]);
+  assert.deepEqual(JSON.parse(savedTeam), [{ userId: vickyId, username: 'Vicky', role: 'Admin' }]);
   const reloaded = app(seed(), { overview: true, savedTeam });
   const rows = reloaded.nodes.get('#team-rows');
   assert.match(rows.innerHTML, /You \(festival creator\)[^]*<td>Admin<\/td>[^]*Vicky/);
@@ -379,8 +379,8 @@ test('overview team saves roles, blocks duplicate usernames and restores the ros
 
 test('overview keeps the existing roster when a username is unknown or the directory is unavailable', async () => {
   const savedTeam = JSON.stringify([{ username: 'Kira', role: 'Admin' }]);
-  let reply = async () => ({ status: 404 });
-  const p = app(seed(), { overview: true, savedTeam, fetch: () => reply() });
+  let reply = async () => ({ status: 'not-found' });
+  const p = app(seed(), { overview: true, savedTeam, lookupTeammate: () => reply() });
   const submit = () => p.nodes.get('#team-form').onsubmit({ preventDefault() {} });
   p.run("$('#team-username').value = 'Vikcy'; $('#team-role').value = 'Viewer';");
   await submit();
@@ -396,12 +396,12 @@ test('overview keeps the existing roster when a username is unknown or the direc
   assert.match(p.nodes.get('#team-rows').innerHTML, /Kira/);
 });
 
-test('opening index.html directly preserves the roster and explains how to start the directory', async () => {
+test('without the account directory the roster is preserved and the problem is explained', async () => {
   const savedTeam = JSON.stringify([{ username: 'Kira', role: 'Admin' }]);
-  const p = app(seed(), { overview: true, protocol: 'file:', savedTeam });
+  const p = app(seed(), { overview: true, savedTeam });
   p.run("$('#team-username').value = 'Vicky'; $('#team-role').value = 'Viewer';");
   await p.nodes.get('#team-form').onsubmit({ preventDefault() {} });
-  assert.match(p.nodes.get('#team-error').textContent, /python3 server.py/);
+  assert.match(p.nodes.get('#team-error').textContent, /Could not reach the user directory/);
   assert.equal(p.storage.get('festival-architect-team-v1'), savedTeam);
 });
 
@@ -409,7 +409,7 @@ test('editors can change lineup settings and checklist ticks but cannot change t
   const original = seed({ event: { ...seed().event, name: 'Harbour Festival' } });
   const savedTeam = JSON.stringify([{ userId: 4, username: 'Vicky', role: 'Editor' }]);
   let lookups = 0;
-  const p = app(original, { overview: true, role: 'Editor', savedTeam, fetch: () => { lookups++; } });
+  const p = app(original, { overview: true, role: 'Editor', savedTeam, lookupTeammate: () => { lookups++; } });
   const submit = { preventDefault() {} };
   assert.equal(p.nodes.get('#overview-menu').hidden, true);
   p.nodes.get('#overview-edit').onclick();
