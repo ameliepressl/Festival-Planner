@@ -5,10 +5,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  SESSION_STORAGE_KEY, ACCOUNT_META_KEY, usernameProblem, emailProblem, passwordProblem,
+  SESSION_STORAGE_KEY, ACCOUNT_META_KEY, ACCOUNT_TEAM_KEY, ACCOUNT_FINANCE_KEY, usernameProblem, emailProblem, passwordProblem,
   signUpProblem, signInProblem, usernameKey, accountErrorMessage, isFestivalDataKey,
   collectFestivalData, cleanFestivalData, hasFestivalData, clearFestivalData, applyFestivalData,
-  parseAccountMeta, syncAction, teammateFromRows
+  parseAccountMeta, syncAction, teammateFromRows, accessFor, sameAccess, sectionsToSave, rosterFromTeam,
+  parseRoster, teamChanges, sameRoster, festivalLabel
 } = require('../rules/account-rules.js');
 
 // A small stand-in for the browser's localStorage.
@@ -111,9 +112,19 @@ test('signing out removes the plan from the browser and nothing else', () => {
 });
 
 test('saved sync information is read safely', () => {
+  // written by the first login version (only "dirty"): every section counts as unsaved
   assert.deepEqual(parseAccountMeta(JSON.stringify({ userId: ID_A, syncedAt: '2026-11-19T12:00:00Z', dirty: true })),
-    { userId: ID_A, syncedAt: '2026-11-19T12:00:00Z', dirty: true, legacy: false });
-  assert.deepEqual(parseAccountMeta('{"userId":5,"dirty":"yes"}'), { userId: null, syncedAt: null, dirty: false, legacy: false });
+    { userId: ID_A, festivalId: null, syncedAt: '2026-11-19T12:00:00Z', dirtyKeys: ['*'], dirty: true, legacy: false, access: null });
+  assert.deepEqual(parseAccountMeta('{"userId":5,"dirty":"yes"}'),
+    { userId: null, festivalId: null, syncedAt: null, dirtyKeys: [], dirty: false, legacy: false, access: null });
+  const meta = parseAccountMeta(JSON.stringify({
+    userId: ID_A, festivalId: ID_B, syncedAt: 't1', dirtyKeys: ['festival-architect-v2', 'festival-architect-team-v1', 'sb-x', 'festival-architect-v2'],
+    access: { role: 'Editor', creatorLabel: 'Amelie (festival creator)' }
+  }));
+  assert.equal(meta.festivalId, ID_B);
+  assert.deepEqual(meta.dirtyKeys, ['festival-architect-v2'], 'the team roster and foreign keys are never unsaved plan sections');
+  assert.deepEqual(meta.access, { role: 'Editor', creatorLabel: 'Amelie (festival creator)' });
+  assert.equal(parseAccountMeta(JSON.stringify({ access: { role: 'Boss', creatorLabel: 'x' }, festivalId: 'nope' })).access, null);
   assert.equal(parseAccountMeta('not json'), null);
   assert.equal(parseAccountMeta(null), null);
   assert.equal(parseAccountMeta('[]'), null);
@@ -151,4 +162,85 @@ test('a teammate is found only for exactly one valid account', () => {
   assert.equal(teammateFromRows([{ id: ID_A, username: 'Vicky' }, { id: ID_B, username: 'vicky' }]), null);
   assert.equal(teammateFromRows([{ id: 4, username: 'Vicky' }]), null);
   assert.equal(teammateFromRows([{ id: ID_A, username: '<img src=x>' }]), null);
+});
+
+// --- Shared festivals (feature-plans/shared-festivals.md) ------------------------------
+
+const ID_C = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
+
+test('the team roster is never saved as part of the plan and never comes from it', () => {
+  const storage = fakeStorage({ 'festival-architect-v2': 'plan', [ACCOUNT_TEAM_KEY]: '[{"userId":"x"}]' });
+  assert.deepEqual(collectFestivalData(storage), { 'festival-architect-v2': 'plan' });
+  assert.deepEqual(cleanFestivalData({ [ACCOUNT_TEAM_KEY]: '[]', 'festival-architect-v2': 'plan' }), { 'festival-architect-v2': 'plan' });
+  clearFestivalData(storage);
+  assert.equal(storage.getItem(ACCOUNT_TEAM_KEY), null, 'signing out also removes the roster');
+});
+
+test('a different festival than the one in this browser is loaded, not overwritten', () => {
+  const meta = { userId: ID_A, festivalId: ID_A, syncedAt: 't1', dirty: true, legacy: false };
+  assert.equal(syncAction({ meta, userId: ID_A, cloud: { id: ID_B, updatedAt: 't1' }, localData: {} }), 'download');
+  assert.equal(syncAction({ meta, userId: ID_A, cloud: { id: ID_A, updatedAt: 't1' }, localData: {} }), 'upload');
+  // a browser from the first login version knows no festival id yet: it is the own festival
+  assert.equal(syncAction({ meta: { ...meta, festivalId: null, dirty: false }, userId: ID_A, cloud: { id: ID_A, updatedAt: 't1' }, localData: {} }), 'keep');
+  // the open festival is gone and there is no own festival yet: start empty, never copy a shared plan
+  assert.equal(syncAction({ meta: { ...meta, festivalId: ID_B }, userId: ID_A, cloud: null, localData: { 'festival-x': '1' } }), 'create-empty');
+});
+
+test('owners are Admins; members get their role; the creator is named', () => {
+  assert.deepEqual(accessFor({ ownerId: ID_A, ownerUsername: 'Amelie', myRole: 'Owner' }, ID_A),
+    { role: 'Admin', creatorLabel: 'You (festival creator)' });
+  assert.deepEqual(accessFor({ ownerId: ID_A, ownerUsername: 'Amelie', myRole: 'Editor' }, ID_B),
+    { role: 'Editor', creatorLabel: 'Amelie (festival creator)' });
+  assert.equal(accessFor({ ownerId: ID_A, ownerUsername: 'Amelie', myRole: 'Boss' }, ID_B).role, 'Viewer', 'unknown roles may only look');
+  assert.equal(accessFor({ ownerId: ID_A, ownerUsername: '<b>x</b>', myRole: 'Admin' }, ID_B).creatorLabel, 'Owner (festival creator)');
+  assert.equal(sameAccess({ role: 'Admin', creatorLabel: 'a' }, { role: 'Admin', creatorLabel: 'a' }), true);
+  assert.equal(sameAccess({ role: 'Admin', creatorLabel: 'a' }, { role: 'Editor', creatorLabel: 'a' }), false);
+  assert.equal(sameAccess(null, { role: 'Admin', creatorLabel: 'a' }), false);
+});
+
+test('only the changed sections are sent, as the role allows', () => {
+  const storage = fakeStorage({
+    'festival-architect-v2': 'lineup', [ACCOUNT_FINANCE_KEY]: 'money', 'festival-architect-checklist': '[]', [ACCOUNT_TEAM_KEY]: '[]'
+  });
+  assert.deepEqual(sectionsToSave({ storage, dirtyKeys: ['festival-architect-v2', 'festival-architect-vendors'], role: 'Admin' }),
+    { changes: { 'festival-architect-v2': 'lineup' }, removed: ['festival-architect-vendors'], skipped: [] });
+  assert.deepEqual(sectionsToSave({ storage, dirtyKeys: ['*'], role: 'Admin' }).changes,
+    { [ACCOUNT_FINANCE_KEY]: 'money', 'festival-architect-checklist': '[]', 'festival-architect-v2': 'lineup' });
+  const editor = sectionsToSave({ storage, dirtyKeys: ['*'], role: 'Editor' });
+  assert.equal(ACCOUNT_FINANCE_KEY in editor.changes, false, 'editors never send the finances');
+  assert.deepEqual(editor.skipped, [ACCOUNT_FINANCE_KEY]);
+  const viewer = sectionsToSave({ storage, dirtyKeys: ['festival-architect-v2'], role: 'Viewer' });
+  assert.deepEqual(viewer.changes, {}, 'viewers send nothing');
+  assert.deepEqual(viewer.skipped, ['festival-architect-v2']);
+  assert.deepEqual(sectionsToSave({ storage, dirtyKeys: [ACCOUNT_TEAM_KEY], role: 'Admin' }).changes, {}, 'the roster is never sent');
+});
+
+test('the team from the database becomes the roster; broken rows are dropped', () => {
+  assert.deepEqual(rosterFromTeam([
+    { user_id: ID_B, username: 'Kira', role: 'Editor' },
+    { user_id: 4, username: 'Old', role: 'Admin' },
+    { user_id: ID_C, username: 'Vicky', role: 'Boss' }
+  ]), [{ userId: ID_B, username: 'Kira', role: 'Editor' }]);
+  assert.deepEqual(rosterFromTeam(null), []);
+  assert.deepEqual(parseRoster('not json'), []);
+  assert.deepEqual(parseRoster('[{"userId":"a"}]'), [{ userId: 'a' }]);
+});
+
+test('saving the roster adds, changes and removes exactly the members that differ', () => {
+  const server = [{ userId: ID_B, username: 'Kira', role: 'Editor' }, { userId: ID_C, username: 'Vicky', role: 'Viewer' }];
+  const roster = [{ userId: ID_B, username: 'Kira', role: 'Admin' }, { userId: ID_A, username: 'Frederik', role: 'Viewer' },
+    { userId: 4, username: 'Old', role: 'Admin' }];
+  assert.deepEqual(teamChanges(server, roster), {
+    add: [{ userId: ID_A, role: 'Viewer' }], change: [{ userId: ID_B, role: 'Admin' }], remove: [ID_C]
+  });
+  assert.deepEqual(teamChanges(server, server), { add: [], change: [], remove: [] });
+  assert.equal(sameRoster(server, [...server].reverse()), true);
+  assert.equal(sameRoster(server, roster), false);
+});
+
+test('the festival switcher names the own festival and shows owner and role for shared ones', () => {
+  assert.equal(festivalLabel({ owner_id: ID_A, festival_name: 'Harbour Sound' }, ID_A), 'My festival · Harbour Sound');
+  assert.equal(festivalLabel({ owner_id: ID_A, festival_name: ' ', owner_username: 'Amelie', my_role: 'Editor' }, ID_B),
+    'Untitled festival · by Amelie · Editor');
+  assert.equal(festivalLabel({ owner_id: ID_A, festival_name: 'X', owner_username: null, my_role: null }, ID_B), 'X · by someone · Viewer');
 });

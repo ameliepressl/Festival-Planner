@@ -93,9 +93,9 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 ## 10. Platform
 
 - [x] **Accounts and data on the server** — *owner: Amelie* ([login.md](login.md)). Sign in with Supabase; each account's festival is saved on the server and is the same on every device; Row Level Security keeps every festival private to its account.
-- [ ] **Shared festivals** — invite teammates into one festival and enforce Admin / Editor / Viewer in the database (builds on the login).
+- [x] **Shared festivals** — *owner: Amelie* ([shared-festivals.md](shared-festivals.md)). Invite teammates into one festival as Admin / Editor / Viewer, enforced in the database; festival switcher in the sidebar.
 - [ ] **Two-factor authentication (2FA)** — *owner: Amelie.* After the password, a one-time code from an authenticator app (TOTP); recovery codes in case the phone is lost; only for the shared/online mode. Needs the login from "Shared data on the server".
-- [ ] **Roles & rights** — booker edits the lineup, finance edits the finances, everyone can read. ✅ `rules/access-rules.js`
+- [ ] **Finer roles & rights** — e.g. a booker who only edits the lineup, finance who only edits the finances. ✅ Admin / Editor / Viewer exist and are enforced in the database ([shared-festivals.md](shared-festivals.md))
 - [ ] **Change log** — who changed what, when
 - [ ] **Readiness score** on the Overview; **problems become tasks** on the task board
 - [ ] **Languages** — English / German / Portuguese

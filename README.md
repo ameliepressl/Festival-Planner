@@ -42,15 +42,17 @@ and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
 ## 🔐 Accounts
 
 Every person signs in and plans **their own festival**. The plan is saved to the account, so
-it is the same on every device, and the database itself only lets each account reach its own
-festival (Row Level Security). Details: [feature-plans/login.md](feature-plans/login.md).
+it is the same on every device. Admins can **invite teammates** by their username in
+*Overview → Team* as **Admin**, **Editor** or **Viewer**; teammates then open the festival from
+the sidebar. The database itself enforces who may read and save what (Row Level Security).
+Details: [login](feature-plans/login.md) · [shared festivals](feature-plans/shared-festivals.md).
 
 Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
 
 1. Create a Supabase project. In *Authentication → Sign In / Providers → Email*, switch off
    "Confirm email" (the free plan only sends a few emails per hour).
-2. Run [`migrations/001_accounts_and_festivals.sql`](migrations/001_accounts_and_festivals.sql)
-   in the Supabase *SQL Editor*.
+2. Run the files in [`migrations/`](migrations/) in order (001, 002, 003) in the Supabase
+   *SQL Editor*.
 3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
    Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
 4. In *Authentication → URL Configuration*, add the deployed address and
@@ -173,9 +175,8 @@ only that account read or change it. While you work, the pages also keep a copy 
 browser; **signing out removes it**, so the next person on the same computer cannot see your
 plan. Passwords are handled by Supabase and never stored by the app.
 
-> [!NOTE]
-> Sharing one festival between several accounts (with Admin / Editor / Viewer enforced in the
-> database) is on the [roadmap](feature-plans/roadmap.md).
+A festival is only visible to its owner and the teammates the owner or an Admin invited.
+Removing someone from the team takes their access away immediately.
 
 ## 🤝 How we work
 

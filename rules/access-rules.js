@@ -1,5 +1,9 @@
-// The local browser is the creator until the app has signed-in accounts.
-const FESTIVAL_CREATOR = Object.freeze({ username: 'You (festival creator)', role: 'Admin' });
+// With accounts, account/account.js tells the pages before they start what the signed-in
+// account may do in the open festival: { role, creatorLabel } (feature-plans/shared-festivals.md).
+// The database enforces the same roles. Without it (e.g. in the tests) this browser is the
+// festival creator with Admin rights, as before.
+const SIGNED_IN_ACCESS = typeof window !== 'undefined' && window.festivalAccess ? window.festivalAccess : null;
+const FESTIVAL_CREATOR = Object.freeze({ username: SIGNED_IN_ACCESS?.creatorLabel || 'You (festival creator)', role: 'Admin' });
 const TEAM_PERMISSIONS = {
   Admin: {
     actions: ['overview', 'team', 'budget', 'lineup', 'checklist'],
@@ -20,5 +24,5 @@ function roleCan(role, action) {
 }
 
 function canFestival(action) {
-  return roleCan(FESTIVAL_CREATOR.role, action);
+  return roleCan(SIGNED_IN_ACCESS?.role || FESTIVAL_CREATOR.role, action);
 }
