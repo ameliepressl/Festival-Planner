@@ -6,9 +6,9 @@ finances and the event-day checklist.
 Team project for *Introduction to Programming* at **Nova SBE** by
 **Kira, Amelie, Frederik and Vicky**.
 
-![Tests](https://img.shields.io/badge/tests-112%20JavaScript%20%2B%207%20Python-1a9a7c)
-![Stack](https://img.shields.io/badge/stack-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript%20%C2%B7%20Python-17272b)
-![Dependencies](https://img.shields.io/badge/dependencies-none-ff684c)
+![Tests](https://img.shields.io/badge/tests-127%20JavaScript-1a9a7c)
+![Stack](https://img.shields.io/badge/stack-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript%20%C2%B7%20Supabase-17272b)
+![Dependencies](https://img.shields.io/badge/dependencies-1%2C%20pinned-ff684c)
 
 ---
 
@@ -30,30 +30,39 @@ the vendors page offers that many pitches, and the finances use all of it.
 
 ## Run it
 
-You need Python 3 (already on macOS). No installation, no packages.
+The app is plain files. Serve the folder with any static file server, for example Python's
+(already on macOS):
 
 ```bash
-python3 server.py
+python3 -m http.server 8000
 ```
 
-Then open **<http://127.0.0.1:8000/>** in your browser and leave the terminal running while
-you use the app. Stop it with `Ctrl + C`.
+Then open **<http://localhost:8000/>**, create an account (username, email, password) or sign
+in. Leave the terminal running while you use the app; stop it with `Ctrl + C`.
 
-On the first run the server creates `data/users.sqlite3` with the demo usernames
-`Kira`, `Amelie`, `Frederik` and `Vicky` (the file stays on your computer and is not in git).
+## Accounts
 
-> **Good to know:** the festival plan is saved in your browser (localStorage) for this
-> address. Another browser or device starts with an empty festival — see
-> "Platform" in [the roadmap](feature-plans/roadmap.md) for shared data.
+Every person signs in and plans their own festival. The plan is saved to the account, so it
+is the same on every device, and the database only lets each account reach its own festival
+(Row Level Security). Details: [feature-plans/login.md](feature-plans/login.md).
+
+Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
+
+1. Create a Supabase project. In *Authentication → Sign In / Providers → Email*, switch off
+   "Confirm email" (the free plan only sends a few emails per hour).
+2. Run [`migrations/001_accounts_and_festivals.sql`](migrations/001_accounts_and_festivals.sql)
+   in the Supabase *SQL Editor*.
+3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
+   Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
+4. In *Authentication → URL Configuration*, add the deployed address and
+   `http://localhost:8000` as allowed URLs.
+
+The only third-party code is the Supabase library, pinned in [`vendor/`](vendor/README.md).
 
 ## Run the tests
 
 ```bash
 uvx --from nodejs-wheel node --test
-```
-
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
 `uv` downloads Node by itself, so nobody has to install Node.
@@ -63,7 +72,10 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 ```text
 index.html              page structure (all sections)
 styles.css              shared look
-server.py               local server + SQLite username lookup
+account/                sign-in screen, saving the plan to the account, sign out
+supabase-config.js      Supabase project URL + publishable key (public by design)
+migrations/             database tables and access rules (SQL, run in Supabase)
+vendor/                 the pinned Supabase library
 app.js                  lineup planner screen
 overview.js             overview page and team roster
 work-board.js           task board
@@ -74,7 +86,7 @@ vendors/                vendors page
 finance/                financial overview page
 checkliste-festivalplanung/   final checklist page
 rules/                  all rules and calculations — no screen code, fully tested
-tests/                  automatic tests (JavaScript and Python)
+tests/                  automatic tests (JavaScript)
 feature-plans/          one plan per feature: Why, What, Out of scope, Done when
 product-brief/          the product brief (it wins over anything else)
 ```
@@ -89,7 +101,7 @@ Based on the git history; the lineup planner is shared work of the whole team.
 | | |
 | --- | --- |
 | **Kira** | Overview start page, local server and team directory, lineup workflow and loading |
-| **Amelie** | Left navigation and the first lineup edits |
+| **Amelie** | Left navigation, the first lineup edits, accounts and login with Supabase |
 | **Frederik** | Rules and tests baseline, final checklist, site map with layout planner, vendors, festival size, financial overview |
 | **Vicky** | Task board, Gantt chart, festival countdown, event-day checklist wording |
 

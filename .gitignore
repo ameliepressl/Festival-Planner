@@ -1,2 +1,7 @@
 /data/
 __pycache__/
+
+# secrets (see AGENTS.md → Secrets)
+.env
+.env.*
+!.env.example

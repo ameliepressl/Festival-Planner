@@ -1,0 +1,53 @@
+/* Accounts: sign-in screen and the "signed in as" box in the sidebar (feature-plans/login.md). */
+
+/* Until someone is signed in, the app stays hidden behind the sign-in screen.
+   visibility (not display) keeps the pages' layout correct for when they are shown. */
+html.account-locked .app-layout,
+html.account-checking .app-layout { visibility: hidden; }
+html:not(.account-locked):not(.account-checking) .account-screen { display: none; }
+
+.account-screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; overflow: auto; background: var(--paper); }
+.account-screen[hidden] { display: none; }
+.account-card { width: min(420px, 100%); background: var(--white); border: 1px solid var(--line); padding: 34px 32px 28px; box-shadow: 0 10px 40px #17272b14; }
+.account-brand { display: flex; align-items: center; gap: 10px; margin: 0 0 30px; font-size: 20px; font-weight: 700; letter-spacing: -.7px; }
+.account-brand em { font-family: Fraunces, serif; font-weight: 600; }
+.account-card h1 { font-size: 34px; letter-spacing: -1.2px; margin: 0 0 8px; }
+.account-intro { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0 0 22px; }
+.account-loading p { color: var(--muted); font: 12px 'DM Mono', monospace; margin: 8px 0 18px; }
+
+.account-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.account-tabs button { border: 0; background: transparent; font: 600 13px 'DM Sans', sans-serif; color: var(--muted); padding: 9px 2px; margin-right: 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.account-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--coral); }
+.account-tabs button:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+
+.account-form { display: grid; gap: 12px; }
+.account-form[hidden] { display: none; }
+.account-form label { font: 11px 'DM Mono', monospace; color: var(--muted); }
+.account-form small { color: var(--muted); font-size: 11px; line-height: 1.4; margin-top: -6px; }
+.account-form .form-message { margin: 0; }
+.account-form .button { justify-self: start; padding: 11px 18px; }
+.account-form .button:disabled, .account-choice-actions .button:disabled { opacity: .55; cursor: wait; transform: none; }
+
+.account-choice-actions { display: grid; gap: 10px; }
+.account-choice-actions .button { padding: 11px 16px; text-align: center; }
+#account-problem:empty { display: none; }
+#account-problem { margin: 16px 0 0; }
+#account-retry { margin-top: 4px; }
+
+/* Sidebar: who is signed in, whether the plan is saved, and Sign out. */
+.sidebar-account { margin-top: 18px; padding-top: 14px; border-top: 1px solid #2c3f41; }
+.sidebar-account[hidden] { display: none; }
+.sidebar-account .sidebar-label { margin: 0 9px 6px; }
+.sidebar-account strong { display: block; margin: 0 9px; color: #fff; font-size: 13px; overflow-wrap: anywhere; }
+.sidebar-account small { display: block; margin: 4px 9px 6px; font: 10px/1.45 'DM Mono', monospace; color: #9eaeac; }
+.sidebar-account small[data-state="saved"]::before { content: '✓ '; color: #7fd1b9; }
+.sidebar-account small[data-state="offline"] { color: #ffb3a3; }
+.sidebar-account .sidebar-item { width: 100%; }
+
+@media (max-width: 620px) {
+  .sidebar-account { margin-top: 12px; padding-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .sidebar-account .sidebar-label { display: none; }
+  .sidebar-account strong, .sidebar-account small { margin: 0; }
+  .sidebar-account .sidebar-item { width: auto; padding: 6px 9px; }
+  .account-card { padding: 26px 20px 22px; }
+}

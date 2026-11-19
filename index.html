@@ -12,8 +12,57 @@
     <link rel="stylesheet" href="site-map/site-map.css" />
     <link rel="stylesheet" href="vendors/vendors.css" />
     <link rel="stylesheet" href="finance/finance.css" />
+    <link rel="stylesheet" href="account/account.css" />
+    <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
+         the body: they hide the app until someone is signed in and save every change to the account.
+         The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
+    <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
+    <script src="supabase-config.js"></script>
+    <script src="rules/account-rules.js"></script>
+    <script src="account/account.js"></script>
   </head>
   <body>
+    <section id="account-screen" class="account-screen" aria-labelledby="account-title">
+      <div class="account-card">
+        <p class="account-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>Festival <em>Architect</em></span></p>
+        <div id="account-loading" class="account-loading" hidden>
+          <p role="status">Loading your festival…</p>
+        </div>
+        <div id="account-forms">
+          <h1 id="account-title">Sign in</h1>
+          <p class="account-intro">Plan your own festival. Everything you plan is saved to your account.</p>
+          <div class="account-tabs" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" role="tab" id="tab-sign-in" aria-controls="sign-in-form" aria-selected="true">Sign in</button>
+            <button type="button" role="tab" id="tab-sign-up" aria-controls="sign-up-form" aria-selected="false">Create account</button>
+          </div>
+          <form id="sign-in-form" class="account-form" novalidate>
+            <label>Email<input type="email" name="email" autocomplete="email" required /></label>
+            <label>Password<input type="password" name="password" autocomplete="current-password" required /></label>
+            <p class="form-message" role="alert"></p>
+            <button type="submit" class="button primary">Sign in</button>
+          </form>
+          <form id="sign-up-form" class="account-form" novalidate hidden>
+            <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="32" aria-describedby="username-hint" /></label>
+            <small id="username-hint">3–32 letters, numbers, dots, dashes or underscores. Teammates find you by this name.</small>
+            <label>Email<input type="email" name="email" autocomplete="email" required /></label>
+            <label>Password<input type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="72" aria-describedby="password-hint" /></label>
+            <small id="password-hint">At least 8 characters.</small>
+            <p class="form-message" role="alert"></p>
+            <button type="submit" class="button primary">Create account</button>
+          </form>
+        </div>
+        <div id="account-choice" hidden>
+          <h1>Which plan do you want to use?</h1>
+          <p id="account-choice-text" class="account-intro"></p>
+          <div class="account-choice-actions">
+            <button type="button" class="button primary" id="choice-use-browser">Use the plan from this browser</button>
+            <button type="button" class="button secondary" id="choice-use-account">Use my account’s plan</button>
+          </div>
+        </div>
+        <p id="account-problem" class="form-message" role="alert"></p>
+        <button type="button" class="button secondary" id="account-retry" hidden>Try again</button>
+      </div>
+    </section>
     <div class="app-layout">
       <aside class="sidebar" aria-label="Festival Architect navigation">
         <a class="sidebar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
@@ -34,6 +83,12 @@
           <p class="sidebar-label">COLLABORATORS</p>
           <div class="team-avatars" aria-label="Kira, Amelie, Frederik and Vicky"><span>K</span><span>A</span><span>F</span><span>V</span></div>
           <small>Kira · Amelie<br />Frederik · Vicky</small>
+        </div>
+        <div class="sidebar-account" id="sidebar-account" hidden>
+          <p class="sidebar-label">SIGNED IN AS</p>
+          <strong id="account-username"></strong>
+          <small id="account-sync-status" role="status" aria-live="polite"></small>
+          <button type="button" class="sidebar-item" id="sign-out"><span aria-hidden="true">⎋</span>Sign out</button>
         </div>
       </aside>
       <div class="app-shell" id="top">
