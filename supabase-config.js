@@ -9,6 +9,6 @@
 //
 // Supabase dashboard → "Connect" (or Project Settings → API Keys):
 window.FESTIVAL_SUPABASE = Object.freeze({
-  url: 'https://YOUR-PROJECT.supabase.co',
-  publishableKey: 'YOUR-PUBLISHABLE-KEY'
+  url: 'https://hzzpllnlfxgxlvlpxsmr.supabase.co',
+  publishableKey: 'sb_publishable_S8lVxglUjSSoTqSqnzIR8Q_nGkZYDSv'
 });
