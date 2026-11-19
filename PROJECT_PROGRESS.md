@@ -267,3 +267,5 @@ Branch: `feature-shared-festivals` (owner: Amelie), on top of the merged login (
 Changed in my own new tests from #17 (not team tests): `tests/account-rules.test.js` expects the extended sync information (festival, unsaved sections, role). No existing team test changed.
 
 Validation: all JavaScript tests pass. Browser check in Chrome against a simulated Supabase: 24 sharing checks (invite, switcher, Editor rights, finances blocked, teammate bar, merge of simultaneous saves, Viewer, removal, no console errors) plus the 35 login checks. Database rules in a real Postgres (PGlite), with and without Supabase's default grants: 34 checks.
+
+Supabase: migration 003 applied on 19 November through the connector, with Amelie's approval. All three tables have RLS on (festivals 4, festival_members 4, profiles 1 policies); signed-out visitors have no table access. Supabase's security check now only notes that "leaked password protection" is off — that feature needs the paid Pro plan. The performance check only notes that the two new indexes have not been used yet (there are no teams yet).
