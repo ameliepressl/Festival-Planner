@@ -34,8 +34,10 @@ html:not(.account-locked):not(.account-checking) .account-screen { display: none
 #account-problem { margin: 16px 0 0; }
 #account-retry { margin-top: 4px; }
 
-/* Sidebar: who is signed in, whether the plan is saved, and Sign out. */
-.sidebar-account { margin-top: 18px; padding-top: 14px; border-top: 1px solid #2c3f41; }
+/* Sidebar: who is signed in, whether the plan is saved, and Sign out.
+   The sidebar may now be taller than small laptop screens, so it can scroll. */
+.sidebar { overflow-y: auto; }
+.sidebar-account { margin-top: 14px; padding-top: 12px; border-top: 1px solid #2c3f41; }
 .sidebar-account[hidden] { display: none; }
 .sidebar-account .sidebar-label { margin: 0 9px 6px; }
 .sidebar-account strong { display: block; margin: 0 9px; color: #fff; font-size: 13px; overflow-wrap: anywhere; }

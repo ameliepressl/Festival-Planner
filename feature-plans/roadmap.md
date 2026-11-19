@@ -10,13 +10,12 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 
 | # | Idea | Why first | Owner |
 | --- | --- | --- | --- |
-| 1 | **Automatic tests on GitHub (CI) + "Load demo festival" button** | Tests run on every pull request; the presentation never shows an empty app | |
+| 1 | **Automatic tests on GitHub (CI) + "Load demo festival" button** | Tests run on every pull request; the presentation never shows an empty app | **Frederik** |
 | 2 | **Readiness score + problems become tasks** | One number on the Overview; every red rule turns into a task on the task board — the pages become one product | |
 | 3 | **Crowd density + evacuation time** | Real safety numbers on our own map | |
-| 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level | |
-| 5 | **Live mode with delays** | Useful *on* the festival day, not only before | |
-| 6 | **"Copy for next year" + final report** | Closes the loop | |
-| 7 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
+| 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level | **Frederik** |
+| 5 | **"Copy for next year" + final report** | Closes the loop | |
+| 6 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
 | ⚠️ | **Product brief rules** | Over-budget bookings, booking an artist twice and finalising with fewer than 4 artists still differ from the brief (FA R1, FA R4, FA05). Team decision needed, because current tests expect today's behaviour. | |
 
 ---
@@ -84,22 +83,14 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 - [ ] **VAT** — gross / net for tickets and costs (Portugal 6 % / 23 %)
 - [ ] **Secure vs. planned costs** — only confirmed bookings count as secure. ✅ booking status
 
-## 9. Festival day — live mode
-
-- [ ] **Now / next screen** — who is playing, countdown to the next act; full screen for backstage
-- [ ] **Delays ripple through** — act starts 10 minutes late → following acts on that stage move, with conflict warnings
-- [ ] **Incident log** — time, place on the map, type (medical, security, technical), status; shown as dots on the map
-- [ ] **Visitor counter** — in / out → people on site now; warning close to capacity
-- [ ] **Final checklist on the day.** ✅ exists
-
-## 10. Afterwards
+## 9. Afterwards
 
 - [ ] **Settlement** — who still gets how much (artists, vendors, suppliers)
 - [ ] **Final report** — plan vs. actual for visitors, costs, revenue and incidents; printable
 - [ ] **Sustainability report** — diesel, waste and travel → CO₂ estimate
 - [ ] **Copy for next year** — the whole festival as a template for 2027, dates shifted, bookings cleared
 
-## 11. Platform
+## 10. Platform
 
 - [x] **Accounts and data on the server** — *owner: Amelie* ([login.md](login.md)). Sign in with Supabase; each account's festival is saved on the server and is the same on every device; Row Level Security keeps every festival private to its account.
 - [ ] **Shared festivals** — invite teammates into one festival and enforce Admin / Editor / Viewer in the database (builds on the login).

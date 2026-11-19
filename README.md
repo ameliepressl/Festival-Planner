@@ -1,50 +1,49 @@
+<div align="center">
+
 # 🎪 Festival Architect
 
-**Plan a whole music festival in one place** — lineup, project tasks, site layout, vendors,
-finances and the event-day checklist.
+**Plan a complete music festival in one place —**
+**from the first artist booking to the last check before the gates open.**
 
-Team project for *Introduction to Programming* at **Nova SBE** by
-**Kira, Amelie, Frederik and Vicky**.
-
-![Tests](https://img.shields.io/badge/tests-127%20JavaScript-1a9a7c)
-![Stack](https://img.shields.io/badge/stack-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript%20%C2%B7%20Supabase-17272b)
+![JavaScript](https://img.shields.io/badge/app-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript-17272b)
+![Supabase](https://img.shields.io/badge/accounts%20%26%20data-Supabase-17272b)
 ![Dependencies](https://img.shields.io/badge/dependencies-1%2C%20pinned-ff684c)
+![Tests](https://img.shields.io/badge/tests-JavaScript-1a9a7c)
+
+Team project · *Introduction to Programming* · **Nova SBE**
+Kira · Amelie · Frederik · Vicky
+
+[Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+
+<br />
+
+<img src="docs/screenshots/overview.png" alt="Festival Architect overview page for the example Lisbon Sound Festival: performances booked, artist budget, projected finances and tasks needing attention" width="900" />
+
+</div>
 
 ---
 
-## What it can do
+## 🚀 Quick start
 
-| Section | What you can do there |
-| --- | --- |
-| **Overview** | Start page: festival details, projected finances, urgent tasks, milestones and the team roster. |
-| **Lineup planner** | Multi-day timetable for several stages: book artists, agreed fees and durations per booking, calendar blocks, budget, finalise the plan, print / save as PDF, download and restore a backup. |
-| **Task board** | Project tasks with deadlines, a "needs attention" list and an editable Gantt chart of the whole preparation. |
-| **Site map** | Realistic aerial map with a clickable pin for every facility. Upload your own map (aerial photo or site plan), draw the fence, set the gate, mark water and other no-go areas — and let the planner **suggest the optimal layout** checked against 10 layout rules. |
-| **Vendors** | 24 food, drink and merch vendors on the food court pitches; pitch income and a check of visitor needs (vegan, drinks, alcohol-free). |
-| **Finances** | Profit and loss, break-even (tickets and price), where the money goes and comes from, profit by ticket price, scenarios (bad weather / plan / sold out) and artist spending. |
-| **Final checklist** | Event-day checks for 12 teams with a progress bar. |
-
-The pages work together: the **expected visitors** decide how many toilets, water points,
-food pitches, first aiders and security staff are needed; the site map plans that many,
-the vendors page offers that many pitches, and the finances use all of it.
-
-## Run it
-
-The app is plain files. Serve the folder with any static file server, for example Python's
-(already on macOS):
+The app is plain files. Serve the folder with any static file server — Python's is already
+installed on macOS:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Then open **<http://localhost:8000/>**, create an account (username, email, password) or sign
-in. Leave the terminal running while you use the app; stop it with `Ctrl + C`.
+Open **<http://localhost:8000/>**, create an account (username, email, password) or sign in,
+and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
 
-## Accounts
+> [!TIP]
+> After creating an account the Overview asks for the festival name, dates and opening hours —
+> after that every section is ready to use.
 
-Every person signs in and plans their own festival. The plan is saved to the account, so it
-is the same on every device, and the database only lets each account reach its own festival
-(Row Level Security). Details: [feature-plans/login.md](feature-plans/login.md).
+## 🔐 Accounts
+
+Every person signs in and plans **their own festival**. The plan is saved to the account, so
+it is the same on every device, and the database itself only lets each account reach its own
+festival (Row Level Security). Details: [feature-plans/login.md](feature-plans/login.md).
 
 Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
 
@@ -55,63 +54,136 @@ Accounts and saved festivals are stored in **Supabase**. One-time setup by the p
 3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
    Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
 4. In *Authentication → URL Configuration*, add the deployed address and
-   `http://localhost:8000` as allowed URLs.
+   `http://localhost:8000`.
 
-The only third-party code is the Supabase library, pinned in [`vendor/`](vendor/README.md).
+## ✨ Features
 
-## Run the tests
+### Plan the programme
+- **Overview** — the start page: festival details, projected finances, tasks that need
+  attention, milestones and the team roster.
+- **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed
+  fees and set lengths, mark them tentative or confirmed, add calendar blocks, keep an eye on
+  the budget, finalise the plan, print it as a PDF and save or restore a backup.
+
+### Organise the work
+- **Task board** — project tasks with deadlines, a "needs attention" list and an editable
+  **Gantt chart** of the whole preparation, plus a countdown to the festival.
+
+### Design the ground
+- **Site map** — a realistic aerial view with a clickable pin for every facility: stages,
+  gate, first aid, toilets, water, food court, emergency exits and more.
+  - Upload your **own map** (aerial photo or site plan), draw the fence, set the gate and
+    mark no-go areas — water is detected automatically.
+  - **Suggest optimal layout** places everything according to **10 layout rules**
+    (stage distance, first aid / toilets / water near every stage, exits far apart …),
+    with a score. Drag pins to adjust; walkways route around water and forest.
+  - **Festival size:** the expected visitors decide how many toilets, water points, food
+    pitches, first aiders and security staff are needed.
+- **Vendors** — 24 food, drink and merch vendors for the food court pitches, pitch income
+  and a check that visitors' needs are covered (vegan option, drinks, alcohol-free).
+
+### Know the numbers
+- **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
+  and comes from, **profit by ticket price**, **scenarios** (bad weather · plan · sold out)
+  and an analysis of the artist spending. Every assumption can be changed.
+
+### Get ready for the day
+- **Final checklist** — event-day checks for 12 teams, from security to radios, with a
+  progress bar.
+
+## 📸 Screenshots
+
+All screenshots show the example festival *Lisbon Sound Festival* (2 days, 2 stages,
+5,000 visitors).
+
+| Lineup planner | Site map |
+| --- | --- |
+| <img src="docs/screenshots/lineup.png" alt="Lineup planner with the artist budget and a two-stage timetable for 30 December" /> | <img src="docs/screenshots/sitemap.png" alt="Site map: aerial view with pins for stages, food court, toilets, water and exits, the festival size card and a layout check at 100 percent" /> |
+| **Vendors** | **Finances** |
+| <img src="docs/screenshots/vendors.png" alt="Vendors page: 11 of 13 pitches used, pitch income, visitor needs check and vendor cards" /> | <img src="docs/screenshots/finances.png" alt="Financial overview: assumptions, profit, revenue, costs, break-even and where the money goes and comes from" /> |
+
+## 🔗 How it fits together
+
+The sections share their data, so a change in one place shows up everywhere it matters.
+
+```mermaid
+flowchart LR
+  size["👥 Festival size<br/>(expected visitors)"] --> map["🗺️ Site map<br/>toilets · water · pitches"]
+  size --> vendors["🍔 Vendors<br/>number of pitches"]
+  size --> finance["💶 Finances"]
+  lineup["🎤 Lineup<br/>artist fees"] --> finance
+  vendors --> finance
+  vendors --> map
+  lineup --> overview["🏠 Overview"]
+  finance --> overview
+  tasks["✅ Task board"] --> overview
+```
+
+## 🧪 Tests
+
+All rules and calculations are covered by automatic tests.
 
 ```bash
 uvx --from nodejs-wheel node --test
 ```
 
-`uv` downloads Node by itself, so nobody has to install Node.
+The tests never talk to Supabase. The database access rules are written down in
+[`migrations/`](migrations/001_accounts_and_festivals.sql).
 
-## How the code is organised
+`uv` downloads Node by itself — nobody has to install Node.
+
+## 📁 Project structure
 
 ```text
-index.html              page structure (all sections)
-styles.css              shared look
-account/                sign-in screen, saving the plan to the account, sign out
-supabase-config.js      Supabase project URL + publishable key (public by design)
-migrations/             database tables and access rules (SQL, run in Supabase)
-vendor/                 the pinned Supabase library
-app.js                  lineup planner screen
-overview.js             overview page and team roster
-work-board.js           task board
-gantt-*.js              Gantt chart and project schedule
-festival-countdown.js   days until the festival
-site-map/               site map page and the aerial drawing
-vendors/                vendors page
-finance/                financial overview page
-checkliste-festivalplanung/   final checklist page
-rules/                  all rules and calculations — no screen code, fully tested
-tests/                  automatic tests (JavaScript)
-feature-plans/          one plan per feature: Why, What, Out of scope, Done when
-product-brief/          the product brief (it wins over anything else)
+index.html                    page structure for all sections
+styles.css                    shared look
+account/                      sign-in screen, saving the plan to the account, sign out
+supabase-config.js            Supabase project URL + publishable key (public by design)
+migrations/                   database tables and access rules (SQL, run in Supabase)
+vendor/                       the pinned Supabase library
+app.js                        lineup planner
+overview.js                   overview and team roster
+work-board.js · gantt-*.js    task board and Gantt chart
+festival-countdown.js         days until the festival
+site-map/                     site map and the aerial drawing
+vendors/                      vendors
+finance/                      financial overview
+checkliste-festivalplanung/   final checklist
+rules/                        all rules and calculations — no screen code
+tests/                        automatic tests (JavaScript)
+feature-plans/                one plan per feature, plus the roadmap
+product-brief/                the product brief
 ```
 
-**One rule holds everywhere:** rules and calculations live in `rules/`, screens only show
-things and pass clicks on. That is why every rule can be tested without a browser.
+## 🧭 Design principles
 
-## Who built what
+- **Rules are separate from screens.** Every rule and calculation lives in `rules/`; the
+  screens only show things and pass clicks on. That is why everything can be tested
+  without a browser.
+- **One pinned dependency.** Plain HTML, CSS and JavaScript in the browser. The only
+  third-party code is the Supabase library, copied into [`vendor/`](vendor/README.md) at an
+  exact version with an integrity hash. Nothing to install, nothing that changes by itself.
+- **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
+  wins over anything else.
 
-Based on the git history; the lineup planner is shared work of the whole team.
+## 🔒 Data & privacy
 
-| | |
-| --- | --- |
-| **Kira** | Overview start page, local server and team directory, lineup workflow and loading |
-| **Amelie** | Left navigation, the first lineup edits, accounts and login with Supabase |
-| **Frederik** | Rules and tests baseline, final checklist, site map with layout planner, vendors, festival size, financial overview |
-| **Vicky** | Task board, Gantt chart, festival countdown, event-day checklist wording |
+Each festival plan is saved in Supabase under its account, and Row Level Security lets
+only that account read or change it. While you work, the pages also keep a copy in your
+browser; **signing out removes it**, so the next person on the same computer cannot see your
+plan. Passwords are handled by Supabase and never stored by the app.
 
-## How we work
+> [!NOTE]
+> Sharing one festival between several accounts (with Admin / Editor / Viewer enforced in the
+> database) is on the [roadmap](feature-plans/roadmap.md).
 
-- Every feature starts from the latest `main` on its own branch, with a plan in
+## 🤝 How we work
+
+- Every feature starts from the latest `main` on **its own branch**, with a plan in
   `feature-plans/` first.
-- Pull requests are reviewed by another team member; tests must pass and are pasted into
-  the pull request.
-- Tests are never weakened to make them pass.
+- Every pull request is **reviewed by another team member** and only merged when the tests
+  pass.
+- Tests are **never weakened** to make them pass.
 
-Details: [AGENTS.md](AGENTS.md) · progress: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
-what comes next: **[Roadmap](feature-plans/roadmap.md)**
+More: [AGENTS.md](AGENTS.md) · [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
+**[Roadmap — what comes next](feature-plans/roadmap.md)**
