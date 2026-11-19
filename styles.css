@@ -10,10 +10,6 @@
 .sidebar-nav{display:grid;gap:4px}
 .sidebar-item{border:0;background:transparent;color:#bdccca;font:500 13px 'DM Sans';text-align:left;padding:11px 9px;border-radius:4px;cursor:pointer;display:flex;gap:10px;align-items:center}
 .sidebar-item span{font:16px 'DM Mono';width:15px;text-align:center}.sidebar-item:hover{background:#293b3d;color:#fff}.sidebar-item.active{background:#fff;color:var(--ink);font-weight:700}
-.sidebar-team{margin-top:auto}.sidebar-team .sidebar-label{margin:0 0 11px}
-.team-avatars{display:flex}.team-avatars span{width:28px;height:28px;border:2px solid var(--ink);margin-right:-6px;display:grid;place-items:center;border-radius:50%;font:600 10px 'DM Mono';color:var(--ink)}
-.team-avatars span:nth-child(1){background:var(--pink)}.team-avatars span:nth-child(2){background:var(--yellow)}.team-avatars span:nth-child(3){background:var(--aqua)}.team-avatars span:nth-child(4){background:#d9cceb}
-.sidebar-team small{display:block;font:10px/1.5 'DM Mono';color:#9eaeac;margin:12px 9px}
 .app-shell{max-width:none;margin:0 0 0 218px;padding:0 48px}
 
 /* Keep the sidebar on the left in the app preview; compact it on narrower laptops. */

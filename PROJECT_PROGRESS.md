@@ -252,3 +252,20 @@ Validation: all 150 JavaScript tests pass (after merging #13–#16). Browser che
 Merging `main` (#13–#16) into `feature-login`: the CI workflow no longer runs Python tests (there are none left; Python 3.12's `unittest` would fail with "no tests ran"). The README's quick start, tests, structure and privacy sections now describe the account setup instead of `server.py`. The demo festival button works with accounts: its data is saved to the account after the reload.
 
 Supabase project `Festival-Architect` (eu-west-1): migrations 001 and 002 applied on 19 November through the Supabase connector, with Amelie's approval. 002 removes API access to `rls_auto_enable()`, a helper Supabase adds for "Enable RLS on new tables automatically", which its security check flagged. 001 also removes API access to the two trigger functions. Afterwards: both tables have RLS on (1 and 4 policies), signed-out visitors have no table access, and Supabase's security and performance checks report no issues.
+
+## Shared festivals — 19 November 2026
+
+Branch: `feature-shared-festivals` (owner: Amelie), on top of the merged login (#17). Plan: `feature-plans/shared-festivals.md`.
+
+- Kira's Team form on the Overview now invites real accounts: adding, changing the role of or removing a teammate changes `festival_members` in Supabase. The roster in the browser is filled from the database and is no longer saved inside the plan.
+- Roles as defined in `rules/access-rules.js`: Admin (everything), Editor (lineup, checklist, tasks, site map, vendors — not details, budget, finances or team), Viewer (look only). `rules/access-rules.js` now takes the signed-in account's role from `account/account.js`; without accounts (tests) it behaves exactly as before.
+- Enforced in the database (`migrations/003_shared_festivals.sql`): members can read; Owner/Admin/Editor can save; Editors cannot change the finances; only Owner/Admin manage the team; the owner cannot be added as a member; nobody can take a festival over; only a member's role can be changed.
+- Saving sends only the changed sections through `save_festival_changes()`, which merges them, so two people working at the same time keep both changes. A bar tells you when a teammate saved (also checked every 20 seconds) and offers Reload. Viewers see "View only".
+- Festival switcher in the sidebar when an account can open more than one festival. A removed teammate is told and goes back to their own festival.
+- Removed the hard-coded "COLLABORATORS" box (K · A · F · V) from the sidebar and its styles; the real team is on the Overview. Footer now says the plan saves to the account.
+
+Changed in my own new tests from #17 (not team tests): `tests/account-rules.test.js` expects the extended sync information (festival, unsaved sections, role). No existing team test changed.
+
+Validation: all JavaScript tests pass. Browser check in Chrome against a simulated Supabase: 24 sharing checks (invite, switcher, Editor rights, finances blocked, teammate bar, merge of simultaneous saves, Viewer, removal, no console errors) plus the 35 login checks. Database rules in a real Postgres (PGlite), with and without Supabase's default grants: 34 checks.
+
+Supabase: migration 003 applied on 19 November through the connector, with Amelie's approval. All three tables have RLS on (festivals 4, festival_members 4, profiles 1 policies); signed-out visitors have no table access. Supabase's security check now only notes that "leaked password protection" is off — that feature needs the paid Pro plan. The performance check only notes that the two new indexes have not been used yet (there are no teams yet).

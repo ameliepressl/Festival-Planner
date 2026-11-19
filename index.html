@@ -63,6 +63,11 @@
         <button type="button" class="button secondary" id="account-retry" hidden>Try again</button>
       </div>
     </section>
+    <div class="account-notice" id="account-notice" role="status" aria-live="polite" hidden>
+      <span id="account-notice-text"></span>
+      <button type="button" class="button primary" id="account-notice-reload">Reload</button>
+      <button type="button" class="account-notice-close" id="account-notice-close" aria-label="Close message">×</button>
+    </div>
     <div class="app-layout">
       <aside class="sidebar" aria-label="Festival Architect navigation">
         <a class="sidebar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
@@ -80,12 +85,11 @@
           <button class="sidebar-item" data-section="Final checklist"><span>☑</span>Final checklist</button>
         </nav>
         <button type="button" class="sidebar-demo" id="load-demo" title="Fill every section with an example festival">✦ Load demo festival</button>
-        <div class="sidebar-team">
-          <p class="sidebar-label">COLLABORATORS</p>
-          <div class="team-avatars" aria-label="Kira, Amelie, Frederik and Vicky"><span>K</span><span>A</span><span>F</span><span>V</span></div>
-          <small>Kira · Amelie<br />Frederik · Vicky</small>
-        </div>
         <div class="sidebar-account" id="sidebar-account" hidden>
+          <label class="festival-switch" id="festival-switch-label" hidden>
+            <span class="sidebar-label">FESTIVAL</span>
+            <select id="festival-switch" aria-label="Open festival"></select>
+          </label>
           <p class="sidebar-label">SIGNED IN AS</p>
           <strong id="account-username"></strong>
           <small id="account-sync-status" role="status" aria-live="polite"></small>
@@ -162,7 +166,7 @@
         </section>
         <section class="overview-team" aria-labelledby="overview-team-title">
           <h2 id="overview-team-title">Team</h2>
-          <p class="field-help" id="team-help">Admins can add teammates from the user directory. This roster is saved in your browser.</p>
+          <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
           <div class="overview-table-wrap" tabindex="0" role="region" aria-label="Festival team">
             <table class="overview-table">
               <thead><tr><th scope="col">Username</th><th scope="col">Role</th><th scope="col">Permissions</th><th scope="col">Actions</th></tr></thead>
@@ -589,7 +593,7 @@
         </section>
       </div>
 
-      <footer><span>Festival Architect</span><span>Your plan saves automatically in this browser.</span></footer>
+      <footer><span>Festival Architect</span><span>Your plan saves automatically to your account.</span></footer>
       </div>
     </div>
 

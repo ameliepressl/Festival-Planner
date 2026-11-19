@@ -9,6 +9,12 @@ const FESTIVAL_KEY_PREFIX = 'festival-';
 const SESSION_STORAGE_KEY = 'sb-festival-architect-auth';
 // Which account the plan in this browser belongs to, and whether it still has to be saved.
 const ACCOUNT_META_KEY = 'fa-account-sync';
+// The team roster (Overview → Team). It is not part of the saved plan: the database's
+// list of members is the truth, and the roster is filled from it (feature-plans/shared-festivals.md).
+const ACCOUNT_TEAM_KEY = 'festival-architect-team-v1';
+// The finance assumptions. Only Admins may change them (Kira's "budget" right).
+const ACCOUNT_FINANCE_KEY = 'festival-architect-finance';
+const ACCOUNT_ROLES = ['Admin', 'Editor', 'Viewer'];
 
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,32}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -95,6 +101,11 @@ function isFestivalDataKey(key) {
   return typeof key === 'string' && key.startsWith(FESTIVAL_KEY_PREFIX);
 }
 
+// A festival key that is saved as part of the plan (everything except the team roster).
+function isSyncedKey(key) {
+  return isFestivalDataKey(key) && key !== ACCOUNT_TEAM_KEY;
+}
+
 function festivalKeys(storage) {
   const keys = [];
   for (let i = 0; i < storage.length; i += 1) {
@@ -107,7 +118,7 @@ function festivalKeys(storage) {
 // The whole plan as one object { key: saved text }, ready to store in the account.
 function collectFestivalData(storage) {
   const data = {};
-  for (const key of festivalKeys(storage)) {
+  for (const key of festivalKeys(storage).filter(isSyncedKey)) {
     const value = storage.getItem(key);
     if (typeof value === 'string') data[key] = value;
   }
@@ -119,7 +130,7 @@ function cleanFestivalData(data) {
   const clean = {};
   if (!data || typeof data !== 'object' || Array.isArray(data)) return clean;
   for (const [key, value] of Object.entries(data)) {
-    if (isFestivalDataKey(key) && typeof value === 'string') clean[key] = value;
+    if (isSyncedKey(key) && typeof value === 'string') clean[key] = value;
   }
   return clean;
 }
@@ -128,8 +139,8 @@ function hasFestivalData(data) {
   return Object.keys(cleanFestivalData(data)).length > 0;
 }
 
-// Removes the plan from this browser (signing out, or before loading another plan).
-// Login session and other data are not touched.
+// Removes the plan, including the team roster, from this browser (signing out, or before
+// loading another plan). Login session and other data are not touched.
 function clearFestivalData(storage) {
   for (const key of festivalKeys(storage)) storage.removeItem(key);
 }
@@ -144,28 +155,42 @@ function applyFestivalData(storage, data) {
 
 // --- Keeping browser and account in step ---------------------------------------------
 
-// meta = { userId, syncedAt, dirty, legacy } saved under ACCOUNT_META_KEY.
-//   userId   account the plan in this browser belongs to (null = nobody signed in)
-//   syncedAt updated_at of the account's plan when browser and account were last equal
-//   dirty    the browser has changes that are not saved to the account yet
-//   legacy   the browser held a plan from before accounts existed
+// meta = { userId, festivalId, syncedAt, dirtyKeys, legacy, access } saved under ACCOUNT_META_KEY.
+//   userId     account the plan in this browser belongs to (null = nobody signed in)
+//   festivalId the festival that is open (the account's own one or a shared one)
+//   syncedAt   updated_at of that festival when browser and account were last equal
+//   dirtyKeys  sections changed in the browser but not saved yet ('*' = all of them)
+//   legacy     the browser held a plan from before accounts existed
+//   access     { role, creatorLabel } the pages were started with (see accessFor)
 function parseAccountMeta(text) {
   try {
     const meta = JSON.parse(text);
     if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null;
+    let dirtyKeys = Array.isArray(meta.dirtyKeys)
+      ? [...new Set(meta.dirtyKeys.filter((key) => key === '*' || isSyncedKey(key)))]
+      : [];
+    if (meta.dirty === true && dirtyKeys.length === 0) dirtyKeys = ['*'];   // saved by the first login version
     return {
       userId: typeof meta.userId === 'string' ? meta.userId : null,
+      festivalId: typeof meta.festivalId === 'string' && ACCOUNT_ID_PATTERN.test(meta.festivalId) ? meta.festivalId : null,
       syncedAt: typeof meta.syncedAt === 'string' ? meta.syncedAt : null,
-      dirty: meta.dirty === true,
-      legacy: meta.legacy === true
+      dirtyKeys,
+      dirty: dirtyKeys.length > 0,
+      legacy: meta.legacy === true,
+      access: parseAccess(meta.access)
     };
   } catch {
     return null;
   }
 }
 
+function parseAccess(access) {
+  if (!access || !ACCOUNT_ROLES.includes(access.role) || typeof access.creatorLabel !== 'string') return null;
+  return { role: access.role, creatorLabel: access.creatorLabel };
+}
+
 // What to do right after signing in or opening the app while signed in.
-//   cloud: the account's festival row ({ updatedAt }) or null if the account has none yet.
+//   cloud: the festival to open ({ id, updatedAt }) or null if the account has none yet.
 // Returns
 //   'create'       the account has no plan yet → save the browser's plan as its plan
 //   'create-empty' the account has no plan yet, but the browser holds another account's
@@ -176,13 +201,101 @@ function parseAccountMeta(text) {
 //   'upload'       the browser has changes that are not saved yet → save them (last save wins)
 //   'keep'         browser and account are equal
 function syncAction({ meta, userId, cloud, localData }) {
-  const ownedByThisUser = Boolean(meta && meta.userId === userId);
+  const sameFestival = !meta?.festivalId || !cloud || meta.festivalId === cloud.id;
+  const ownedByThisUser = Boolean(meta && meta.userId === userId && sameFestival);
   if (!ownedByThisUser && meta?.legacy && hasFestivalData(localData)) return 'choose';
-  if (!cloud) return ownedByThisUser || !meta?.userId ? 'create' : 'create-empty';
+  if (!cloud) {
+    // Keep the browser's plan only if it is this account's own, older plan. A plan of a
+    // shared festival or of another account must not become this account's festival.
+    const ownOldPlan = meta?.userId === userId && !meta.festivalId;
+    return ownOldPlan || !meta?.userId ? 'create' : 'create-empty';
+  }
   if (!ownedByThisUser) return 'download';
   if (meta.dirty) return 'upload';
   if (cloud.updatedAt !== meta.syncedAt) return 'download';
   return 'keep';
+}
+
+// --- Sharing a festival -----------------------------------------------------------------
+
+// What the signed-in account may do in the open festival. Owners are Admins.
+//   { ownerId, ownerUsername, myRole } come from the database (my_festivals()).
+// Returns { role, creatorLabel } for rules/access-rules.js.
+function accessFor({ ownerId, ownerUsername, myRole }, userId) {
+  if (ownerId === userId) return { role: 'Admin', creatorLabel: 'You (festival creator)' };
+  const role = ACCOUNT_ROLES.includes(myRole) ? myRole : 'Viewer';
+  const owner = usernameProblem(ownerUsername) ? 'Owner' : ownerUsername;
+  return { role, creatorLabel: `${owner} (festival creator)` };
+}
+
+function sameAccess(a, b) {
+  return Boolean(a && b && a.role === b.role && a.creatorLabel === b.creatorLabel);
+}
+
+// The sections of the plan to send after changes, as the role allows.
+//   Viewers send nothing; Editors never send the finances; the team roster is never sent.
+// Returns { changes: { key: text }, removed: [key], skipped: [key] }.
+function sectionsToSave({ storage, dirtyKeys, role }) {
+  const result = { changes: {}, removed: [], skipped: [] };
+  const keys = dirtyKeys.includes('*') ? festivalKeys(storage).filter(isSyncedKey) : dirtyKeys.filter(isSyncedKey);
+  for (const key of [...new Set(keys)].sort()) {
+    if (role === 'Viewer' || (role === 'Editor' && key === ACCOUNT_FINANCE_KEY)) {
+      result.skipped.push(key);
+      continue;
+    }
+    const value = storage.getItem(key);
+    if (typeof value === 'string') result.changes[key] = value;
+    else result.removed.push(key);
+  }
+  return result;
+}
+
+// The team from the database as Kira's roster: [{ userId, username, role }].
+function rosterFromTeam(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((row) => typeof row?.user_id === 'string' && ACCOUNT_ID_PATTERN.test(row.user_id)
+      && !usernameProblem(row.username) && ACCOUNT_ROLES.includes(row.role))
+    .map((row) => ({ userId: row.user_id, username: row.username, role: row.role }));
+}
+
+function parseRoster(text) {
+  try {
+    const roster = JSON.parse(text);
+    return Array.isArray(roster) ? roster : [];
+  } catch {
+    return [];
+  }
+}
+
+// What has to change in the database so it matches the roster an Admin just saved.
+// Entries without a real account id (e.g. from the old local user directory) are ignored.
+function teamChanges(serverRoster, roster) {
+  const valid = (entry) => typeof entry?.userId === 'string' && ACCOUNT_ID_PATTERN.test(entry.userId)
+    && ACCOUNT_ROLES.includes(entry.role);
+  const before = new Map(serverRoster.filter(valid).map((entry) => [entry.userId, entry.role]));
+  const after = new Map(roster.filter(valid).map((entry) => [entry.userId, entry.role]));
+  const changes = { add: [], change: [], remove: [] };
+  for (const [userId, role] of after) {
+    if (!before.has(userId)) changes.add.push({ userId, role });
+    else if (before.get(userId) !== role) changes.change.push({ userId, role });
+  }
+  for (const userId of before.keys()) if (!after.has(userId)) changes.remove.push(userId);
+  return changes;
+}
+
+function sameRoster(a, b) {
+  const key = (roster) => roster.map((entry) => `${entry.userId}:${entry.username}:${entry.role}`).sort().join('|');
+  return key(a) === key(b);
+}
+
+// How a festival appears in the sidebar's festival switcher.
+function festivalLabel(row, userId) {
+  const name = typeof row?.festival_name === 'string' && row.festival_name.trim() ? row.festival_name.trim() : 'Untitled festival';
+  if (row?.owner_id === userId) return `My festival · ${name}`;
+  const owner = usernameProblem(row?.owner_username) ? 'someone' : row.owner_username;
+  const role = ACCOUNT_ROLES.includes(row?.my_role) ? row.my_role : 'Viewer';
+  return `${name} · by ${owner} · ${role}`;
 }
 
 // --- Finding teammates -----------------------------------------------------------------
@@ -199,7 +312,9 @@ function teammateFromRows(rows) {
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    FESTIVAL_KEY_PREFIX, SESSION_STORAGE_KEY, ACCOUNT_META_KEY, PASSWORD_MIN, PASSWORD_MAX,
+    FESTIVAL_KEY_PREFIX, SESSION_STORAGE_KEY, ACCOUNT_META_KEY, ACCOUNT_TEAM_KEY, ACCOUNT_FINANCE_KEY,
+    ACCOUNT_ROLES, PASSWORD_MIN, PASSWORD_MAX, isSyncedKey, accessFor, sameAccess, sectionsToSave,
+    rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,
     accountErrorMessage, isFestivalDataKey, collectFestivalData, cleanFestivalData, hasFestivalData,
     clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows

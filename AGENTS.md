@@ -36,9 +36,16 @@ Several of us are beginners. Explain what you change and why, in plain language.
   account (`festivals`). The pages still save in the browser; `account/account.js` copies
   every key that starts with `festival-` to the account. **New saved data must use a key
   that starts with `festival-`**, otherwise it is not saved to the account.
-- Access control is enforced in the database with Row Level Security
-  (`migrations/001_accounts_and_festivals.sql`): an account only reaches its own festival.
-  Never rely on hiding buttons alone.
+- Several accounts can plan one festival (`feature-plans/shared-festivals.md`). Admins add
+  teammates in Overview → Team; the database table `festival_members` is the real team, the
+  roster key `festival-architect-team-v1` is only a copy of it and is never saved in the plan.
+- Access control is enforced in the database with Row Level Security (`migrations/001` and
+  `003`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
+  Editors cannot change the finances; only Owner and Admin can change the team. The pages use
+  the same roles through `canFestival()` in `rules/access-rules.js`. Never rely on hiding
+  buttons alone.
+- Saving sends only the sections (keys) that changed, so teammates working at the same time do
+  not undo each other. Do not write one big key for everything.
 - Changes to tables or rules are written as a new numbered SQL file in `migrations/` and run
   in the Supabase SQL Editor by the database owner (Amelie). Never change or delete tables or
   rows in Supabase unless the task says so.
