@@ -493,3 +493,26 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 /* Load demo festival (left sidebar) */
 .sidebar-demo{margin:18px 9px 0;border:1px dashed #5d6f70;background:transparent;color:#bdccca;font:500 12px 'DM Sans';text-align:left;padding:9px 10px;border-radius:4px;cursor:pointer}
 .sidebar-demo:hover{border-color:#ff684c;color:#fff}
+/* Task assignments (feature-plans/task-assignments.md) */
+.work-board-tools label[hidden]{display:none}
+.work-board-assignee{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin:-1px 0 7px;font-size:11px;color:var(--ink)}
+.work-board-assignee label{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;color:var(--muted)}
+.work-board-assignee select{flex:1;min-width:0;font:inherit;font-size:11px;color:var(--ink);background:var(--white);border:1px solid var(--line);border-radius:3px;padding:3px 4px}
+.work-board-assignee small{font-size:10px;color:var(--muted)}
+.work-board-nobody,.work-board-done-by{color:var(--muted)}
+.work-board-done-by{margin:6px 0 0;font-size:11px}
+.gantt-owner{padding:0 6px;font-size:12px;vertical-align:middle;overflow:hidden}
+.gantt-owner-select{width:100%;max-width:100%;font:inherit;font-size:12px;color:var(--ink);background:var(--white);border:1px solid var(--line);border-radius:3px;padding:3px 2px}
+.gantt-owner-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gantt-owner-inherited{color:var(--muted)}
+.overview-progress-table th button{border:0;background:transparent;padding:0;font:inherit;font-weight:600;color:var(--ink);text-align:left;cursor:pointer}
+.overview-progress-table th button:hover{color:var(--coral);text-decoration:underline}
+.overview-progress-table th button:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.overview-progress-table small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+.overview-progress-table th small{display:inline}
+.overview-progress-table .is-overdue{color:#a23e2e}
+.overview-progress-bar{display:block;width:100%;max-width:140px;height:5px;margin:0 0 5px;background:#eceae1;border-radius:3px;overflow:hidden}
+.overview-progress-bar span{display:block;height:100%;background:var(--coral)}
+.overview-muted{color:var(--muted)}
+#overview-progress{margin-bottom:16px}
+.overview-progress .field-help{margin:12px 0 0}

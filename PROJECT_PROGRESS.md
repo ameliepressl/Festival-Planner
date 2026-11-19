@@ -277,3 +277,11 @@ Branch: `feature-overview-design` (owner: Amelie). Plan: `feature-plans/overview
 The Overview now has the same width, left-aligned header, tile row and square cards as the other sections (it was 880 px and centred). Headline: festival name plus an orange countdown line. "Edit festival details" is a visible button instead of the "⋯" menu. New tile "Project tasks done" (from the Task board, via `window.getOverviewTaskProgress` in `work-board.js`). "Tasks needing attention" and "Finances" sit side by side; one column on narrow screens. All element IDs stay the same, so no test changed.
 
 Validation: all JavaScript tests pass; screenshots at 1440, 1100 and 390 px; login (35) and sharing (24) browser checks pass.
+
+## Task assignments and team progress — 19 November 2026
+
+Branch: `feature-task-assignments` (owner: Amelie). Plan: `feature-plans/task-assignments.md`.
+
+Owner and Admins give each task group to a person in the Gantt's Owner column and can give single subtasks to someone else (or nobody) on the Task board. The board has an "Assigned to" filter (everyone, my tasks, nobody, one person), every card shows its person, and Done cards say who finished them. The Overview's new Team progress card shows per person: assigned, done in %, overdue and the next deadline, plus how many subtasks have nobody; a click opens the board filtered to that person. Saved as `festival-task-assignments-v1`; rules in `rules/task-rules.js`. Editors still change statuses but cannot assign: the browser does not send it and `migrations/004_task_assignments.sql` makes the database refuse it.
+
+Validation: all JavaScript tests pass (10 new task tests, 1 new account test). Migration 004 tested in PGlite (42 database checks, also with Supabase's default grants). Browser check with two accounts (26 checks): assigning in the Gantt and on the board, filters, an Editor finishing a task, an Editor's assignment change not being sent, Team progress numbers, a teammate leaving.

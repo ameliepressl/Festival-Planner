@@ -10,6 +10,8 @@
   const areaSelect = document.querySelector('#work-board-area');
   const dueSoon = document.querySelector('#work-board-due-soon');
   const search = document.querySelector('#work-board-search');
+  const assigneeSelect = document.querySelector('#work-board-assignee');
+  const assignments = window.taskAssignments;
   const summary = document.querySelector('#work-board-summary');
   const format = new Intl.DateTimeFormat('en-GB', { weekday:'short', day:'numeric', month:'short', timeZone:'UTC' });
   const localDate = new Intl.DateTimeFormat('en-CA', {year:'numeric',month:'2-digit',day:'2-digit',timeZone:'Europe/Lisbon'});
@@ -68,7 +70,7 @@
   function projectSteps(plan = window.getSavedGanttPlan()) {
     return plan.flatMap((area, ai) => area.tasks.flatMap((task, ti) =>
       task.subtasks.map((step, si) => ({
-        ...step, area: area.title, areaStyle: area.style, areaId: String(area.id), task: task.title,
+        ...step, area: area.title, areaStyle: area.style, areaId: String(area.id), task: task.title, taskId: String(task.id),
         number: [ai + 1, ti + 1, si + 1].join('.')
       }))
     ));
@@ -88,6 +90,15 @@
     const date = today();
     const steps = projectSteps();
     return { done: steps.filter(step => statusOf(step, date) === 'done').length, total: steps.length };
+  };
+
+  // Overview → "Team progress": assigned, done, overdue and the next deadline per person.
+  window.getOverviewTeamProgress = () => {
+    const date = today();
+    const team = assignments.people();
+    if (!team.length) return null;
+    const steps = projectSteps().map(step => ({ ...step, status: statusOf(step, date) }));
+    return teamProgress({ steps, assignments: assignments.read(), people: team });
   };
 
   window.getOverviewUrgentTasks = () => {
@@ -156,6 +167,18 @@
     const query = search.value.trim().toLowerCase();
     const plan = window.getSavedGanttPlan();
     const canEditTasks = canFestival('lineup');
+    const team = assignments.people();
+    const assigned = assignments.read();
+    const canAssign = assignments.canAssign();
+    const myId = assignments.myUserId();
+    const assigneeFilter = assigneeSelect.value;
+    assigneeSelect.replaceChildren(new Option('Everyone', ''));
+    if (myId) assigneeSelect.add(new Option('My tasks', 'me'));
+    assigneeSelect.add(new Option('Nobody assigned', 'none'));
+    team.forEach(person => assigneeSelect.add(new Option(assignments.nameOf(person.userId, team), person.userId)));
+    assigneeSelect.value = assigneeFilter;
+    if (assigneeSelect.value !== assigneeFilter) assigneeSelect.value = '';
+    assigneeSelect.closest('label').hidden = !team.length;
     areaSelect.replaceChildren(new Option('All areas', ''));
     plan.forEach(area => areaSelect.add(new Option(area.title, String(area.id))));
     const cards = projectSteps(plan);
@@ -163,9 +186,39 @@
     const visible = cards.filter(card => {
       const days = daysUntil(card.end, renderedDate);
       return (!selection || card.areaId === selection) &&
+        matchesAssignee(card, assigneeSelect.value, assigned, team, myId) &&
         (!dueSoon.checked || (days >= 0 && days <= 7 && statusOf(card, renderedDate) !== 'done')) &&
-        [card.title, card.area, card.task, card.number].join(' ').toLowerCase().includes(query);
+        [card.title, card.area, card.task, card.number, assignments.nameOf(assigneeOf(card, assigned, team).userId, team) || '']
+          .join(' ').toLowerCase().includes(query);
     });
+
+    // "Assigned to …" on a card; Owner and Admins can change it right there.
+    function assigneeLine(card) {
+      if (!team.length) return document.createTextNode('');
+      const { userId, inherited } = assigneeOf(card, assigned, team);
+      const line = element('div', 'work-board-assignee');
+      if (!canAssign) {
+        line.append(element('span', userId ? null : 'work-board-nobody', userId ? 'Assigned to ' + assignments.nameOf(userId, team) : 'Nobody assigned'));
+        return line;
+      }
+      const label = element('label');
+      label.append(element('span', null, 'Assigned to'));
+      const choice = element('select', 'work-board-assignee-select');
+      choice.dataset.cardId = card.id;
+      choice.setAttribute('aria-label', 'Assigned to, ' + card.number + ' ' + card.title);
+      choice.add(new Option('Nobody', ''));
+      team.forEach(person => choice.add(new Option(assignments.nameOf(person.userId, team), person.userId)));
+      choice.value = userId || '';
+      choice.onchange = () => {
+        try { assignments.setStep(card, choice.value); }
+        catch (failure) { summary.textContent = failure.message; choice.value = userId || ''; return; }
+        Array.from(columns.querySelectorAll('.work-board-assignee-select')).find(control => control.dataset.cardId === card.id)?.focus();
+      };
+      label.append(choice);
+      line.append(label);
+      if (inherited && userId) line.append(element('small', null, 'from task ' + card.number.split('.').slice(0, 2).join('.')));
+      return line;
+    }
 
     function move(id, status, focus = false) {
       if (!canFestival('lineup')) return false;
@@ -175,8 +228,10 @@
         return false;
       }
       const previous = saved[id];
+      const finishedBefore = previous?.status === 'done';
       const next = {...saved, [id]:status === 'done' ? {
-        status, completedAt: previous?.status === 'done' ? previous.completedAt : Date.now()
+        status, completedAt: finishedBefore ? previous.completedAt : Date.now(),
+        ...((finishedBefore ? previous.completedBy : myId) ? { completedBy: finishedBefore ? previous.completedBy : myId } : {})
       } : status};
       try { localStorage.setItem(key, JSON.stringify(next)); }
       catch { summary.textContent = 'Could not save the status in this browser.'; return false; }
@@ -242,18 +297,19 @@
         const meta = element('div', 'work-board-card-meta');
         meta.append(element('span','work-board-number',card.number), due);
         item.append(meta, element('h3',null,card.title),
-          element('p','work-board-context',card.area + ' · ' + card.task),control);
+          element('p','work-board-context',card.area + ' · ' + card.task), assigneeLine(card), control);
+        const doneBy = id === 'done' && assignments.nameOf(saved[card.id]?.completedBy, team);
+        if (doneBy) item.append(element('p', 'work-board-done-by', 'Done by ' + doneBy));
         lane.append(item);
       });
       columns.append(lane);
     });
   }
   const overview = document.querySelector('#task-board-view');
+  const projectTasksButton = document.querySelector('[data-section="Task board"]');
   const board = document.querySelector('#board-page');
   let boardTrigger;
-  overview.addEventListener('click', event => {
-    const trigger = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
-    if (!trigger) return;
+  function openBoard(trigger, assignee = '') {
     boardTrigger = trigger;
     overview.classList.add('hidden');
     board.classList.remove('hidden');
@@ -262,7 +318,19 @@
     search.value = '';
     areaSelect.value = '';
     dueSoon.checked = false;
+    assigneeSelect.replaceChildren(new Option('', assignee));
+    assigneeSelect.value = assignee;
     render();
+  }
+  // Overview → Team progress: the board with one person's subtasks ('me', 'none' or a user id).
+  window.openTaskBoard = ({ assignee = '' } = {}) => {
+    projectTasksButton.click();
+    openBoard(overview.querySelector('.work-board-open'), assignee);
+  };
+  overview.addEventListener('click', event => {
+    const trigger = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
+    if (!trigger) return;
+    openBoard(trigger);
     if (trigger.dataset.cardId) {
       const card = Array.from(columns.querySelectorAll('.work-board-card'))
         .find(item => item.dataset.cardId === trigger.dataset.cardId);
@@ -270,7 +338,7 @@
       card?.scrollIntoView({block:'center', inline:'nearest'});
     }
   });
-  const projectTasksButton = document.querySelector('[data-section="Task board"]');
+
   window.openOverviewTask = id => {
     projectTasksButton.click();
     Array.from(attention.querySelectorAll('.work-board-urgent'))
@@ -355,6 +423,11 @@
     render();
     summary.textContent = 'Task added to the board and project timeline. ' + summary.textContent;
   };
+  window.addEventListener('task-assignments-changed', () => {
+    if (!board.classList.contains('hidden')) render();
+    publishBoardUpdate();
+  });
+  assigneeSelect.addEventListener('change', render);
   dueSoon.addEventListener('change', render);
   search.addEventListener('input', render);
   areaSelect.addEventListener('change', render);

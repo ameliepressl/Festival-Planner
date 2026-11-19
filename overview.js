@@ -71,8 +71,46 @@ function renderOverviewTaskProgress() {
   $('#overview-tasks-count').textContent = `${tasks.done} of ${tasks.total} tasks`;
 }
 
+// Overview → Team progress (feature-plans/task-assignments.md).
+const progressDate = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+function renderOverviewProgress() {
+  const progress = window.getOverviewTeamProgress?.();
+  $('#overview-progress').hidden = !progress;
+  if (!progress) return;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  $('#overview-progress-rows').innerHTML = progress.people.map(person => {
+    const name = escapeHtml(person.username) + (person.isMe ? ' <small>(you)</small>' : '');
+    const next = person.next
+      ? `<span class="${person.next.end < today ? 'is-overdue' : ''}">${escapeHtml(person.next.title)}<small>${escapeHtml(progressDate.format(new Date(person.next.end + 'T12:00:00Z')))}</small></span>`
+      : '<span class="overview-muted">—</span>';
+    return `
+    <tr>
+      <th scope="row"><button type="button" data-progress-assignee="${person.isMe ? 'me' : escapeHtml(person.userId)}" aria-label="Show the subtasks of ${escapeHtml(person.username)} on the Task board">${name}</button></th>
+      <td>${person.assigned}</td>
+      <td><span class="overview-progress-bar" aria-hidden="true"><span style="width:${person.percent}%"></span></span>${person.done} · ${person.percent}%</td>
+      <td class="${person.overdue ? 'is-overdue' : ''}">${person.overdue}</td>
+      <td>${next}</td>
+    </tr>`;
+  }).join('');
+  const unassigned = $('#overview-unassigned');
+  unassigned.hidden = progress.unassigned === 0;
+  unassigned.innerHTML = `${progress.unassigned} ${progress.unassigned === 1 ? 'subtask' : 'subtasks'} without a person<span aria-hidden="true">↗</span>`;
+  const nothingAssigned = progress.people.every(person => person.assigned === 0);
+  $('#overview-progress-help').textContent = !window.taskAssignments?.canAssign()
+    ? 'The festival creator and Admins assign the tasks.'
+    : nothingAssigned
+      ? 'No tasks are assigned yet. Choose an owner per task in Project tasks → Gantt chart (Owner column).'
+      : 'Choose an owner per task in the Gantt chart’s Owner column; change single subtasks on the Task board.';
+}
+document.querySelector('#overview-progress').addEventListener('click', ({ target }) => {
+  const person = target.closest('[data-progress-assignee]');
+  if (person) window.openTaskBoard?.({ assignee: person.dataset.progressAssignee });
+  else if (target.closest('#overview-unassigned')) window.openTaskBoard?.({ assignee: 'none' });
+});
+
 function renderOverviewTasks() {
   renderOverviewTaskProgress();
+  renderOverviewProgress();
   const tasks = window.getOverviewUrgentTasks?.();
   if (!tasks) return;
   $('#overview-task-list').innerHTML = tasks.map(({ id, title, area, end, deadline }) => `

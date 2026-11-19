@@ -179,6 +179,19 @@
             </dl>
           </section>
         </div>
+        <section class="overview-card overview-progress" id="overview-progress" aria-labelledby="overview-progress-title" hidden>
+          <div class="overview-card-heading">
+            <h2 id="overview-progress-title">Team progress <small>subtasks per person</small></h2>
+            <button type="button" class="overview-open" id="overview-unassigned" hidden></button>
+          </div>
+          <div class="overview-table-wrap">
+            <table class="overview-table overview-progress-table">
+              <thead><tr><th scope="col">Person</th><th scope="col">Assigned</th><th scope="col">Done</th><th scope="col">Overdue</th><th scope="col">Next deadline</th></tr></thead>
+              <tbody id="overview-progress-rows"></tbody>
+            </table>
+          </div>
+          <p class="field-help" id="overview-progress-help"></p>
+        </section>
         <section class="overview-card overview-team" aria-labelledby="overview-team-title">
           <div class="overview-card-heading"><h2 id="overview-team-title">Team <small>who works on this festival</small></h2></div>
           <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
@@ -281,6 +294,7 @@
         <p class="hero-copy">Track festival preparation by status. Names and dates come from the project timeline.</p>
         <div class="work-board-tools">
           <label>Work area <select id="work-board-area"><option value="">All areas</option></select></label>
+          <label>Assigned to <select id="work-board-assignee"><option value="">Everyone</option></select></label>
           <label>Search tasks <input id="work-board-search" type="search" placeholder="Search names or task numbers"></label>
           <label class="work-board-due-filter"><input type="checkbox" id="work-board-due-soon"> Due soon</label>
           <button type="button" class="button primary" id="board-add-task">Add new task</button>
@@ -741,11 +755,13 @@
     <script src="checkliste-festivalplanung/checklist-page.js"></script>
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js"></script>
+    <script src="rules/task-rules.js"></script>
+    <script src="task-assignments.js"></script>
     <script src="gantt-defaults.js"></script>
-    <script src="gantt-editor.js?v=board-create"></script>
+    <script src="gantt-editor.js?v=assignments"></script>
     <script src="gantt-placeholder.js?v=section-navigation"></script>
-    <script src="gantt-schedule.js?v=required-subtask"></script>
-    <script src="work-board.js?v=due-soon"></script>
+    <script src="gantt-schedule.js?v=assignments"></script>
+    <script src="work-board.js?v=assignments"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js"></script>
     <script src="rules/site-map-rules.js"></script>
