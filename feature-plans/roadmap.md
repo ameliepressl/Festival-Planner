@@ -10,10 +10,10 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 
 | # | Idea | Why first | Owner |
 | --- | --- | --- | --- |
-| 1 | **Automatic tests on GitHub (CI) + "Load demo festival" button** | Tests run on every pull request; the presentation never shows an empty app || **Frederik** |
+| 1 | **Automatic tests on GitHub (CI) + "Load demo festival" button** | Tests run on every pull request; the presentation never shows an empty app | **Frederik** |
 | 2 | **Readiness score + problems become tasks** | One number on the Overview; every red rule turns into a task on the task board — the pages become one product | |
 | 3 | **Crowd density + evacuation time** | Real safety numbers on our own map | |
-| 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level || **Frederik** |
+| 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level | **Frederik** |
 | 5 | **"Copy for next year" + final report** | Closes the loop | |
 | 6 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
 | ⚠️ | **Product brief rules** | Over-budget bookings, booking an artist twice and finalising with fewer than 4 artists still differ from the brief (FA R1, FA R4, FA05). Team decision needed, because current tests expect today's behaviour. | |
