@@ -83,6 +83,13 @@
     window.dispatchEvent(new Event('work-board-updated'));
   }
 
+  // Overview → "Project tasks done": finished subtasks of the whole plan.
+  window.getOverviewTaskProgress = () => {
+    const date = today();
+    const steps = projectSteps();
+    return { done: steps.filter(step => statusOf(step, date) === 'done').length, total: steps.length };
+  };
+
   window.getOverviewUrgentTasks = () => {
     const date = today();
     return urgentSteps(projectSteps(), date).slice(0, 3).map(({ id, title, area, end }) => ({

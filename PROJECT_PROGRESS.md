@@ -269,3 +269,11 @@ Changed in my own new tests from #17 (not team tests): `tests/account-rules.test
 Validation: all JavaScript tests pass. Browser check in Chrome against a simulated Supabase: 24 sharing checks (invite, switcher, Editor rights, finances blocked, teammate bar, merge of simultaneous saves, Viewer, removal, no console errors) plus the 35 login checks. Database rules in a real Postgres (PGlite), with and without Supabase's default grants: 34 checks.
 
 Supabase: migration 003 applied on 19 November through the connector, with Amelie's approval. All three tables have RLS on (festivals 4, festival_members 4, profiles 1 policies); signed-out visitors have no table access. Supabase's security check now only notes that "leaked password protection" is off — that feature needs the paid Pro plan. The performance check only notes that the two new indexes have not been used yet (there are no teams yet).
+
+## Overview design — 19 November 2026
+
+Branch: `feature-overview-design` (owner: Amelie). Plan: `feature-plans/overview-design.md`.
+
+The Overview now has the same width, left-aligned header, tile row and square cards as the other sections (it was 880 px and centred). Headline: festival name plus an orange countdown line. "Edit festival details" is a visible button instead of the "⋯" menu. New tile "Project tasks done" (from the Task board, via `window.getOverviewTaskProgress` in `work-board.js`). "Tasks needing attention" and "Finances" sit side by side; one column on narrow screens. All element IDs stay the same, so no test changed.
+
+Validation: all JavaScript tests pass; screenshots at 1440, 1100 and 390 px; login (35) and sharing (24) browser checks pass.

@@ -119,53 +119,68 @@
       </header>
 
       <main id="overview-view">
-        <details class="overview-menu" id="overview-menu">
-          <summary aria-label="Festival options">⋯</summary>
-          <div><button type="button" id="overview-edit">Edit festival details</button></div>
-        </details>
-        <section class="overview-heading">
-          <h1 id="overview-title">Overview</h1>
-          <dl class="overview-facts">
-            <div id="overview-venue-fact" hidden><dt>Venue</dt><dd id="overview-venue"></dd></div>
-            <div><dt>Festival dates</dt><dd id="overview-dates"></dd></div>
-            <div><dt>Daily opening hours</dt><dd id="overview-hours"></dd></div>
-          </dl>
-          <button type="button" class="button primary" id="overview-setup" hidden>Set up festival</button>
-          <p class="field-help" id="overview-final" hidden>Reopen the final plan in the Lineup Planner to edit these details.</p>
-          <p id="overview-status" role="status"></p>
+        <section class="checklist-hero overview-hero" aria-labelledby="overview-title">
+          <div class="overview-hero-text">
+            <p class="eyebrow">FESTIVAL OVERVIEW</p>
+            <h1><span id="overview-title">Overview</span><br /><em id="overview-tagline"></em></h1>
+            <dl class="overview-facts">
+              <div id="overview-venue-fact" hidden><dt>Venue</dt><dd id="overview-venue"></dd></div>
+              <div><dt>Festival dates</dt><dd id="overview-dates"></dd></div>
+              <div><dt>Daily opening hours</dt><dd id="overview-hours"></dd></div>
+            </dl>
+            <button type="button" class="button primary" id="overview-setup" hidden>Set up festival</button>
+            <p class="field-help" id="overview-final" hidden>Reopen the final plan in the Lineup Planner to edit these details.</p>
+            <p id="overview-status" role="status"></p>
+          </div>
+          <div class="overview-menu" id="overview-menu">
+            <button type="button" class="button secondary" id="overview-edit">Edit festival details</button>
+          </div>
         </section>
-        <section class="overview-snapshot" aria-label="Planning progress">
-          <button type="button" class="overview-stat" data-open-section="Lineup planner">
+        <section class="overview-kpis" aria-label="Planning progress">
+          <button type="button" class="overview-kpi" data-open-section="Lineup planner">
             <span>Performances booked</span>
-            <span class="overview-booking-counts">
-              <strong id="overview-performances"></strong>
-              <span id="overview-booking-status"></span>
-            </span>
+            <strong id="overview-performances"></strong>
+            <small id="overview-booking-status"></small>
           </button>
-          <button type="button" class="overview-stat" data-open-section="Lineup planner"><span>Artist budget remaining</span><strong id="overview-budget"></strong></button>
-          <button type="button" class="overview-stat" data-open-section="Final checklist"><span>Final checklist complete</span><strong id="overview-checklist"></strong></button>
+          <button type="button" class="overview-kpi" data-open-section="Lineup planner">
+            <span>Artist budget remaining</span>
+            <strong id="overview-budget"></strong>
+            <small id="overview-budget-total"></small>
+          </button>
+          <button type="button" class="overview-kpi" data-open-section="Task board">
+            <span>Project tasks done</span>
+            <strong id="overview-tasks-done">–</strong>
+            <small id="overview-tasks-count"></small>
+          </button>
+          <button type="button" class="overview-kpi" data-open-section="Final checklist">
+            <span>Final checklist complete</span>
+            <strong id="overview-checklist"></strong>
+            <small id="overview-checklist-count"></small>
+          </button>
         </section>
-        <section class="overview-summary" id="overview-finances" aria-labelledby="overview-finances-title">
-          <div class="overview-section-heading">
-            <h2 id="overview-finances-title">Finances</h2>
-            <button type="button" class="button quiet" data-open-section="Finances">Open finances</button>
-          </div>
-          <dl class="overview-finances">
-            <div><dt>Projected revenue</dt><dd id="overview-revenue"></dd></div>
-            <div><dt>Projected costs</dt><dd id="overview-costs"></dd></div>
-            <div><dt id="overview-profit-label">Projected profit or loss</dt><dd id="overview-profit"></dd></div>
-          </dl>
-        </section>
-        <section class="overview-summary" id="overview-tasks" aria-labelledby="overview-tasks-title">
-          <div class="overview-section-heading">
-            <h2 id="overview-tasks-title">Tasks needing attention</h2>
-            <button type="button" class="button quiet" data-open-section="Task board">Open project tasks</button>
-          </div>
-          <ul id="overview-task-list"></ul>
-          <p class="field-help" id="overview-task-empty" hidden>No unfinished tasks are overdue or due in the next seven days.</p>
-        </section>
-        <section class="overview-team" aria-labelledby="overview-team-title">
-          <h2 id="overview-team-title">Team</h2>
+        <div class="overview-columns">
+          <section class="overview-card" id="overview-tasks" aria-labelledby="overview-tasks-title">
+            <div class="overview-card-heading">
+              <h2 id="overview-tasks-title">Tasks needing attention <small>overdue or due within 7 days</small></h2>
+              <button type="button" class="overview-open" data-open-section="Task board">Open project tasks<span aria-hidden="true">↗</span></button>
+            </div>
+            <ul id="overview-task-list"></ul>
+            <p class="field-help" id="overview-task-empty" hidden>No unfinished tasks are overdue or due in the next seven days.</p>
+          </section>
+          <section class="overview-card" id="overview-finances" aria-labelledby="overview-finances-title">
+            <div class="overview-card-heading">
+              <h2 id="overview-finances-title">Finances <small>projected from your plan</small></h2>
+              <button type="button" class="overview-open" data-open-section="Finances">Open finances<span aria-hidden="true">↗</span></button>
+            </div>
+            <dl class="overview-finances">
+              <div><dt>Projected revenue</dt><dd id="overview-revenue"></dd></div>
+              <div><dt>Projected costs</dt><dd id="overview-costs"></dd></div>
+              <div><dt id="overview-profit-label">Projected profit or loss</dt><dd id="overview-profit"></dd></div>
+            </dl>
+          </section>
+        </div>
+        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
+          <div class="overview-card-heading"><h2 id="overview-team-title">Team <small>who works on this festival</small></h2></div>
           <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
           <div class="overview-table-wrap" tabindex="0" role="region" aria-label="Festival team">
             <table class="overview-table">
