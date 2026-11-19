@@ -12,6 +12,11 @@
 -- itself checks every request: even someone who calls Supabase directly from the
 -- browser console only ever sees and changes their own festival.
 
+-- The project is created with "Grant API access to new tables automatically" switched OFF,
+-- so this file grants exactly what the app needs and nothing more (least privilege).
+-- Signed-out visitors (role anon) get no access to these tables at all.
+grant usage on schema public to authenticated;
+
 -- 1. Profiles -------------------------------------------------------------------
 
 create table public.profiles (
