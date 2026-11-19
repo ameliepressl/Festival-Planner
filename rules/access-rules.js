@@ -7,11 +7,11 @@ const FESTIVAL_CREATOR = Object.freeze({ username: SIGNED_IN_ACCESS?.creatorLabe
 const TEAM_PERMISSIONS = {
   Admin: {
     actions: ['overview', 'team', 'budget', 'lineup', 'checklist'],
-    description: 'Edit festival details and budget, manage the team, and edit the lineup and checklist'
+    description: 'Edit festival details and budget, manage the team, assign tasks, and edit the lineup and checklist'
   },
   Editor: {
     actions: ['lineup', 'checklist'],
-    description: 'Edit the lineup and checklist, including artist and booking fees'
+    description: 'Edit the lineup, checklist and task progress, including artist and booking fees'
   },
   Viewer: {
     actions: [],

@@ -51,7 +51,7 @@ Accounts and saved festivals are stored in **Supabase**. One-time setup by the p
 
 1. Create a Supabase project. In *Authentication → Sign In / Providers → Email*, switch off
    "Confirm email" (the free plan only sends a few emails per hour).
-2. Run the files in [`migrations/`](migrations/) in order (001, 002, 003) in the Supabase
+2. Run the files in [`migrations/`](migrations/) in order (001, 002, 003, 004) in the Supabase
    *SQL Editor*.
 3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
    Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).

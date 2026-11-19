@@ -144,7 +144,50 @@
       });
     });
     document.querySelector('.gantt-heading .eyebrow').textContent=`13 AREAS · ${count} TASKS · ${steps} SUBTASKS`;
+    renderOwners();
   }
+
+  // Owner column: Owner and Admins pick a person per task group; subtasks follow their group
+  // unless they were given to someone else on the Task board (rules/task-rules.js).
+  function renderOwners(){
+    const assignments=window.taskAssignments;
+    const team=assignments.people();
+    const canAssign=assignments.canAssign()&&!editing;
+    project.forEach((area,ai)=>area.tasks.forEach((task,ti)=>{
+      const taskId=String(task.id);
+      const cell=tbody.querySelector(`[data-key="task-${CSS.escape(taskId)}"]`)?.children[1];
+      if(cell){
+        cell.className='gantt-owner';cell.replaceChildren();
+        const owner=assignments.groupAssignee(taskId,team);
+        if(canAssign){
+          const choice=document.createElement('select');choice.className='gantt-owner-select';
+          choice.setAttribute('aria-label',`Owner of task ${ai+1}.${ti+1} ${task.title}`);
+          choice.add(new Option('Nobody',''));
+          team.forEach(person=>choice.add(new Option(assignments.nameOf(person.userId,team),person.userId)));
+          choice.value=owner||'';
+          choice.onchange=()=>{
+            try{assignments.setGroup(taskId,choice.value);}
+            catch(failure){toast(failure.message);choice.value=owner||'';}
+          };
+          cell.append(choice);
+        }else{
+          const name=document.createElement('span');name.className='gantt-owner-name';
+          name.textContent=owner?assignments.nameOf(owner,team):'—';cell.append(name);
+        }
+      }
+      task.subtasks.forEach(step=>{
+        const stepCell=tbody.querySelector(`[data-key="step-${CSS.escape(String(step.id))}"]`)?.children[1];
+        if(!stepCell)return;
+        const {userId,inherited}=assignments.assigneeOf({id:String(step.id),taskId},team);
+        stepCell.className='gantt-owner';stepCell.replaceChildren();
+        const name=document.createElement('span');name.className='gantt-owner-name'+(inherited?' gantt-owner-inherited':'');
+        name.textContent=userId?assignments.nameOf(userId,team):(inherited?'':'Nobody');
+        if(!inherited)name.title='Assigned on the Task board';
+        stepCell.append(name);
+      });
+    }));
+  }
+  window.addEventListener('task-assignments-changed',renderOwners);
   renderProject();
 
   const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';editButton.hidden=!canFestival('lineup');document.querySelector('.gantt-heading').append(editButton);

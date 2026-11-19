@@ -97,7 +97,7 @@
   function sectionChanged(key) {
     if (!ready) { loadWrites.add(key); return; }
     if (!currentUser) return;
-    if (key === ACCOUNT_TEAM_KEY) { teamChanged(); return; }
+    if (key === ACCOUNT_TEAM_KEY) { peopleChanged(); teamChanged(); return; }
     changeCount += 1;
     markUnsaved(key);
     setStatus(access.role === 'Viewer' ? 'readonly' : 'saving');
@@ -122,6 +122,12 @@
   function writeRoster(roster) {
     applying = true;
     try { storage.setItem(ACCOUNT_TEAM_KEY, JSON.stringify(roster)); } finally { applying = false; }
+    peopleChanged();
+  }
+
+  // Pages that show who does which task (work-board.js, gantt-editor.js, overview.js) redraw.
+  function peopleChanged() {
+    setTimeout(() => window.dispatchEvent(new Event('festival-people-changed')), 0);
   }
 
   // --- 2. Talking to Supabase -----------------------------------------------------------
@@ -599,6 +605,17 @@
   };
 
   // Page scripts wait with things like the first-time setup dialog until the app is shown.
+  // Who works on the open festival: { me, owner, members } (members = the Team table).
+  // Used to assign tasks; null until signed in.
+  window.festivalPeople = function festivalPeople() {
+    if (!currentUser || !ready) return null;
+    const me = { userId: currentUser.id, username: currentUser.username };
+    const row = festivals.find((festival) => festival.festival_id === meta.festivalId);
+    let owner = access.creatorLabel === OWNER_ACCESS.creatorLabel ? me : null;   // offline: only "me" is known
+    if (row?.owner_id) owner = row.owner_id === currentUser.id ? me : { userId: row.owner_id, username: row.owner_username || 'Owner' };
+    return { me, owner, members: localRoster() };
+  };
+
   const readyCallbacks = [];
   window.whenAccountReady = function whenAccountReady(callback) {
     if (ready) callback(); else readyCallbacks.push(callback);
@@ -612,7 +629,7 @@
     saving: 'Saving…',
     offline: 'Not saved yet — no connection to your account. Retrying…',
     readonly: 'View only — your changes are not saved',
-    partly: 'Saved. Finance changes can only be saved by an Admin.'
+    partly: 'Saved. Changes to finances or task assignments can only be saved by an Admin.'
   };
 
   function setStatus(kind) {
@@ -680,6 +697,7 @@
     $('.app-layout').inert = false;
     $('#account-screen').hidden = true;
     readyCallbacks.splice(0).forEach((callback) => callback());
+    peopleChanged();
   }
 
   document.addEventListener('DOMContentLoaded', () => {

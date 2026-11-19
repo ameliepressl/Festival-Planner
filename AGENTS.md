@@ -20,6 +20,8 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - `gantt-editor.js` = the saved project schedule that feeds the Gantt and Overview milestones.
 - `account/account.js` = sign-in screen, saving the plan to the account, Sign out, teammate lookup.
 - `rules/account-rules.js` = the account rules (input checks, which data is synced). No screen code.
+- `rules/task-rules.js` = who a subtask belongs to, the "Assigned to" filter, team progress.
+  `task-assignments.js` reads and saves them for the Gantt, the Task board and the Overview.
 - `supabase-config.js` = the Supabase project URL and publishable key (public by design).
 - `migrations/` = every change to the Supabase database, as SQL, in order.
 - `vendor/` = the only third-party library (supabase-js), pinned; see `vendor/README.md`.
@@ -40,8 +42,9 @@ Several of us are beginners. Explain what you change and why, in plain language.
   teammates in Overview → Team; the database table `festival_members` is the real team, the
   roster key `festival-architect-team-v1` is only a copy of it and is never saved in the plan.
 - Access control is enforced in the database with Row Level Security (`migrations/001` and
-  `003`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
-  Editors cannot change the finances; only Owner and Admin can change the team. The pages use
+  `003`, `004`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
+  Editors cannot change the finances or the task assignments (`festival-task-assignments-v1`);
+  only Owner and Admin can change the team. The pages use
   the same roles through `canFestival()` in `rules/access-rules.js`. Never rely on hiding
   buttons alone.
 - Saving sends only the sections (keys) that changed, so teammates working at the same time do

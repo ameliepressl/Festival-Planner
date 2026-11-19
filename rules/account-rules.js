@@ -14,6 +14,9 @@ const ACCOUNT_META_KEY = 'fa-account-sync';
 const ACCOUNT_TEAM_KEY = 'festival-architect-team-v1';
 // The finance assumptions. Only Admins may change them (Kira's "budget" right).
 const ACCOUNT_FINANCE_KEY = 'festival-architect-finance';
+const ACCOUNT_ASSIGNMENTS_KEY = 'festival-task-assignments-v1';
+// Sections only the owner and Admins may change; the database refuses Editors (migrations/003, 004).
+const ACCOUNT_ADMIN_ONLY_KEYS = Object.freeze([ACCOUNT_FINANCE_KEY, ACCOUNT_ASSIGNMENTS_KEY]);
 const ACCOUNT_ROLES = ['Admin', 'Editor', 'Viewer'];
 
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,32}$/;
@@ -233,13 +236,14 @@ function sameAccess(a, b) {
 }
 
 // The sections of the plan to send after changes, as the role allows.
-//   Viewers send nothing; Editors never send the finances; the team roster is never sent.
+//   Viewers send nothing; Editors never send the finances or the task assignments;
+//   the team roster is never sent.
 // Returns { changes: { key: text }, removed: [key], skipped: [key] }.
 function sectionsToSave({ storage, dirtyKeys, role }) {
   const result = { changes: {}, removed: [], skipped: [] };
   const keys = dirtyKeys.includes('*') ? festivalKeys(storage).filter(isSyncedKey) : dirtyKeys.filter(isSyncedKey);
   for (const key of [...new Set(keys)].sort()) {
-    if (role === 'Viewer' || (role === 'Editor' && key === ACCOUNT_FINANCE_KEY)) {
+    if (role === 'Viewer' || (role === 'Editor' && ACCOUNT_ADMIN_ONLY_KEYS.includes(key))) {
       result.skipped.push(key);
       continue;
     }
@@ -313,6 +317,7 @@ function teammateFromRows(rows) {
 if (typeof module !== 'undefined') {
   module.exports = {
     FESTIVAL_KEY_PREFIX, SESSION_STORAGE_KEY, ACCOUNT_META_KEY, ACCOUNT_TEAM_KEY, ACCOUNT_FINANCE_KEY,
+    ACCOUNT_ASSIGNMENTS_KEY, ACCOUNT_ADMIN_ONLY_KEYS,
     ACCOUNT_ROLES, PASSWORD_MIN, PASSWORD_MAX, isSyncedKey, accessFor, sameAccess, sectionsToSave,
     rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,

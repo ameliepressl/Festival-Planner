@@ -244,3 +244,13 @@ test('the festival switcher names the own festival and shows owner and role for 
     'Untitled festival · by Amelie · Editor');
   assert.equal(festivalLabel({ owner_id: ID_A, festival_name: 'X', owner_username: null, my_role: null }, ID_B), 'X · by someone · Viewer');
 });
+
+test('editors never send the task assignments either; admins do', () => {
+  const { ACCOUNT_ASSIGNMENTS_KEY } = require('../rules/account-rules.js');
+  const storage = fakeStorage({ [ACCOUNT_ASSIGNMENTS_KEY]: '{"groups":{},"steps":{}}', 'festival-work-board-status-v1': '{}' });
+  const editor = sectionsToSave({ storage, dirtyKeys: ['*'], role: 'Editor' });
+  assert.deepEqual(editor.changes, { 'festival-work-board-status-v1': '{}' }, 'editors still save task statuses');
+  assert.deepEqual(editor.skipped, [ACCOUNT_ASSIGNMENTS_KEY]);
+  assert.deepEqual(Object.keys(sectionsToSave({ storage, dirtyKeys: [ACCOUNT_ASSIGNMENTS_KEY], role: 'Admin' }).changes),
+    [ACCOUNT_ASSIGNMENTS_KEY]);
+});
