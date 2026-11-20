@@ -49,7 +49,7 @@
     view.innerHTML = `
       <section class="checklist-hero">
         <p class="eyebrow">VENDORS · FOOD COURT</p>
-        <h1>Feed the crowd,<br /><em>fill the pitches.</em></h1>
+        <h1>Vendors</h1>
         <p class="hero-copy">Confirm vendors for the food court pitches. The number of pitches follows the expected visitors (one per 400). Each confirmed vendor appears on the site map. Your choice saves automatically in this browser.</p>
       </section>
       <section class="metrics vendor-metrics">

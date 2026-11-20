@@ -520,3 +520,11 @@ button:disabled{opacity:.4;cursor:default;transform:none}.form-grid{margin-botto
 .overview-muted{color:var(--muted)}
 #overview-progress{margin-bottom:16px}
 .overview-progress .field-help{margin:12px 0 0}
+
+.cleanup-disclosure>summary{cursor:pointer;font:600 20px Fraunces,serif;color:var(--ink);padding:6px 0}
+.cleanup-disclosure[open]>summary{margin-bottom:16px}
+.cleanup-disclosure>summary:focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+
+.fin-groups .cleanup-disclosure>summary{font:600 14px "DM Sans",sans-serif}
+
+.overview-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}

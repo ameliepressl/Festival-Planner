@@ -1,6 +1,7 @@
 // Overview and navigation between the planner's sections.
 const sectionViews = {
   Overview: $('#overview-view'),
+  Settings: $('#settings-view'),
   'Lineup planner': $('#lineup-view'),
   'Final checklist': $('#checklist-view'),
   'Task board': $('#task-board-view'),
@@ -9,9 +10,14 @@ const sectionViews = {
   Finances: $('#finance-view')
 };
 
+function renderProjectSettings() {
+    $('#project-settings-summary').textContent = [state.event.name, state.event.venue, $('#overview-dates').textContent, $('#overview-hours').textContent].filter(Boolean).join(' · ');
+    $('#settings-edit-festival').hidden = !canFestival('overview') || state.final;
+    $('#project-settings-help').textContent = !canFestival('overview') ? 'The festival creator and Admins can edit festival details.' : state.final ? 'The plan is finalised. Reopen it before changing festival details.' : '';
+}
+
 function renderOverview() {
   const event = state.event;
-  const checklist = progress(parseChecked(localStorage.getItem(CHECKLIST_STORAGE_KEY)));
   $('#overview-title').textContent = event.name || 'Overview';
   $('#overview-tagline').textContent = event.name ? festivalTagline(event) : '';
   $('#overview-venue').textContent = event.venue || '';
@@ -21,10 +27,9 @@ function renderOverview() {
   $('#overview-dates').textContent = firstDay === lastDay ? firstDay : `${firstDay} – ${lastDay}`;
   const hasCustomHours = Object.keys(event.dayHours || {}).length > 0;
   $('#overview-hours').textContent = `${timeText(event.startMinutes)}–${timeText(event.endMinutes)}${hasCustomHours ? ' (default)' : ''}`;
+  $('#overview-menu').hidden = true;
   const canEditOverview = canFestival('overview');
   $('#overview-setup').hidden = !canEditOverview || Boolean(event.name) || state.final;
-  $('#overview-menu').hidden = !canEditOverview || !event.name || state.final;
-  $('#overview-menu').open = false;
   $('#overview-final').hidden = !canEditOverview || !state.final;
   const bookings = performances();
   const confirmed = bookings.filter(booking => booking.status === 'confirmed').length;
@@ -32,8 +37,10 @@ function renderOverview() {
   $('#overview-booking-status').textContent = `${confirmed} confirmed · ${bookings.length - confirmed} tentative`;
   $('#overview-budget').textContent = euros(state.settings.budget - total());
   $('#overview-budget-total').textContent = `of ${euros(state.settings.budget)}`;
-  $('#overview-checklist').textContent = `${checklist.percent}%`;
-  $('#overview-checklist-count').textContent = `${checklist.done} of ${checklist.total} checks`;
+  $('#lineup-venue').textContent = event.venue || 'Not set';
+  $('#lineup-dates').textContent = $('#overview-dates').textContent;
+  $('#lineup-hours').textContent = $('#overview-hours').textContent;
+  renderProjectSettings();
   renderOverviewFinance();
   renderOverviewTasks();
 }
@@ -71,46 +78,8 @@ function renderOverviewTaskProgress() {
   $('#overview-tasks-count').textContent = `${tasks.done} of ${tasks.total} tasks`;
 }
 
-// Overview → Team progress (feature-plans/task-assignments.md).
-const progressDate = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-function renderOverviewProgress() {
-  const progress = window.getOverviewTeamProgress?.();
-  $('#overview-progress').hidden = !progress;
-  if (!progress) return;
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  $('#overview-progress-rows').innerHTML = progress.people.map(person => {
-    const name = escapeHtml(person.username) + (person.isMe ? ' <small>(you)</small>' : '');
-    const next = person.next
-      ? `<span class="${person.next.end < today ? 'is-overdue' : ''}">${escapeHtml(person.next.title)}<small>${escapeHtml(progressDate.format(new Date(person.next.end + 'T12:00:00Z')))}</small></span>`
-      : '<span class="overview-muted">—</span>';
-    return `
-    <tr>
-      <th scope="row"><button type="button" data-progress-assignee="${person.isMe ? 'me' : escapeHtml(person.userId)}" aria-label="Show the subtasks of ${escapeHtml(person.username)} on the Task board">${name}</button></th>
-      <td>${person.assigned}</td>
-      <td><span class="overview-progress-bar" aria-hidden="true"><span style="width:${person.percent}%"></span></span>${person.done} · ${person.percent}%</td>
-      <td class="${person.overdue ? 'is-overdue' : ''}">${person.overdue}</td>
-      <td>${next}</td>
-    </tr>`;
-  }).join('');
-  const unassigned = $('#overview-unassigned');
-  unassigned.hidden = progress.unassigned === 0;
-  unassigned.innerHTML = `${progress.unassigned} ${progress.unassigned === 1 ? 'subtask' : 'subtasks'} without a person<span aria-hidden="true">↗</span>`;
-  const nothingAssigned = progress.people.every(person => person.assigned === 0);
-  $('#overview-progress-help').textContent = !window.taskAssignments?.canAssign()
-    ? 'The festival creator and Admins assign the tasks.'
-    : nothingAssigned
-      ? 'No tasks are assigned yet. Choose an owner per task in Project tasks → Gantt chart (Owner column).'
-      : 'Choose an owner per task in the Gantt chart’s Owner column; change single subtasks on the Task board.';
-}
-document.querySelector('#overview-progress').addEventListener('click', ({ target }) => {
-  const person = target.closest('[data-progress-assignee]');
-  if (person) window.openTaskBoard?.({ assignee: person.dataset.progressAssignee });
-  else if (target.closest('#overview-unassigned')) window.openTaskBoard?.({ assignee: 'none' });
-});
-
 function renderOverviewTasks() {
   renderOverviewTaskProgress();
-  renderOverviewProgress();
   const tasks = window.getOverviewUrgentTasks?.();
   if (!tasks) return;
   $('#overview-task-list').innerHTML = tasks.map(({ id, title, area, end, deadline }) => `
@@ -126,7 +95,6 @@ function renderOverviewTasks() {
 function openFestivalDetails() {
   if (!writable('overview')) return;
   const event = state.event;
-  $('#overview-menu').open = false;
   $('#overview-dialog-title').textContent = event.name ? 'Edit festival details' : 'Set up festival';
   $('#festival-name').value = event.name || '';
   $('#festival-venue').value = event.venue || '';
@@ -154,7 +122,7 @@ function showSection(section) {
   });
   $('.lineup-actions').classList.toggle('hidden', section !== 'Lineup planner');
   $('.festival-meta').classList.toggle('hidden', section === 'Overview');
-  if (section === 'Overview') renderOverview();
+  if (section === 'Overview' || section === 'Settings' || section === 'Lineup planner') renderOverview();
   window.scrollTo(0, 0);
 }
 
@@ -178,9 +146,11 @@ document.querySelectorAll('[data-open-section]').forEach(control => {
 
 $('#overview-setup').onclick = openFestivalDetails;
 $('#overview-edit').onclick = openFestivalDetails;
+$('#settings-edit-festival').onclick = openFestivalDetails;
 $('#overview-cancel').onclick = () => $('#overview-dialog').close();
 $('#overview-dialog').addEventListener('close', () => {
-  if (state.event.name) $('#overview-edit').focus();
+  if (!$('#settings-view').classList.contains('hidden')) $('#settings-edit-festival').focus();
+  else if (state.event.name) document.querySelector('[data-section="Settings"]').focus();
   else $('#overview-setup').focus();
 });
 $('#overview-form').addEventListener('submit', event => {
@@ -233,6 +203,7 @@ let teammateToRemove = null;
 
 function renderTeam() {
   const canManageTeam = canFestival('team');
+  $('#overview-team-title').textContent = canManageTeam ? 'Manage team' : 'View team';
   $('#team-form').classList.toggle('hidden', !canManageTeam);
   $('#team-rows').innerHTML = [FESTIVAL_CREATOR, ...team].map(({ username, role }, rowIndex) => {
     const index = rowIndex - 1;

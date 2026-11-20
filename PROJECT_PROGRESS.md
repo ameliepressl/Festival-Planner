@@ -287,3 +287,103 @@ Owner and Admins give each task group to a person in the Gantt's Owner column an
 Migration 004 applied in Supabase on 19 November 2026 (with Amelie's OK); the security advisor reports nothing new.
 
 Validation: all JavaScript tests pass (10 new task tests, 1 new account test). Migration 004 tested in PGlite (42 database checks, also with Supabase's default grants). Browser check with two accounts (26 checks): assigning in the Gantt and on the board, filters, an Editor finishing a task, an Editor's assignment change not being sent, Team progress numbers, a teammate leaving.
+
+## Interface cleanup — 20 November 2026
+
+Collapsed team management, team progress and financial assumptions. Non-admin users see View team. Financial figures appear before assumptions, which stay expanded while editing. Clarified artist booking budget, event-day checklist and task group labels. Overview shows up to five urgent tasks.
+
+## Settings and overview simplification — 20 November 2026
+
+Removed Team progress and the Overview Final checklist progress card. Moved role-aware team management to Settings above Sign out. Placed lineup backup tools after the timetable.
+
+## Festival details in Settings — 20 November 2026
+
+Added festival name, venue, dates and hours to Settings with the existing edit dialog. Creator/Admin permissions and finalised-plan restrictions remain enforced.
+
+## Festival details save feedback — 20 November 2026
+
+Fixed the Settings summary remaining stale after saving festival details. It now refreshes immediately and focus returns to the Settings edit button.
+
+## Compact shared page layout — 20 November 2026
+
+Introduced shared compact typography, title placement, card padding and section spacing across all planning pages. Shortened Lineup planner, Project tasks and Finances titles, removed the decorative lineup shape, and placed descriptions beside page titles on wide screens. Small-screen layouts wrap naturally.
+
+## Consistent header alignment — 20 November 2026
+
+Aligned page title blocks with shared label, title and description spacing. Standardised the top toolbar height on desktop to prevent titles shifting when section actions change.
+
+## Festival editing through Settings — 20 November 2026
+
+Removed Edit festival details from Overview. Existing festival details can be edited through Settings by authorised roles.
+
+## Compact Lineup planner — 20 November 2026
+
+Reduced the summary, timetable controls and backup spacing, removed repeated introductory labels, and tightened artist cards. Timetable uses 45 pixels per hour with proportional booking and closed-time placement; slot selection still maps pointer position to the correct time.
+
+## Lineup planner arrangement — 20 November 2026
+
+Added festival facts above the summary with Edit stage planning settings alongside them. Moved download/restore backup actions into the timetable toolbar with icons. Removed stage-heading plus buttons. Artist catalogue is retained.
+
+## Daily and festival timetable views — 20 November 2026
+
+Added a Festival view showing all days side by side, with Daily view available for one day at a time. Empty-slot booking uses the selected day and stage. Added space above and below the timetable and removed repeated opening hours from its toolbar.
+
+## Timetable toolbar alignment — 20 November 2026
+
+Aligned booking and backup actions with the daily/festival view controls beneath the timetable heading.
+
+## Site map setup order — 20 November 2026
+
+Moved festival size and map settings above the map as visible compact panels. Layout check sits directly below the map; selected facility details remain alongside it.
+
+## Site setup panel design — 20 November 2026
+
+Restyled Festival size with a dedicated visitor input and five aligned facility totals. Map settings uses aligned name and scale fields, explanatory text, and a separate action row with the destructive action at the far edge. Both panels share the page heading typography and responsive layout.
+
+## Map settings toolbar access — 20 November 2026
+
+Replaced Upload map in the toolbar with Map settings. It expands the settings panel below the toolbar; Upload map is available inside that panel.
+
+## Compact map settings placement — 20 November 2026
+
+Moved expanded settings above the toolbar divider. Limited name and real-width field widths, placed actions alongside them on wide screens, and retained wrapping for smaller screens.
+
+## Map settings expansion position — 20 November 2026
+
+Placed the expanded settings inside the toolbar, directly below its button row and above the bottom divider and map controls.
+
+## Collapsible festival size and layout action — 20 November 2026
+
+Made Festival size expandable and collapsible, initially open. Placed Suggest optimal layout directly above the map controls.
+
+## Map toolbar space — 20 November 2026
+
+Moved Suggest optimal layout into the map controls row to remove the empty row above it. Controls wrap on smaller screens.
+
+## Map toolbar divider — 20 November 2026
+
+Removed the horizontal divider between map selection/settings and map controls.
+
+## Festival layout heading and controls — 20 November 2026
+
+Named the map region Festival layout with the same heading typography as Festival size. Standardised map tool, category and layout action text size, minimum height and spacing.
+
+## Festival layout sidebar alignment — 20 November 2026
+
+Integrated map selection/settings in the upper-right of Festival layout. Pin details align with the map canvas using shared grid rows; smaller screens retain a stacked layout.
+
+## Map settings dialog — 20 November 2026
+
+Placed one Map settings button beside Suggest optimal layout. It opens a dialog with map selection, upload, name, scale and map actions, preserving the canvas layout. Dialog remains open when map selection redraws the page and restores focus on closing.
+
+## Map settings actions and feedback — 20 November 2026
+
+Grouped Map settings immediately to the right of Suggest optimal layout. Map action feedback appears inside the settings dialog while it is open, keeping messages visible above the backdrop.
+
+## Map control row and action messages — 20 November 2026
+
+Extended the map tools across the full Festival layout width. Added settings feedback for image selection, water detection progress/failure, clearing no-go areas, using the image boundary, restoring the demo and deleting/selecting maps.
+
+## Festival details edit alignment — 20 November 2026
+
+Aligned the settings edit action to the right of the festival details summary, with responsive stacking on small screens.

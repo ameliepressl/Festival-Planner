@@ -44,7 +44,7 @@
       localStorage.setItem(SITE_MAPS_STORAGE_KEY, JSON.stringify(sites));
       localStorage.setItem(SELECTED_KEY, currentId);
     } catch {
-      toast('Could not save: the browser storage is full. Delete a map or upload a smaller image.');
+      mapMessage('Could not save: the browser storage is full. Delete a map or upload a smaller image.');
     }
   }
   const site = () => sites.find((s) => s.id === currentId);
@@ -54,26 +54,33 @@
   const titleOf = (categoryId) => MAP_CATEGORIES.find((c) => c.id === categoryId).title;
   const escape = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  function mapMessage(message) {
+    const dialog = view.querySelector('#sm-settings-dialog');
+    if (dialog?.open) {
+      const feedback = view.querySelector('#sm-settings-message');
+      feedback.textContent = message;
+      feedback.scrollIntoView({block:'nearest'});
+    } else toast(message);
+  }
+
   // ---------- the page frame (drawn once per visit or map change) ----------
   function renderPage() {
+    const keepSettingsOpen = !!view.querySelector("#sm-settings-dialog")?.open;
     const s = site();
     view.innerHTML = `
       <section class="checklist-hero sm-hero">
         <p class="eyebrow">SITE MAP · LAYOUT PLANNER</p>
-        <h1>Plan the ground,<br /><em>pin by pin.</em></h1>
+        <h1>Site map</h1>
         <p class="hero-copy">Click any pin to see its details. Upload an aerial photo or site plan of your own ground and the planner suggests the optimal layout: stages, first aid, toilets, water, food court, gate and emergency exits.</p>
       </section>
-      <div class="sm-toolbar">
-        <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${m.id}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
-        <label class="button secondary sm-upload">⇪ Upload map<input type="file" accept="image/*" id="sm-upload" class="hidden" /></label>
-        <span class="sm-spacer"></span>
-        <button type="button" class="button primary" id="sm-suggest">✦ Suggest optimal layout</button>
-      </div>
+      <details class="sm-card sm-size-disclosure" open><summary>Festival size</summary><div id="sm-size"></div></details>
       <div class="sm-layout">
-        <div class="sm-main">
+        <div class="sm-main" role="region" aria-labelledby="festival-layout-title">
+          <h2 id="festival-layout-title">Festival layout</h2>
           <div class="sm-tools" role="group" aria-label="Map tools">
             ${Object.entries(MODES).map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
             <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> Show no-go areas</label>
+            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">✦ Suggest optimal layout</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
           </div>
           <div class="map-chips" role="group" aria-label="Show categories">
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
@@ -87,18 +94,27 @@
             <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
             <div class="sm-scale" id="sm-scale"></div>
           </div>
+          <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </div>
         <aside class="sm-side">
           <section class="sm-card" id="sm-details" aria-live="polite"></section>
-          <section class="sm-card" id="sm-size"></section>
-          <section class="sm-card" id="sm-score"></section>
-          <section class="sm-card" id="sm-settings"></section>
         </aside>
-      </div>`;
+      </div>
+      <dialog id="sm-settings-dialog" aria-labelledby="sm-settings-title">
+        <header class="sm-dialog-heading"><h2 id="sm-settings-title">Map settings</h2><button type="button" class="button secondary" id="sm-close-settings" aria-label="Close map settings">×</button></header>
+        <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${m.id}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
+        <div id="sm-settings"></div>
+        <p class="field-help">Changes save automatically.</p><p id="sm-settings-message" role="status" aria-live="polite"></p>
+      </dialog>`;
     box = box && box.site === currentId ? box : { site: currentId, x: 0, y: 0, w: s.width, h: s.height };
     drawScene();
     drawAll();
     renderSettings();
+    const settingsDialog = view.querySelector('#sm-settings-dialog');
+    view.querySelector('#sm-open-settings').onclick = () => settingsDialog.showModal();
+    view.querySelector('#sm-close-settings').onclick = () => settingsDialog.close();
+    settingsDialog.addEventListener('close', () => view.querySelector('#sm-open-settings').focus());
+    if (keepSettingsOpen) settingsDialog.showModal();
     renderSize();
     bindMap();
   }
@@ -232,11 +248,10 @@
   function renderSettings() {
     const s = site();
     view.querySelector('#sm-settings').innerHTML = `
-      <p class="eyebrow">MAP SETTINGS</p>
-      <label class="sm-field">Name<input id="sm-name" maxlength="60" value="${escape(s.name)}" ${s.id === 'demo' ? 'disabled' : ''} /></label>
+      <label class="sm-field">Map name<input id="sm-name" maxlength="60" value="${escape(s.name)}" ${s.id === 'demo' ? 'disabled' : ''} /></label>
       <label class="sm-field">Real width of the map (metres)<input id="sm-width" type="number" min="20" max="20000" step="10" value="${s.widthMetres}" />
-        <small>How wide the area on the image is in reality. All distances and object sizes use this scale.</small></label>
-      <div class="sm-setting-buttons">
+        <small>Sets the scale for all map distances and facility sizes.</small></label>
+      <div class="sm-setting-buttons"><label class="button secondary sm-upload">⇪ Upload map<input type="file" accept="image/*" id="sm-upload" class="hidden" /></label>
         ${s.image ? '<button type="button" class="button secondary" data-action="detect">Detect water automatically</button>' : ''}
         <button type="button" class="button secondary" data-action="clear-nogo">Clear no-go areas</button>
         ${s.image ? '<button type="button" class="button secondary" data-action="whole">Use whole image as ground</button>' : ''}
@@ -253,7 +268,6 @@
       ['Security staff', `${needs.securityStaff}`, 'crew on duty']
     ];
     view.querySelector('#sm-size').innerHTML = `
-      <p class="eyebrow">FESTIVAL SIZE</p>
       <label class="sm-field">Expected visitors<input id="sm-visitors" type="number" min="${MIN_VISITORS}" max="${MAX_VISITORS}" step="500" value="${ground.visitors}" /></label>
       <ul class="sm-needs">${rows.map(([label, value, note]) => `<li><b>${value}</b><span>${label}<small>${note}</small></span></li>`).join('')}</ul>
       <small class="sm-note">Rules of thumb for a one-day open-air event (e.g. one toilet per 100 visitors). Check the local authority's rules for the real event.</small>`;
@@ -261,7 +275,7 @@
 
   // A new festival size: new facility list; the map shows what still needs a place.
   function changeVisitors(value) {
-    if (!validVisitors(value)) { toast(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
+    if (!validVisitors(value)) { mapMessage(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
     ground = { visitors: Number(value) };
     needs = capacityNeeds(ground.visitors);
     items = layoutItems(needs);
@@ -269,19 +283,19 @@
     if (selectedId && !findItem(selectedId, items)) selectedId = null;
     renderSize(); drawAll();
     const missing = items.filter((i) => !site().placements[i.id]).length;
-    toast(missing ? `${missing} new facilities need a place. Press “Plan them” or “Suggest optimal layout”.` : 'Festival size saved.');
+    mapMessage(missing ? `${missing} new facilities need a place. Press “Plan them” or “Suggest optimal layout”.` : 'Festival size saved.');
   }
 
   // ---------- actions ----------
   function suggest() {
     const s = site();
     const result = suggestLayout(s, items);
-    if (result.problem) { toast(result.problem); return; }
+    if (result.problem) { mapMessage(result.problem); return; }
     s.placements = result.placements;
     save();
     drawAll();
     const score = layoutScore(checkLayout(s, s.placements, items));
-    toast(score === 100 ? 'Optimal layout suggested: all rules met.' : `Layout suggested: ${score}% of the rules met. The check on the right shows what the ground cannot fit.`);
+    mapMessage(score === 100 ? 'Optimal layout suggested: all rules met.' : `Layout suggested: ${score}% of the rules met. The check on the right shows what the ground cannot fit.`);
   }
 
   function switchMap(id) {
@@ -311,7 +325,7 @@
   }
 
   async function upload(file) {
-    if (!file || !file.type.startsWith('image/')) { toast('Please choose an image file (JPG or PNG).'); return; }
+    if (!file || !file.type.startsWith('image/')) { mapMessage('Please choose an image file (JPG or PNG).'); return; }
     try {
       const original = await loadImage(URL.createObjectURL(file));
       const scale = Math.min(1, 1600 / Math.max(original.width, original.height));
@@ -331,9 +345,9 @@
       created.placements = suggestLayout(created, items).placements;
       sites.push(created);
       switchMap(created.id);
-      toast('Map uploaded and a first layout suggested. Set the real width, the fence and the gate, then suggest again.');
+      mapMessage('Map uploaded and a first layout suggested. Set the real width, the fence and the gate, then suggest again.');
     } catch {
-      toast('This image could not be read. Try a JPG or PNG.');
+      mapMessage('This image could not be read. Try a JPG or PNG.');
     }
   }
 
@@ -404,7 +418,7 @@
         s.entrance = nearestBoundaryPoint(s, p);
         s.placements.entrance = s.entrance;
         save(); drawAll(); select('entrance');
-        toast('Gate set. Press “Suggest optimal layout” to plan around it.');
+        mapMessage('Gate set. Press “Suggest optimal layout” to plan around it.');
         pointer = null; return;
       }
       if (mode === 'paint' || mode === 'erase') { pointer.paint = mode === 'paint' ? '1' : '0'; paintAt(p, pointer.paint); return; }
@@ -464,7 +478,7 @@
     if (border) {
       if (border.dataset.border === 'done' && draftBorder.length >= 3) {
         s.boundary = draftBorder; draftBorder = null; save(); drawScene(); setMode('explore'); drawAll();
-        toast('Fence saved. Press “Suggest optimal layout” to plan inside it.');
+        mapMessage('Fence saved. Press “Suggest optimal layout” to plan inside it.');
       } else { draftBorder = null; setMode('explore'); }
       return;
     }
@@ -477,22 +491,26 @@
     if (t.closest('[data-go-vendors]')) return document.querySelector('.sidebar-item[data-section="Vendors"]').click();
     const action = t.closest('[data-action]')?.dataset.action;
     if (action === 'plan-missing') return suggest();
+    if (t.closest('.sm-upload')) mapMessage('Choose a JPG or PNG image. Uploading it creates a new map.');
     if (action === 'detect') {
-      detectWater(s).then((grid) => { s.grid = grid; showNogo = true; save(); renderPage(); toast('Blue areas marked as no-go. Check them and correct with “Mark no-go” / “Erase no-go”.'); });
+      mapMessage('Detecting water…');
+      detectWater(s).then((grid) => { s.grid = grid; showNogo = true; save(); renderPage(); mapMessage('Blue areas marked as no-go. Check them and correct with “Mark no-go” / “Erase no-go”.'); }).catch(() => mapMessage('Water detection failed. Try again or mark no-go areas manually.'));
     } else if (action === 'clear-nogo') {
       s.grid = emptyGrid(s.width, s.height); save(); drawAll();
+      mapMessage('No-go areas cleared.');
     } else if (action === 'whole') {
       s.boundary = [[0, 0], [s.width, 0], [s.width, s.height], [0, s.height]]; save(); drawScene(); drawAll();
+      mapMessage('The whole image is now the festival ground.');
     } else if (action === 'reset-demo') {
-      sites = sites.map((m) => (m.id === 'demo' ? demoSite(items) : m)); save(); renderPage();
+      sites = sites.map((m) => (m.id === 'demo' ? demoSite(items) : m)); save(); renderPage(); mapMessage('Demo map restored.');
     } else if (action === 'delete' && window.confirm(`Delete the map “${s.name}”? This cannot be undone.`)) {
-      sites = sites.filter((m) => m.id !== s.id); switchMap('demo');
+      sites = sites.filter((m) => m.id !== s.id); switchMap('demo'); mapMessage('Map deleted. The demo map is now selected.');
     }
   });
 
   view.addEventListener('change', (event) => {
     const s = site();
-    if (event.target.id === 'sm-select') switchMap(event.target.value);
+    if (event.target.id === 'sm-select') { switchMap(event.target.value); mapMessage('Map selected.'); }
     else if (event.target.id === 'sm-upload') upload(event.target.files[0]);
     else if (event.target.id === 'sm-visitors') changeVisitors(event.target.value);
     else if (event.target.id === 'sm-show-nogo') { showNogo = event.target.checked; drawNogo(); }

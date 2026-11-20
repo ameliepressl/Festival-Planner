@@ -12,7 +12,7 @@
     view.innerHTML = `
       <section class="checklist-hero">
         <p class="eyebrow">FINAL CHECKLIST</p>
-        <h1>Nothing forgotten<br /><em>before the gates open.</em></h1>
+        <h1>Final checklist</h1>
         <p class="hero-copy">On the event day, confirm each checkpoint on site before ticking it off. Advance preparation belongs in the task board. Review any previously saved ticks against these checks. Your progress saves automatically in this browser.</p>
       </section>
       <section class="checklist-progress" aria-label="Final checklist progress">

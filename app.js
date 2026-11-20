@@ -22,6 +22,7 @@ function loadState() {
 }
 let state = loadState();
 let currentDay = state.event.startDate;
+let lineupView = "festival";
 let selectedArtistId = null, editingId = null, editingArtistId = null, editingBlockId = null;
 let pendingBudgetChange = null, pendingRestore = null, suggestedStart = null, selectedSlot = null;
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -47,9 +48,9 @@ function calendarMarkup(day, publicOnly = false) {
   const entries = state.bookings.filter(b => b.date === day && (!publicOnly || (isPerformance(b) && b.status === 'confirmed')));
   const scale = 324 / height;
   const canBook = canFestival('lineup') && !state.final;
-  return `<div class="calendar-grid" style="--print-stages:${stages().length};--print-scale:${scale};grid-template-columns:56px repeat(${stages().length},minmax(145px,1fr))">
+  return `<div class="calendar-grid" data-calendar-day="${day}" style="--calendar-minutes:${height};--print-stages:${stages().length};--print-scale:${scale};grid-template-columns:56px repeat(${stages().length},minmax(145px,1fr))">
     <div class="calendar-corner">TIME</div>
-    ${stages().map(s => `<div class="calendar-stage"><strong>${escapeHtml(stageName(s))}</strong>${!publicOnly ? `<button class="add-stage-slot" data-add-stage="${s}" aria-label="Add appointment on ${escapeHtml(stageName(s))}" ${canBook?'':'disabled'}>+</button>` : ''}</div>`).join('')}
+    ${stages().map(s => `<div class="calendar-stage"><strong>${escapeHtml(stageName(s))}</strong></div>`).join('')}
     <div class="vertical-times" style="height:${height}px">${Array.from({length:Math.floor(height/60)+1}, (_,i) => `<span style="--minute-offset:${i*60};top:${i*60}px">${timeText(bounds.start+i*60)}</span>`).join('')}</div>
     ${stages().map((s,i) => {
       const h = stageHours(day,s);
@@ -89,21 +90,26 @@ function render() {
   $('#budget-input').disabled = lineupLocked || !canFestival('budget');
   $('#add-artist').disabled = lineupLocked;
   $('#add-block').disabled = lineupLocked;
+  $('#book-performance').disabled = lineupLocked;
   $('#artist-list').innerHTML = state.artists.map(a => {
     const booked = performances().filter(b => b.artistId===a.id).sort((x,y) => x.date.localeCompare(y.date)||x.start-y.start);
     return `<article class="artist-card"><div class="avatar" style="background:${a.colour}">${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · default ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} default fee</div>${booked.length?`<div class="booked-label">${booked.length} scheduled performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.map(b => `<li><span class="booking-status ${b.status||'tentative'}">${b.status==='confirmed'?'Confirmed':'Tentative'}</span> · ${dateText(b.date)} · ${escapeHtml(stageName(b.stage))}<br>${timeText(b.start)}–${timeText(b.start+entryDuration(b))} · ${euros(entryFee(b))}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${lineupLocked?'disabled':''}>Edit</button><button class="button primary" data-artist="${a.id}" ${lineupLocked?'disabled':''}>Book</button></div></article>`;
   }).join('') || '<p>No artists yet. Add your first artist above.</p>';
-  const daily = dayHours(currentDay);
-  $('.schedule-heading .catalogue-count').textContent = `Festival open ${timeText(daily.start)}–${timeText(daily.end)}`;
   $('#current-day').innerHTML = `<strong>${dateText(currentDay)}</strong><small>Day ${index+1} of ${dates.length}</small>`;
   $('#previous-day').disabled = index===0;
   $('#next-day').disabled = index===dates.length-1;
-  $('#calendar').innerHTML = calendarMarkup(currentDay);
+  const festivalView = lineupView === 'festival';
+  $('#lineup-daily').ariaPressed = String(!festivalView);
+  $('#lineup-festival').ariaPressed = String(festivalView);
+  $('.day-navigation').classList.toggle('hidden', festivalView);
+  $('#calendar').classList.toggle('festival-calendar', festivalView);
+  $('#calendar').innerHTML = festivalView
+    ? dates.map(day => '<section class="festival-day"><h3>' + dateText(day) + '</h3>' + calendarMarkup(day) + '</section>').join('')
+    : calendarMarkup(currentDay);
   $('#schedule-empty').textContent = lineupLocked ? 'Nothing is scheduled for this day.' : 'Click a free calendar slot, book an artist, or add a calendar block.';
-  $('#schedule-empty').classList.toggle('hidden',state.bookings.some(b => b.date===currentDay));
+  $('#schedule-empty').classList.toggle('hidden',state.bookings.some(b => lineupView === 'festival' || b.date===currentDay));
   document.querySelectorAll('[data-artist]').forEach(e => e.onclick=() => openBooking(e.dataset.artist));
   document.querySelectorAll('[data-edit-artist]').forEach(e => e.onclick=() => openArtist(e.dataset.editArtist));
-  document.querySelectorAll('[data-add-stage]').forEach(e => e.onclick=() => openSlot(e.dataset.addStage,stageHours(currentDay,e.dataset.addStage).start));
   document.querySelectorAll('[data-booking]').forEach(e => {
     e.onclick = () => {
       if (!canFestival('lineup')) { showPerformanceDetails(e); return; }
@@ -125,8 +131,10 @@ $('#calendar').onclick = event => {
   if (!track) return;
   const rect = track.getBoundingClientRect(), bounds=calendarBounds();
   const start = bounds.start + Math.floor((event.clientY-rect.top)/rect.height*(bounds.end-bounds.start));
-  const h=stageHours(currentDay,track.dataset.stage);
+  const clickedDay = track.closest('[data-calendar-day]').dataset.calendarDay;
+  const h=stageHours(clickedDay,track.dataset.stage);
   if (start<h.start || start>=h.end) { toast('This stage is closed at that time.'); return; }
+  currentDay = clickedDay;
   openSlot(track.dataset.stage,start);
 };
 function openSlot(stage,start) {
@@ -444,3 +452,8 @@ $('#confirm-finalise').onclick=() => {
   state.final=true;save();render();toast('Lineup finalised. Choose public or internal PDF using Print / Save PDF.');
 };
 render();
+
+$('#book-performance').onclick = () => openBooking(state.artists[0]?.id);
+
+$('#lineup-daily').onclick = () => { lineupView = 'daily'; render(); };
+$('#lineup-festival').onclick = () => { lineupView = 'festival'; render(); };
