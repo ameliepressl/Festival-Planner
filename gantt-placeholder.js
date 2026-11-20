@@ -69,12 +69,14 @@ window.initialiseGanttOutline = function () {
   updateVisibility();
 
   function openChart() {
+    if (window.showProjectTaskView) return window.showProjectTaskView('timeline');
     board.classList.add('hidden');
     chart.classList.remove('hidden');
     window.scrollTo(0, 0);
     document.querySelector('#back-task-board').focus();
   }
   function closeChart() {
+    if (window.showProjectTaskView) return window.showProjectTaskView('board');
     chart.classList.add('hidden');
     board.classList.remove('hidden');
     window.scrollTo(0, 0);

@@ -18,6 +18,14 @@ function loadState() {
     for (const hours of Object.values(plan.event.dayHours || {})) delete hours.stages;
     plan.stageHoursResetV1 = true;
   }
+  // Move the existing example festival with the revised demo dates.
+  if (plan.event.name === 'Lisbon Sound Festival' && plan.event.startDate === '2026-12-30' && plan.event.endDate === '2026-12-31') {
+    const shift = date => new Date(Date.parse(date + 'T12:00:00Z') + 80 * 86400000).toISOString().slice(0, 10);
+    plan.event.startDate = shift(plan.event.startDate);
+    plan.event.endDate = shift(plan.event.endDate);
+    plan.bookings.forEach(booking => { booking.date = shift(booking.date); });
+    if (plan.event.dayHours) plan.event.dayHours = Object.fromEntries(Object.entries(plan.event.dayHours).map(([date, hours]) => [shift(date), hours]));
+  }
   return plan;
 }
 let state = loadState();

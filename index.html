@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="vendors/vendors.css" />
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css" />
-    <link rel="stylesheet" href="compact.css?v=settings-edit-right" />
+    <link rel="stylesheet" href="compact.css?v=subtask-owners-only" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
          the body: they hide the app until someone is signed in and save every change to the account.
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
@@ -247,7 +247,7 @@
         <section class="checklist-hero">
           <p class="eyebrow">PROJECT TASKS</p>
           <h1>Project tasks</h1>
-          <p class="hero-copy">See the project timeline and track tasks by status.</p>
+          <p class="hero-copy">See the project timeline and track tasks by status.</p><div class="project-view-switch" role="group" aria-label="Project tasks view"><button type="button" class="button secondary" id="project-board-view" aria-pressed="true">Task Board</button><button type="button" class="button secondary" id="project-timeline-view" aria-pressed="false">Timeline</button></div>
           <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart <span aria-hidden="true">↗</span></span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
           <section class="work-board-overview" id="open-board-page" aria-labelledby="task-overview-title">
             <div class="gantt-preview-heading">
@@ -257,7 +257,7 @@
               </div>
               <button type="button" class="gantt-preview-link work-board-open">Open Task Board <span aria-hidden="true">↗</span></button>
             </div>
-            <div class="work-board-stats"></div>
+            <div class="work-board-stats"><button type="button" class="work-board-stat" data-status="all"><span class="work-board-stat-label">All tasks</span><span class="work-board-stat-value" id="board-all-count"></span></button></div>
           </section>
           <section class="work-board-overview" aria-labelledby="needs-attention-title">
             <div class="gantt-preview-heading"><h2 id="needs-attention-title">Upcoming tasks/ needs attention</h2></div>
@@ -273,7 +273,7 @@
         <p class="hero-copy">Track festival preparation by status. Names and dates come from the project timeline.</p>
         <div class="work-board-tools">
           <label>Work area <select id="work-board-area"><option value="">All areas</option></select></label>
-          <label>Assigned to <select id="work-board-assignee"><option value="">Everyone</option></select></label>
+          <button type="button" class="button secondary" id="board-my-tasks" aria-pressed="false">My tasks</button><label>Assigned to <select id="work-board-assignee"><option value="">Everyone</option></select></label>
           <label>Search tasks <input id="work-board-search" type="search" placeholder="Search names or task numbers"></label>
           <label class="work-board-due-filter"><input type="checkbox" id="work-board-due-soon"> Due soon</label>
           <button type="button" class="button primary" id="board-add-task">Add new task</button>
@@ -728,19 +728,19 @@
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
-    <script src="rules/festival-rules.js"></script>
-    <script src="app.js?v=festival-view"></script>
+    <script src="rules/festival-rules.js?v=march-2027-demo"></script>
+    <script src="app.js?v=march-2027-demo"></script>
     <script src="rules/checklist-rules.js"></script>
     <script src="checkliste-festivalplanung/checklist-page.js?v=compact-pages"></script>
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js"></script>
     <script src="rules/task-rules.js"></script>
-    <script src="task-assignments.js"></script>
+    <script src="task-assignments.js?v=subtask-owners-only"></script>
     <script src="gantt-defaults.js"></script>
-    <script src="gantt-editor.js?v=assignments"></script>
-    <script src="gantt-placeholder.js?v=section-navigation"></script>
-    <script src="gantt-schedule.js?v=assignments"></script>
-    <script src="work-board.js?v=project-settings"></script>
+    <script src="gantt-editor.js?v=subtask-owners-only"></script>
+    <script src="gantt-placeholder.js?v=project-wide-stats"></script>
+    <script src="gantt-schedule.js?v=stable-edit-toolbar"></script>
+    <script src="work-board.js?v=subtask-owners-only"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js"></script>
     <script src="rules/site-map-rules.js"></script>
@@ -749,8 +749,8 @@
     <script src="vendors/vendors-page.js?v=compact-pages"></script>
     <script src="rules/finance-rules.js"></script>
     <script src="finance/finance-page.js?v=compact-pages"></script>
-    <script src="rules/demo-festival.js"></script>
+    <script src="rules/demo-festival.js?v=march-2027-demo"></script>
     <script src="demo/demo-loader.js"></script>
-    <script src="overview.js?v=lineup-arrangement"></script>
+    <script src="overview.js?v=project-wide-stats"></script>
   </body>
 </html>

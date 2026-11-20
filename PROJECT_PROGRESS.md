@@ -165,13 +165,19 @@ Validation: updated the navigation test to match the approved Final checklist la
 
 ## Timeline preview and festival countdown — logged 16 November 2026
 
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
+
 Task board: live 13-area timeline preview replaces open button. Hover highlights; click or keyboard activation opens chart.
 
 Festival countdown: upper-right calendar-day and Monday–Friday workday totals, anchored to configured event start and Europe/Lisbon date. Includes today, excludes opening day; holidays not deducted. Handles opening/ongoing/ended states.
 
 Default festival now 30–31 December 2026. Empty October-default plans migrate; Gantt preparation dates follow the shifted anchor. Booked custom events are preserved.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Timeline scrolling and Today marker — logged 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Added bottom clearance inside the Gantt scroll viewport so overlay horizontal scrollbars do not cover the final task row.
 
@@ -179,7 +185,11 @@ Fixed sideways-scroll gap: frozen task header now shrinks together with task lab
 
 Timeline overview and preview show a Lisbon-local Today marker; preview columns carry compact project-week numbers.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Task Board and status tracking — logged 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Added the Task board entry button below the timeline preview and a placeholder destination. Board implementation is deferred.
 
@@ -193,7 +203,11 @@ Task card due dates now share a compact top row with the task number, aligned ri
 
 Task board sorts active lanes by deadline and Done by recorded completion time, preserving older saved statuses.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Task creation from the timeline and Task Board — logged 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Gantt edit mode supports adding numbered tasks directly to each area. Their saved subtasks use the existing Task board connection.
 
@@ -201,37 +215,67 @@ New Gantt tasks require a named first subtask with valid dates before saving.
 
 Added Task board creation for dated subtasks under existing or new parent tasks, using the shared Gantt plan.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Task creation form refinements — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Added space between field labels and focus outlines. The new parent name field appears only when creating a parent task.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Today marker during horizontal scrolling — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Adjusted the Today marker so it stays behind the frozen Task column when the timeline scrolls sideways.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Project tasks overview — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/task-board-entry.md`.
 
 Added a Task overview panel beneath Project timeline. It shows the total number of subtasks and the count and percentage for Planned, In progress, Overdue, and Done. Each status and the Open Task Board shortcut open the full board. The panel uses the Project timeline typography and orange hover frame, with a distinct colour for each status.
 
 Renamed the sidebar entry and the label above the overview title to Project tasks.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Needs attention — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/needs-attention.md`.
 
 Replaced the urgent to-dos placeholder with unfinished subtasks that are overdue or due within seven calendar days, using Lisbon dates. Entries show the work area and deadline, with overdue items first. Selecting an entry opens the Task Board and focuses its card.
 
 Verified after reloading the browser by opening Attend XYC Conference from the list and returning to Project tasks. All 35 automated tests passed.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Upcoming tasks overview styling — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/needs-attention.md`.
 
 Matched the heading to Task overview, reused the Gantt work-area colours in the list, and added a warning icon to overdue entries.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Task deadline filters and grouping — 16 November 2026
+
+Branch: `feature-task-board` (owner: Vicky). Related plan: `feature-plans/needs-attention.md`.
 
 Added a Due soon filter to the Task Board for unfinished subtasks due today through the following seven calendar days in Lisbon. Grouped the overview into Overdue, Due today, and Next 7 days, hiding empty groups. Unfinished cards and overview entries show relative deadlines alongside calendar dates.
 
+Validation: the 35-test JavaScript suite passed during this work. Browser checks were recorded for individual flows; this entry does not establish complete end-to-end coverage.
+
 ## Section navigation after merging — 17 November 2026
 
+Branch: `main` (owner: Vicky; direct bug-fix commit requested by the user).
+
 Updated the navigation script URLs so browsers load the merged section-switching logic. This prevents the Project tasks overview or timeline from appearing below Site map, Vendors, or Finances.
+
+Validation: all 80 JavaScript tests passed. Chrome checks confirmed Site map, Vendors and Finances each displayed on their own.
 
 ## Login with Supabase accounts — 19 November 2026
 
@@ -288,102 +332,50 @@ Migration 004 applied in Supabase on 19 November 2026 (with Amelie's OK); the se
 
 Validation: all JavaScript tests pass (10 new task tests, 1 new account test). Migration 004 tested in PGlite (42 database checks, also with Supabase's default grants). Browser check with two accounts (26 checks): assigning in the Gantt and on the board, filters, an Editor finishing a task, an Editor's assignment change not being sent, Team progress numbers, a teammate leaving.
 
-## Interface cleanup — 20 November 2026
+## Interface cleanup and Settings — 20 November 2026
 
-Collapsed team management, team progress and financial assumptions. Non-admin users see View team. Financial figures appear before assumptions, which stay expanded while editing. Clarified artist booking budget, event-day checklist and task group labels. Overview shows up to five urgent tasks.
+Branch: `interface-cleanup` (owner: Vicky). Plan: `feature-plans/interface-cleanup.md`. Merged through pull request #22.
 
-## Settings and overview simplification — 20 November 2026
+The planning pages share compact spacing, left-aligned titles, Fraunces headings and DM Sans controls through `compact.css`. Removed the decorative Lineup graphic and shortened feature titles. Removed Team progress and the Final checklist percentage card from Overview. Settings sits above Sign out and contains festival details and team management. The details edit button is aligned right; saving refreshes the summary immediately. Creator/Admin edit restrictions and finalised-plan checks remain in place. Other roles see View team. The Overview urgent list shows up to five subtasks.
 
-Removed Team progress and the Overview Final checklist progress card. Moved role-aware team management to Settings above Sign out. Placed lineup backup tools after the timetable.
+Validation: all 168 JavaScript tests passed during implementation. Chrome checks covered page navigation, matching Lineup/Project tasks title positions, Settings editing, team disclosure controls and the booking dialog. Separate manual sessions for each user role were not run.
 
-## Festival details in Settings — 20 November 2026
+## Lineup planner layout and timetable views — 20 November 2026
 
-Added festival name, venue, dates and hours to Settings with the existing edit dialog. Creator/Admin permissions and finalised-plan restrictions remain enforced.
+Branch: `interface-cleanup` (owner: Vicky). Plan: `feature-plans/interface-cleanup.md`.
 
-## Festival details save feedback — 20 November 2026
+Festival venue, dates and hours appear above the performance, stage and artist booking budget statistics. Edit stage planning settings sits beside those facts. The timetable has a compact toolbar with Book artist, Add calendar block, Download backup and Restore backup, including backup icons. Removed the stage-name plus buttons and the repeated opening-hours label. Festival view shows all days side by side; Daily view shows one day with day navigation. The time axis uses 45 pixels per hour and scales appointments and closed periods proportionally. Artist catalogue remains below the timetable.
 
-Fixed the Settings summary remaining stale after saving festival details. It now refreshes immediately and focus returns to the Settings edit button.
+Validation: all 168 JavaScript tests passed. Chrome checks covered both timetable views, the primary booking action, toolbar alignment and backup placement. No backup was restored during this layout review.
 
-## Compact shared page layout — 20 November 2026
+## Festival layout and map settings — 20 November 2026
 
-Introduced shared compact typography, title placement, card padding and section spacing across all planning pages. Shortened Lineup planner, Project tasks and Finances titles, removed the decorative lineup shape, and placed descriptions beside page titles on wide screens. Small-screen layouts wrap naturally.
+Branch: `interface-cleanup` (owner: Vicky). Plan: `feature-plans/interface-cleanup.md`.
 
-## Consistent header alignment — 20 November 2026
+Festival size is a collapsible panel at the top with a visitor input and five aligned facility totals. Festival layout names the map section. The map tools, Suggest optimal layout and Map settings share a toolbar; category filters have matching control sizes. Pin details align with the map canvas and Layout check sits below the map. Map settings opens a dialog containing map selection, upload, name, real width and map actions. Feedback is shown inside the dialog, including upload guidance, water detection progress/errors, clearing no-go areas and changing the ground boundary. Opening settings preserves the map's document position. Earlier inline settings placements were replaced by this dialog.
 
-Aligned page title blocks with shared label, title and description spacing. Standardised the top toolbar height on desktop to prevent titles shifting when section actions change.
+Validation: all 168 JavaScript tests passed. Chrome checks covered Festival size collapse/expand, settings open/close, control alignment, matching map/details positions and stable map position through dialog use. Destructive map actions were not exercised on the saved map.
 
-## Festival editing through Settings — 20 November 2026
+## Unified Project tasks workspace — 20 November 2026
 
-Removed Edit festival details from Overview. Existing festival details can be edited through Settings by authorised roles.
+Branch: `feature-project-task-improvement` (owner: Vicky). Related plans: `feature-plans/task-board-entry.md` and `feature-plans/task-assignments.md`.
 
-## Compact Lineup planner — 20 November 2026
+Project tasks opens directly on the Task Board. A shared header, compact status strip and Task Board/Timeline switch replace the intermediate dashboard. The switch sits below the statistics and close to the content. Status totals filter the board; All tasks clears that status filter. My tasks is beside the assignment filter, with work-area, search and Due soon controls retained. Statistics remain project-wide after the requested reversal of personalised totals. Removed the visible timeline preview and repeated urgent list, while Overview links still open and focus the matching task card. Card status dropdowns are slimmer. Timeline Outline, week/day controls and Edit plan share one row; Edit plan stays right-aligned.
 
-Reduced the summary, timetable controls and backup spacing, removed repeated introductory labels, and tightened artist cards. Timetable uses 45 pixels per hour with proportional booking and closed-time placement; slot selection still maps pointer position to the correct time.
+Validation: all 168 JavaScript tests passed. Chrome checks covered direct board entry, filtering 62 overdue cards, All tasks, My tasks, view switching and opening Agree concept and audience from Overview. The temporary scoped-statistics implementation was reverted.
 
-## Lineup planner arrangement — 20 November 2026
+## Timeline editing and subtask owners — 20 November 2026
 
-Added festival facts above the summary with Edit stage planning settings alongside them. Moved download/restore backup actions into the timetable toolbar with icons. Removed stage-heading plus buttons. Artist catalogue is retained.
+Branch: `feature-project-task-improvement` (owner: Vicky). Related plan: `feature-plans/task-assignments.md`.
 
-## Daily and festival timetable views — 20 November 2026
+Only the selected row exposes name, date and add/remove controls in edit mode. Save changes, Cancel and the unsaved-change indicator share the sticky toolbar. Subtask bars support moving and resizing against the visible day/week columns; date fields remain available. Confirmation is outside the toolbar flow so Save/Cancel keep their positions, and appears only when a completed drag changes dates. Add task group is labelled; Add subtask uses a compact plus with tooltip and accessible label. New rows are selected with the name field focused. Owner assignment is available only on subtask rows in Timeline edit mode for authorised roles. Task Board and view mode display owner text. Owner drafts follow Save/Cancel, with effective legacy group assignments carried into subtask drafts.
 
-Added a Festival view showing all days side by side, with Daily view available for one day at a time. Empty-slot booking uses the selected day and stage. Added space above and below the timetable and removed repeated opening hours from its toolbar.
+Validation: all 168 JavaScript tests passed. Chrome checks covered selected-row fields, unsaved-change detection, cancelling a temporary name edit, resize-handle rendering, new-subtask focus and subtask-only owner controls. Save/Cancel positions were compared before and after an edit. Full drag/resize and persisted owner changes still need a dedicated end-to-end check.
 
-## Timetable toolbar alignment — 20 November 2026
+## March 2027 demo dates and booking regression test — 20 November 2026
 
-Aligned booking and backup actions with the daily/festival view controls beneath the timetable heading.
+Branch: `feature-project-task-improvement` (owner: Vicky). Related plan: `feature-plans/ci-and-demo-festival.md`.
 
-## Site map setup order — 20 November 2026
+Default and demo festival dates are 20–21 March 2027. Existing Lisbon Sound Festival plans using 30–31 December 2026 shift their bookings and per-day hours forward by 80 days. The existing Gantt date-anchor logic moves the task schedule with the festival. With user approval, updated the minute-level booking regression test to use configured event dates, preserving its overlap, adjacent-booking and separate-day assertions.
 
-Moved festival size and map settings above the map as visible compact panels. Layout check sits directly below the map; selected facility details remain alongside it.
-
-## Site setup panel design — 20 November 2026
-
-Restyled Festival size with a dedicated visitor input and five aligned facility totals. Map settings uses aligned name and scale fields, explanatory text, and a separate action row with the destructive action at the far edge. Both panels share the page heading typography and responsive layout.
-
-## Map settings toolbar access — 20 November 2026
-
-Replaced Upload map in the toolbar with Map settings. It expands the settings panel below the toolbar; Upload map is available inside that panel.
-
-## Compact map settings placement — 20 November 2026
-
-Moved expanded settings above the toolbar divider. Limited name and real-width field widths, placed actions alongside them on wide screens, and retained wrapping for smaller screens.
-
-## Map settings expansion position — 20 November 2026
-
-Placed the expanded settings inside the toolbar, directly below its button row and above the bottom divider and map controls.
-
-## Collapsible festival size and layout action — 20 November 2026
-
-Made Festival size expandable and collapsible, initially open. Placed Suggest optimal layout directly above the map controls.
-
-## Map toolbar space — 20 November 2026
-
-Moved Suggest optimal layout into the map controls row to remove the empty row above it. Controls wrap on smaller screens.
-
-## Map toolbar divider — 20 November 2026
-
-Removed the horizontal divider between map selection/settings and map controls.
-
-## Festival layout heading and controls — 20 November 2026
-
-Named the map region Festival layout with the same heading typography as Festival size. Standardised map tool, category and layout action text size, minimum height and spacing.
-
-## Festival layout sidebar alignment — 20 November 2026
-
-Integrated map selection/settings in the upper-right of Festival layout. Pin details align with the map canvas using shared grid rows; smaller screens retain a stacked layout.
-
-## Map settings dialog — 20 November 2026
-
-Placed one Map settings button beside Suggest optimal layout. It opens a dialog with map selection, upload, name, scale and map actions, preserving the canvas layout. Dialog remains open when map selection redraws the page and restores focus on closing.
-
-## Map settings actions and feedback — 20 November 2026
-
-Grouped Map settings immediately to the right of Suggest optimal layout. Map action feedback appears inside the settings dialog while it is open, keeping messages visible above the backdrop.
-
-## Map control row and action messages — 20 November 2026
-
-Extended the map tools across the full Festival layout width. Added settings feedback for image selection, water detection progress/failure, clearing no-go areas, using the image boundary, restoring the demo and deleting/selecting maps.
-
-## Festival details edit alignment — 20 November 2026
-
-Aligned the settings edit action to the right of the festival details summary, with responsive stacking on small screens.
+Validation: the first run passed 167 of 168 tests because the booking test still used December dates. After the authorised fixture update, all 168 tests passed. Chrome showed 20–21 March 2027 and shifted task dates, including the first preparation subtask beginning 26 December 2026.

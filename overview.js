@@ -114,6 +114,7 @@ function showSection(section) {
   }
   $('#board-page').classList.add('hidden');
   $('#gantt-view').classList.add('hidden');
+  if (section === 'Task board') window.showProjectTaskView?.('board');
   document.querySelectorAll('.sidebar-item').forEach(button => {
     const selected = button.dataset.section === section;
     button.classList.toggle('active', selected);

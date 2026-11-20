@@ -38,7 +38,7 @@ const minutesOf = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3,
 // Everything the demo writes, per section. "placements" are built with the vendor rules
 // (confirmVendor), so they always follow the same rules as clicking "Confirm" on the page.
 function demoFestival() {
-  const days = ['2026-12-30', '2026-12-31'];
+  const days = ['2027-03-20', '2027-03-21'];
   const plan = {
     artists: DEMO_ARTISTS.map((a) => ({ ...a })),
     bookings: DEMO_SLOTS.map(([artistId, day, stage, start, status, notes], i) => ({

@@ -83,7 +83,18 @@ window.initialiseGanttTimeline = function () {
             bar.style.left=`${(left-span.start)/(span.end-span.start+1)*100}%`;
             bar.style.width=`${(right-left+1)/(span.end-span.start+1)*100}%`;
             const title=`${formatDate(range.start)} – ${formatDate(range.end)}${range.end===0&&!numberOf(row).startsWith('13.')?' · finish before gates open':''}`;
-            cell.title=title;bar.setAttribute('aria-hidden','true');cell.append(bar);
+            cell.title=title;
+            if (chart.classList.contains('gantt-editing') && row.classList.contains('gantt-subtask')) {
+              bar.dataset.barAction='move';
+              bar.title='Drag to move dates';
+              if (left===range.start) {
+                const handle=document.createElement('span');handle.className='gantt-bar-handle gantt-bar-start';handle.dataset.barAction='start';handle.title='Drag to change start date';bar.append(handle);
+              }
+              if (right===range.end) {
+                const handle=document.createElement('span');handle.className='gantt-bar-handle gantt-bar-end';handle.dataset.barAction='end';handle.title='Drag to change end date';bar.append(handle);
+              }
+            } else bar.setAttribute('aria-hidden','true');
+            cell.append(bar);
           }
           cell.dataset.start=span.start;cell.dataset.end=span.end;
           row.append(cell);

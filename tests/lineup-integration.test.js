@@ -34,10 +34,10 @@ test('merged planner starts with shared rules and renders both-day navigation', 
 });
 test('minute-level bookings, blocks, adjacent sets and separate dates use current rules', () => {
   const p = planner({ artists: bookingArtists });
-  p.run("state.bookings=[{id:'break',type:'block',title:'Changeover',date:'2026-12-30',stage:'A',start:911,duration:20,notes:'Drums'}]");
-  assert.match(p.run("validation({artistId:'naya',date:'2026-12-30',stage:'A',start:920})"), /15:31/);
-  assert.equal(p.run("validation({artistId:'naya',date:'2026-12-30',stage:'A',start:931})"), '');
-  assert.equal(p.run("validation({artistId:'naya',date:'2026-12-31',stage:'A',start:911})"), '');
+  p.run("state.bookings=[{id:'break',type:'block',title:'Changeover',date:state.event.startDate,stage:'A',start:911,duration:20,notes:'Drums'}]");
+  assert.match(p.run("validation({artistId:'naya',date:state.event.startDate,stage:'A',start:920})"), /15:31/);
+  assert.equal(p.run("validation({artistId:'naya',date:state.event.startDate,stage:'A',start:931})"), '');
+  assert.equal(p.run("validation({artistId:'naya',date:state.event.endDate,stage:'A',start:911})"), '');
   assert.equal(p.run('total()'), 0);
   assert.equal(p.run('performances().length'), 0);
 });

@@ -52,6 +52,7 @@
     return [id, value];
   });
 
+  let statusFilter = 'all';
   const attention = document.querySelector('#needs-attention-list');
   function daysUntil(end, date) {
     return (Date.parse(end) - Date.parse(date)) / 86400000;
@@ -154,6 +155,7 @@
     const steps = projectSteps();
     renderAttention(steps, date);
     document.querySelector('#task-overview-total').textContent = steps.length + (steps.length === 1 ? ' subtask total' : ' subtasks total');
+    document.querySelector('#board-all-count').textContent = steps.length;
     const counts = {planned:0, progress:0, overdue:0, done:0};
     steps.forEach(step => counts[statusOf(step, date)]++);
     statValues.forEach(([id, value]) => {
@@ -164,6 +166,7 @@
   function render() {
     renderedDate = today();
     const selection = areaSelect.value;
+    document.querySelector('#board-my-tasks').setAttribute('aria-pressed', String(assigneeSelect.value === 'me'));
     const query = search.value.trim().toLowerCase();
     const plan = window.getSavedGanttPlan();
     const canEditTasks = canFestival('lineup');
@@ -185,7 +188,8 @@
     areaSelect.value = selection;
     const visible = cards.filter(card => {
       const days = daysUntil(card.end, renderedDate);
-      return (!selection || card.areaId === selection) &&
+      return (statusFilter === 'all' || statusOf(card, renderedDate) === statusFilter) &&
+        (!selection || card.areaId === selection) &&
         matchesAssignee(card, assigneeSelect.value, assigned, team, myId) &&
         (!dueSoon.checked || (days >= 0 && days <= 7 && statusOf(card, renderedDate) !== 'done')) &&
         [card.title, card.area, card.task, card.number, assignments.nameOf(assigneeOf(card, assigned, team).userId, team) || '']
@@ -195,29 +199,8 @@
     // "Assigned to …" on a card; Owner and Admins can change it right there.
     function assigneeLine(card) {
       if (!team.length) return document.createTextNode('');
-      const { userId, inherited } = assigneeOf(card, assigned, team);
-      const line = element('div', 'work-board-assignee');
-      if (!canAssign) {
-        line.append(element('span', userId ? null : 'work-board-nobody', userId ? 'Assigned to ' + assignments.nameOf(userId, team) : 'Nobody assigned'));
-        return line;
-      }
-      const label = element('label');
-      label.append(element('span', null, 'Assigned to'));
-      const choice = element('select', 'work-board-assignee-select');
-      choice.dataset.cardId = card.id;
-      choice.setAttribute('aria-label', 'Assigned to, ' + card.number + ' ' + card.title);
-      choice.add(new Option('Nobody', ''));
-      team.forEach(person => choice.add(new Option(assignments.nameOf(person.userId, team), person.userId)));
-      choice.value = userId || '';
-      choice.onchange = () => {
-        try { assignments.setStep(card, choice.value); }
-        catch (failure) { summary.textContent = failure.message; choice.value = userId || ''; return; }
-        Array.from(columns.querySelectorAll('.work-board-assignee-select')).find(control => control.dataset.cardId === card.id)?.focus();
-      };
-      label.append(choice);
-      line.append(label);
-      if (inherited && userId) line.append(element('small', null, 'from task ' + card.number.split('.').slice(0, 2).join('.')));
-      return line;
+      const { userId } = assigneeOf(card, assigned, team);
+      return element('div', 'work-board-assignee', userId ? 'Assigned to ' + assignments.nameOf(userId, team) : 'Nobody assigned');
     }
 
     function move(id, status, focus = false) {
@@ -243,6 +226,7 @@
     }
 
     summary.textContent = visible.length === cards.length ? cards.length + ' subtasks' : visible.length + ' of ' + cards.length + ' subtasks';
+    renderStats();
     columns.replaceChildren();
     statuses.forEach(([id, label]) => {
       const lane = element('section', 'work-board-lane');
@@ -310,9 +294,9 @@
   const board = document.querySelector('#board-page');
   let boardTrigger;
   function openBoard(trigger, assignee = '') {
+    statusFilter = 'all';
     boardTrigger = trigger;
-    overview.classList.add('hidden');
-    board.classList.remove('hidden');
+    window.showProjectTaskView('board');
     window.scrollTo(0, 0);
     document.querySelector('#board-page-title').focus();
     search.value = '';
@@ -330,6 +314,13 @@
   overview.addEventListener('click', event => {
     const trigger = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
     if (!trigger) return;
+    if (trigger.classList.contains('work-board-stat')) {
+      statusFilter = trigger.dataset.status;
+      window.showProjectTaskView('board');
+      stats.querySelectorAll('.work-board-stat').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.status === statusFilter)));
+      render();
+      return;
+    }
     openBoard(trigger);
     if (trigger.dataset.cardId) {
       const card = Array.from(columns.querySelectorAll('.work-board-card'))
@@ -340,9 +331,11 @@
   });
 
   window.openOverviewTask = id => {
-    projectTasksButton.click();
-    Array.from(attention.querySelectorAll('.work-board-urgent'))
-      .find(button => button.dataset.cardId === String(id))?.click();
+    statusFilter = 'all';
+    window.openTaskBoard();
+    const card = Array.from(columns.querySelectorAll('.work-board-card')).find(item => item.dataset.cardId === String(id));
+    card?.focus();
+    card?.scrollIntoView({block:'center',inline:'nearest'});
   };
   projectTasksButton.addEventListener('click', renderStats);
   document.querySelector('#back-board-overview').addEventListener('click', () => {
@@ -366,6 +359,27 @@
       publishBoardUpdate();
     }
   }, 60000);
+  const chart = document.querySelector('#gantt-view');
+  overview.append(board, chart);
+  stats.after(document.querySelector('.project-view-switch'));
+
+  window.showProjectTaskView = mode => {
+    overview.classList.remove('hidden');
+    board.classList.toggle('hidden', mode !== 'board');
+    chart.classList.toggle('hidden', mode !== 'timeline');
+    document.querySelector('#project-board-view').setAttribute('aria-pressed', String(mode === 'board'));
+    document.querySelector('#project-timeline-view').setAttribute('aria-pressed', String(mode === 'timeline'));
+    stats.hidden = false;
+    if (mode === 'board') { renderStats(); render(); }
+  };
+  document.querySelector('#project-board-view').onclick = () => window.showProjectTaskView('board');
+  document.querySelector('#project-timeline-view').onclick = () => window.showProjectTaskView('timeline');
+  projectTasksButton.addEventListener('click', () => window.showProjectTaskView('board'));
+  document.querySelector('#board-my-tasks').onclick = () => {
+    assigneeSelect.value = assigneeSelect.value === 'me' ? '' : 'me';
+    render();
+  };
+  stats.querySelector('[data-status="all"]').setAttribute('aria-pressed', 'true');
   renderStats();
   setInterval(() => { if (!document.querySelector('#board-page').classList.contains('hidden') && today() !== renderedDate) render(); }, 60000);
   const dialog = document.querySelector('#board-create-dialog');
