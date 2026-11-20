@@ -33,6 +33,7 @@
 
   window.taskAssignments = {
     read, people, myUserId, canAssign, nameOf,
+    saveSubtaskOwners: next => save(parseAssignments(JSON.stringify(next))),
     assigneeOf: (step, team = people()) => assigneeOf(step, read(), team),
     groupAssignee: (taskId, team = people()) => groupAssignee(taskId, read(), team),
     setGroup: (taskId, userId) => save(withGroupAssignee(read(), taskId, userId)),

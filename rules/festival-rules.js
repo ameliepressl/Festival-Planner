@@ -102,7 +102,7 @@ function catalogueForSavedPlan(saved) {
   return (hasLegacyBooking ? LEGACY_ARTISTS : ARTISTS).map(a => ({ ...a }));
 }
 // Shared event configuration for the overview and lineup.
-const DEFAULT_EVENT = { startDate: '2026-12-30', endDate: '2026-12-31', startMinutes: 840, endMinutes: 1380 };
+const DEFAULT_EVENT = { startDate: '2027-03-20', endDate: '2027-03-21', startMinutes: 840, endMinutes: 1380 };
 const timeText = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 function eventDays(event) {
   const dates = [], d = new Date(event.startDate + 'T12:00:00Z'), end = new Date(event.endDate + 'T12:00:00Z');
