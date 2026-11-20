@@ -103,7 +103,7 @@
 
   window.getOverviewUrgentTasks = () => {
     const date = today();
-    return urgentSteps(projectSteps(), date).slice(0, 3).map(({ id, title, area, end }) => ({
+    return urgentSteps(projectSteps(), date).slice(0, 5).map(({ id, title, area, end }) => ({
       id, title, area, end, deadline: deadlineText(end, date)
     }));
   };
@@ -383,10 +383,10 @@
   }
   function updateParents() {
     const area = window.getSavedGanttPlan().find(item => String(item.id) === fields.area.value);
-    fields.parent.replaceChildren(new Option('Choose a parent task', ''));
+    fields.parent.replaceChildren(new Option('Choose a task group', ''));
     if (area) {
       area.tasks.forEach(task => fields.parent.add(new Option(task.title, String(task.id))));
-      fields.parent.add(new Option('+ Create a parent task', 'new'));
+      fields.parent.add(new Option('+ Create a task group', 'new'));
     }
     fields.parent.disabled = !area;
     updateParentName();

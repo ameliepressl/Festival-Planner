@@ -160,6 +160,7 @@
 
   // ---------- the page ----------
   function render() {
+    const openSections = [...view.querySelectorAll(".cleanup-disclosure[open]")].map(node => node.querySelector("summary").textContent);
     const data = collect();
     const { model, artists, input } = data;
     const canEditAssumptions = canFestival('budget');
@@ -180,13 +181,8 @@
     view.innerHTML = `
       <section class="checklist-hero">
         <p class="eyebrow">FINANCIAL OVERVIEW</p>
-        <h1>Know your numbers<br /><em>before the gates open.</em></h1>
-        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size.${canEditAssumptions ? ' Start with the assumptions right below; everything updates at once.' : ''}</p>
-      </section>
-      <section class="fin-card fin-assumptions"><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
-        <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<div><h3>${group}</h3><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
-          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></div>`).join('')}</div>
-        <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
+        <h1>Finances</h1>
+        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size.${canEditAssumptions ? ' Review Financial assumptions to adjust the forecast.' : ''}</p>
       </section>
       <div class="fin-sources">
         <span>DATA FROM</span>
@@ -202,6 +198,11 @@
         <div class="fin-kpi"><span>BREAK-EVEN</span><strong>${beText}</strong><small>${beNote}</small></div>
         <div class="fin-kpi"><span>SAFETY MARGIN</span><strong class="${safety !== null && safety < 0 ? 'neg' : ''}">${safetyText}</strong><small>${safetyNote}</small></div>
       </section>
+      <section class="fin-card fin-assumptions"><details class="cleanup-disclosure"><summary>Financial assumptions</summary><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
+        <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<details class="cleanup-disclosure"><summary>${group}</summary><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
+          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></details>`).join('')}</div>
+        <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
+      </details></section>
       <div class="fin-grid2">
         <section class="fin-card"><header><h2>Ticket tiers</h2><span>${number(model.ticketsSold)} tickets</span></header>${barChart(tierRows, PROFIT, model.revenue.find((r) => r.id === 'tickets').amount, 'Ticket sales')}
           <p class="fin-note">Average ticket price <b>€${model.averageTicketPrice.toFixed(2)}</b> — early bird sales bring money in early, the box office surcharge rewards those who decide last.</p></section>
@@ -268,6 +269,7 @@
           </tbody></table></section>
       </div>
       <div class="fin-tip hidden" role="tooltip"></div>`;
+    view.querySelectorAll(".cleanup-disclosure").forEach(node => { node.open = openSections.includes(node.querySelector("summary").textContent); });
   }
 
   // ---------- interaction: tooltips, crosshair, inputs, links ----------

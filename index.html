@@ -7,12 +7,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=project-settings" />
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
     <link rel="stylesheet" href="site-map/site-map.css" />
     <link rel="stylesheet" href="vendors/vendors.css" />
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css" />
+    <link rel="stylesheet" href="compact.css?v=settings-edit-right" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
          the body: they hide the app until someone is signed in and save every change to the account.
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
@@ -93,6 +94,7 @@
           <p class="sidebar-label">SIGNED IN AS</p>
           <strong id="account-username"></strong>
           <small id="account-sync-status" role="status" aria-live="polite"></small>
+          <button type="button" class="sidebar-item" data-section="Settings"><span aria-hidden="true">⚙</span>Settings</button>
           <button type="button" class="sidebar-item" id="sign-out"><span aria-hidden="true">⎋</span>Sign out</button>
         </div>
       </aside>
@@ -132,10 +134,8 @@
             <p class="field-help" id="overview-final" hidden>Reopen the final plan in the Lineup Planner to edit these details.</p>
             <p id="overview-status" role="status"></p>
           </div>
-          <div class="overview-menu" id="overview-menu">
-            <button type="button" class="button secondary" id="overview-edit">Edit festival details</button>
-          </div>
         </section>
+        <div id="overview-menu" hidden><button type="button" id="overview-edit" hidden>Edit festival details</button></div>
         <section class="overview-kpis" aria-label="Planning progress">
           <button type="button" class="overview-kpi" data-open-section="Lineup planner">
             <span>Performances booked</span>
@@ -143,7 +143,7 @@
             <small id="overview-booking-status"></small>
           </button>
           <button type="button" class="overview-kpi" data-open-section="Lineup planner">
-            <span>Artist budget remaining</span>
+            <span>Artist booking budget remaining</span>
             <strong id="overview-budget"></strong>
             <small id="overview-budget-total"></small>
           </button>
@@ -152,11 +152,7 @@
             <strong id="overview-tasks-done">–</strong>
             <small id="overview-tasks-count"></small>
           </button>
-          <button type="button" class="overview-kpi" data-open-section="Final checklist">
-            <span>Final checklist complete</span>
-            <strong id="overview-checklist"></strong>
-            <small id="overview-checklist-count"></small>
-          </button>
+
         </section>
         <div class="overview-columns">
           <section class="overview-card" id="overview-tasks" aria-labelledby="overview-tasks-title">
@@ -179,21 +175,11 @@
             </dl>
           </section>
         </div>
-        <section class="overview-card overview-progress" id="overview-progress" aria-labelledby="overview-progress-title" hidden>
-          <div class="overview-card-heading">
-            <h2 id="overview-progress-title">Team progress <small>subtasks per person</small></h2>
-            <button type="button" class="overview-open" id="overview-unassigned" hidden></button>
-          </div>
-          <div class="overview-table-wrap">
-            <table class="overview-table overview-progress-table">
-              <thead><tr><th scope="col">Person</th><th scope="col">Assigned</th><th scope="col">Done</th><th scope="col">Overdue</th><th scope="col">Next deadline</th></tr></thead>
-              <tbody id="overview-progress-rows"></tbody>
-            </table>
-          </div>
-          <p class="field-help" id="overview-progress-help"></p>
-        </section>
-        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
-          <div class="overview-card-heading"><h2 id="overview-team-title">Team <small>who works on this festival</small></h2></div>
+
+      </main>
+
+      <main id="settings-view" class="hidden"><section class="checklist-hero"><p class="eyebrow">SETTINGS</p><h1>Settings</h1></section><section class="overview-card" aria-labelledby="project-settings-title"><h2 id="project-settings-title">Festival details</h2><p id="project-settings-summary"></p><button type="button" class="button secondary" id="settings-edit-festival">Edit festival details</button><p class="field-help" id="project-settings-help"></p></section>        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
+          <h2 id="overview-team-title">Manage team</h2>
           <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
           <div class="overview-table-wrap" tabindex="0" role="region" aria-label="Festival team">
             <table class="overview-table">
@@ -208,49 +194,42 @@
           </form>
           <p class="form-message" id="team-error" role="alert"></p>
           <p id="team-status" role="status"></p>
-        </section>
-      </main>
-
+        </section></main>
       <main id="lineup-view" class="hidden">
         <section class="hero">
           <div>
             <p class="eyebrow">LINEUP PLANNER / 2026</p>
-            <h1>Make every slot<br /><em>feel inevitable.</em></h1>
+            <h1>Lineup planner</h1>
             <p class="hero-copy">Build your festival programme, balance the budget, and turn a shortlist into a lineup that can actually run.</p>
           </div>
           <div class="hero-shape" aria-hidden="true"><span></span><span></span><span></span></div>
         </section>
 
-        <div class="summary-heading"><p class="eyebrow">YOUR PLAN AT A GLANCE</p><button class="button secondary" id="edit-settings">Edit planning settings</button></div>
+        <div class="lineup-details-row"><dl class="overview-facts lineup-facts"><div id="lineup-venue-fact"><dt>Venue</dt><dd id="lineup-venue"></dd></div><div><dt>Festival dates</dt><dd id="lineup-dates"></dd></div><div><dt>Daily opening hours</dt><dd id="lineup-hours"></dd></div></dl><button class="button secondary" id="edit-settings">Edit stage planning settings</button></div>
         <section class="metrics" aria-label="Festival plan summary">
           <div class="metric"><span>PERFORMANCES BOOKED</span><strong id="performance-count"></strong></div>
           <div class="metric"><span>STAGES</span><strong id="stage-count"></strong></div>
-          <div class="metric budget-metric"><span>ARTIST BUDGET</span><div class="budget-values"><div><small>Total</small><strong id="budget-total"></strong></div><div><small>Used</small><strong id="committed"></strong></div><div><small>Remaining</small><strong id="remaining"></strong></div></div><progress id="budget-progress" value="0" max="100" aria-label="Artist budget used"></progress></div>
+          <div class="metric budget-metric"><span>ARTIST BOOKING BUDGET</span><div class="budget-values"><div><small>Total</small><strong id="budget-total"></strong></div><div><small>Used</small><strong id="committed"></strong></div><div><small>Remaining</small><strong id="remaining"></strong></div></div><progress id="budget-progress" value="0" max="100" aria-label="Artist budget used"></progress></div>
         </section>
 
-        <div class="plan-tools" role="group" aria-label="Plan backup tools">
-          <span class="plan-tools-copy">Keep an editable copy of your lineup.</span>
-          <button type="button" class="button quiet" id="backup-plan">Download backup</button>
-          <button type="button" class="button quiet" id="restore-plan">Restore backup</button>
-          <input type="file" id="backup-file" class="hidden" accept=".json,application/json" aria-label="Choose lineup backup" />
-          <p id="backup-message" class="tools-message" role="status"></p>
-        </div>
+
 
         <div class="workspace">
           <section class="schedule-panel panel">
             <div class="section-heading schedule-heading">
-              <div><p class="eyebrow">PROGRAMME</p><h2>Festival timetable</h2></div>
-              <div class="schedule-tools"><span class="catalogue-count">14:00–23:00 each day</span><button class="button secondary" id="add-block">+ Add calendar block</button></div>
+              <div class="timetable-heading"><h2>Festival timetable</h2><div class="lineup-view-toggle" role="group" aria-label="Timetable view"><button type="button" class="button secondary" id="lineup-daily" aria-pressed="false">Daily view</button><button type="button" class="button secondary" id="lineup-festival" aria-pressed="true">Festival view</button></div></div>
+              <div class="schedule-tools"><button class="button primary" id="book-performance">Book artist</button><button class="button secondary" id="add-block">Add calendar block</button><button type="button" class="button quiet" id="backup-plan"><span aria-hidden="true">⤓</span> Download backup</button><button type="button" class="button quiet" id="restore-plan"><span aria-hidden="true">↥</span> Restore backup</button><input type="file" id="backup-file" class="hidden" accept=".json,application/json" aria-label="Choose lineup backup" /></div>
             </div>
-            <div class="day-navigation"><button class="button secondary" id="previous-day" aria-label="Previous day">←</button><div id="current-day" aria-live="polite"></div><button class="button secondary" id="next-day" aria-label="Next day">→</button></div>
+            <p id="backup-message" class="tools-message" role="status"></p><div class="day-navigation"><button class="button secondary" id="previous-day" aria-label="Previous day">←</button><div id="current-day" aria-live="polite"></div><button class="button secondary" id="next-day" aria-label="Next day">→</button></div>
             <p class="calendar-help">Click an empty stage slot to add a performance or block. <span class="booking-legend"><i class="tentative-dot"></i>Tentative <i class="confirmed-dot"></i>Confirmed</span></p>
             <div class="timeline-wrap" id="calendar"></div>
             <div class="schedule-empty" id="schedule-empty">Select an artist from the catalogue to begin building your day.</div>
           </section>
 
+
           <section class="artists-panel panel">
             <div class="section-heading">
-              <div><p class="eyebrow">DISCOVER</p><h2>Artist catalogue</h2></div>
+              <div><h2>Artist catalogue</h2></div>
               <button class="button secondary" id="add-artist">+ Add artist</button>
             </div>
             <div class="artist-list" id="artist-list"></div>
@@ -267,7 +246,7 @@
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
           <p class="eyebrow">PROJECT TASKS</p>
-          <h1>Your project,<br /><em>at a glance.</em></h1>
+          <h1>Project tasks</h1>
           <p class="hero-copy">See the project timeline and track tasks by status.</p>
           <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart <span aria-hidden="true">↗</span></span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
           <section class="work-board-overview" id="open-board-page" aria-labelledby="task-overview-title">
@@ -309,8 +288,8 @@
           <p class="hero-copy">Choose where this subtask belongs and set its dates on the project timeline.</p>
           <div class="form-grid">
             <label>Work area<select name="area" required></select></label>
-            <label>Parent task<select name="parent" required></select></label>
-            <label id="board-parent-name" hidden>New parent task name<input name="parentName" maxlength="160" disabled></label>
+            <label>Task group<select name="parent" required></select></label>
+            <label id="board-parent-name" hidden>New task group name<input name="parentName" maxlength="160" disabled></label>
             <label>Subtask name<input name="title" maxlength="160" required></label>
             <label>Start date<input type="date" name="start" required></label>
             <label>Due date<input type="date" name="end" required></label>
@@ -664,7 +643,7 @@
         <h2>Shape your festival</h2>
         <div class="form-grid">
           <label>Number of stages<input id="stages-input" type="number" min="1" max="12" required /></label>
-          <label>Artist budget (€)<input id="budget-input" type="number" min="0" step="1" required /></label>
+          <label>Artist booking budget (€)<input id="budget-input" type="number" min="0" step="1" required /></label>
         </div>
         <details class="stage-name-settings">
           <summary>Stage names</summary>
@@ -750,9 +729,9 @@
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
     <script src="rules/festival-rules.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=festival-view"></script>
     <script src="rules/checklist-rules.js"></script>
-    <script src="checkliste-festivalplanung/checklist-page.js"></script>
+    <script src="checkliste-festivalplanung/checklist-page.js?v=compact-pages"></script>
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js"></script>
     <script src="rules/task-rules.js"></script>
@@ -761,17 +740,17 @@
     <script src="gantt-editor.js?v=assignments"></script>
     <script src="gantt-placeholder.js?v=section-navigation"></script>
     <script src="gantt-schedule.js?v=assignments"></script>
-    <script src="work-board.js?v=assignments"></script>
+    <script src="work-board.js?v=project-settings"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js"></script>
     <script src="rules/site-map-rules.js"></script>
     <script src="site-map/map-drawing.js"></script>
-    <script src="site-map/site-map-page.js"></script>
-    <script src="vendors/vendors-page.js"></script>
+    <script src="site-map/site-map-page.js?v=map-tools-full-width"></script>
+    <script src="vendors/vendors-page.js?v=compact-pages"></script>
     <script src="rules/finance-rules.js"></script>
-    <script src="finance/finance-page.js"></script>
+    <script src="finance/finance-page.js?v=compact-pages"></script>
     <script src="rules/demo-festival.js"></script>
     <script src="demo/demo-loader.js"></script>
-    <script src="overview.js"></script>
+    <script src="overview.js?v=lineup-arrangement"></script>
   </body>
 </html>
