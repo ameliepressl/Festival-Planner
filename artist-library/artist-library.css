@@ -1,0 +1,34 @@
+/* Festival Architect — artist library (tabs, filters, cards, photos). */
+.lib-tabs{display:flex;gap:0;margin:0 0 12px;border:1px solid var(--ink)}
+.lib-tabs button{flex:1;padding:9px 10px;border:0;background:transparent;color:var(--ink);font:600 12px 'DM Sans',sans-serif;cursor:pointer}
+.lib-tabs button+button{border-left:1px solid var(--ink)}
+.lib-tabs button[aria-selected=true]{background:var(--ink);color:var(--white)}
+.lib-tabs span{font:500 10px 'DM Mono',monospace;opacity:.75;margin-left:4px}
+
+.lib{border-top:1px solid var(--ink);padding-top:12px}
+.lib-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lib-filters label{display:block;font:500 10px 'DM Mono',monospace;letter-spacing:.5px;color:var(--muted)}
+.lib-filters .lib-search{grid-column:1/-1}
+.lib-filters input,.lib-filters select{display:block;width:100%;margin-top:4px;min-height:34px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;background:var(--white);color:var(--ink);font:400 13px 'DM Sans',sans-serif}
+.lib-summary{display:flex;justify-content:space-between;align-items:center;margin:12px 0 6px;font:500 11px 'DM Mono',monospace;color:var(--muted)}
+.lib-summary .button{padding:6px 10px}
+
+.lib-card{display:grid;grid-template-columns:52px 1fr;gap:4px 10px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line)}
+.lib-photo{width:52px;height:52px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font:500 13px 'DM Mono',monospace;color:var(--ink)}
+.lib-photo a,.lib-photo img,.avatar img{display:block;width:100%;height:100%}
+.lib-photo img,.avatar img{object-fit:cover;object-position:50% 25%}
+.avatar.has-photo{overflow:hidden}
+.lib-info h3{margin:0;font:600 14px 'DM Sans',sans-serif}
+.lib-info p{margin:2px 0 0;font:400 11px 'DM Mono',monospace;color:var(--muted)}
+.lib-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lib-size{padding:1px 6px;border-radius:9px;font-size:10px;color:var(--ink)}
+.lib-size.size-H{background:var(--yellow)}
+.lib-size.size-M{background:var(--aqua)}
+.lib-size.size-R{background:var(--pink)}
+.lib-actions{grid-column:2;display:flex;gap:6px;align-items:center;margin-top:4px}
+.lib-actions .button{padding:6px 12px}
+.lib-added{font:500 11px 'DM Mono',monospace;color:#258371}
+.lib-empty{color:var(--muted);font-size:13px;padding:16px 0}
+.lib-more{text-align:center;padding:14px 0 4px}
+.lib-more[hidden]{display:none}
+.lib-note{margin:12px 0 0;font:400 11px/1.5 'DM Sans',sans-serif;color:var(--muted)}
