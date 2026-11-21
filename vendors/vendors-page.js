@@ -7,6 +7,7 @@
   let placements = parsePlacements(localStorage.getItem(VENDOR_STORAGE_KEY));
   // How many pitches the food court has follows the festival size (set on the Site map, rules/capacity-rules.js).
   const festivalSize = () => capacityNeeds(parseGround(localStorage.getItem(GROUND_STORAGE_KEY)).visitors);
+  const canEditVendors = () => canFestival('lineup');
   let filter = 'All';
   let message = null; // { vendorId, text }: why the last confirm did not work
 
@@ -23,10 +24,11 @@
 
   function cardMarkup(vendor) {
     const pitch = placements[vendor.id];
+    const editPermission = canEditVendors() ? '' : 'disabled title="Your role can view vendors but cannot change them."';
     const actions = pitch
       ? `<button type="button" class="button secondary" data-map="${pitch}">Show on map</button>
-         <button type="button" class="button danger" data-remove="${vendor.id}">Remove</button>`
-      : `<button type="button" class="button primary" data-confirm="${vendor.id}">Confirm</button>`;
+         <button type="button" class="button danger" data-remove="${vendor.id}" ${editPermission}>Remove</button>`
+      : `<button type="button" class="button primary" data-confirm="${vendor.id}" ${editPermission}>Confirm</button>`;
     return `
       <article class="vendor-card ${pitch ? 'confirmed' : ''}">
         <div class="vendor-top">
@@ -70,6 +72,10 @@
     if (event.target.closest('[data-size]')) { event.preventDefault(); document.querySelector('.sidebar-item[data-section="Site map"]').click(); return; }
     const button = event.target.closest('button');
     if (!button) return;
+    if ((button.dataset.confirm || button.dataset.remove) && !canEditVendors()) {
+      toast('Your role can view vendors but cannot change them.');
+      return;
+    }
     message = null;
     if (button.dataset.confirm) {
       const result = confirmVendor(placements, button.dataset.confirm, festivalSize().pitches);
@@ -96,7 +102,7 @@
       message = null;
       // If the festival got smaller, vendors on pitches that no longer exist lose their pitch.
       const fitted = fitPlacements(placements, festivalSize().pitches);
-      if (fitted.removed.length) {
+      if (fitted.removed.length && canEditVendors()) {
         placements = fitted.placements; save();
         toast(`The food court is smaller now: ${fitted.removed.map((v) => v.name).join(', ')} lost their pitch.`);
       }

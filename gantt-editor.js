@@ -184,6 +184,27 @@
     publishProject();
     return step.id;
   };
+
+  window.updateBoardSubtask = ({stepId, areaId, taskId, parentName, title, start, end}) => {
+    if (!canFestival('lineup')) throw new Error('Your role cannot edit tasks.');
+    if (editing) throw new Error('Save or cancel your timeline edits before editing a task here.');
+    const updated = editProjectEntry(project, {
+      stepId, areaId, taskId, parentName, title, start, end,
+      newTaskId: taskId ? null : crypto.randomUUID()
+    });
+    const owners = assignmentsAfterProjectMove(window.taskAssignments.read(), {
+      stepId, sourceTaskId: updated.sourceTaskId, targetTaskId: updated.targetTaskId,
+      mayAssign: canAssignTasks(window.festivalAccess?.role || 'Admin')
+    });
+    try { commitProject(updated.plan, owners); }
+    catch { throw new Error('Could not save your changes in this browser. The previous task is kept.'); }
+    project = updated.plan;
+    window.ganttOutlineState['area-' + updated.targetAreaId] = true;
+    window.ganttOutlineState['task-' + updated.targetTaskId] = true;
+    refresh();
+    publishProject();
+    return stepId;
+  };
   function renderProject(){
     tbody.replaceChildren();let count=0,steps=0;
     project.forEach((a,ai)=>{

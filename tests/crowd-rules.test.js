@@ -106,3 +106,71 @@ test('optional crowd measurements survive map parsing; older maps remain unmeasu
   site.crowdSafety = { stages: { 'stage-a': { area: 'bad', audience: 100 } } };
   assert.equal(parseSiteMaps(JSON.stringify([site]))[0].crowdSafety.stages['stage-a'].area, null);
 });
+
+test('evacuation route labels identify each audience origin and match the computed exit totals', () => {
+  const site = field(), safety = measured();
+  site.placements.P1 = [75, 50]; // Other visitors have an unambiguous nearer exit.
+  const estimate = estimateEvacuation(site, 500, safety);
+  assert.equal(estimate.valid, true);
+  const assignments = Object.fromEntries(estimate.originAssignments.map(entry => [entry.originId, entry]));
+  assert.equal(assignments['stage-a'].exitId, 'exit-1');
+  assert.equal(assignments['stage-b'].exitId, 'exit-2');
+  assert.equal(assignments['other-visitors'].exitId, 'exit-2');
+  assert.equal(assignments['stage-a'].people, 200);
+  assert.equal(assignments['stage-b'].people, 200);
+  assert.equal(assignments['other-visitors'].people, 100);
+  assert.equal(estimate.originAssignments.length, 3);
+  for (const exit of estimate.exits) {
+    const routed = estimate.originAssignments.filter(entry => entry.exitId === exit.id);
+    assert.equal(routed.reduce((sum, entry) => sum + entry.people, 0), exit.people);
+    assert.equal(Math.max(0, ...routed.map(entry => entry.metres)), exit.longestMetres);
+  }
+  for (const entry of estimate.originAssignments) {
+    const origin = entry.originId === 'other-visitors' ? site.placements.P1 : site.placements[entry.originId];
+    assert.equal(entry.metres, strictEvacuationRoute(site, origin, site.placements[entry.exitId]).metres);
+  }
+});
+
+test('closing an exit reroutes the origin labels along with the evacuation audience allocation', () => {
+  const site = field(), safety = measured();
+  const original = estimateEvacuation(site, 500, safety);
+  safety.exits['exit-1'].open = false;
+  const rerouted = estimateEvacuation(site, 500, safety);
+  assert.equal(rerouted.valid, true);
+  assert.equal(rerouted.originAssignments.length, 3);
+  assert.ok(rerouted.originAssignments.every(entry => entry.exitId === 'exit-2'));
+  assert.equal(rerouted.originAssignments.reduce((sum, entry) => sum + entry.people, 0), 500);
+  assert.equal(rerouted.exits[0].people, 500);
+  assert.ok(rerouted.originAssignments.find(entry => entry.originId === 'stage-a').metres
+    > original.originAssignments.find(entry => entry.originId === 'stage-a').metres);
+});
+
+test('zero-audience zones do not receive fabricated evacuation route labels', () => {
+  const site = field(), safety = measured();
+  safety.stages['stage-a'].audience = 0;
+  safety.stages['stage-b'].audience = 500;
+  const estimate = estimateEvacuation(site, 500, safety);
+  assert.equal(estimate.valid, true);
+  assert.equal(estimate.originAssignments.length, 1);
+  assert.equal(estimate.originAssignments[0].originId, 'stage-b');
+  assert.equal(estimate.originAssignments[0].exitId, 'exit-2');
+  assert.equal(estimate.originAssignments[0].people, 500);
+});
+
+test('invalid or partly unreachable evacuation scenarios expose no misleading partial route labels', () => {
+  const site = field(), safety = measured();
+  const invalid = estimateEvacuation(site, 0, safety);
+  assert.equal(invalid.valid, false);
+  assert.deepEqual(invalid.originAssignments, []);
+  const noWidths = measured(); noWidths.exits['exit-1'].width = null;
+  assert.deepEqual(estimateEvacuation(site, 500, noWidths).originAssignments, []);
+  // Stage A can be allocated first, but Stage B has no usable origin cell.
+  // The failed estimate must not retain Stage A's partial assignment.
+  const c = Math.floor(site.placements['stage-b'][0] / site.width * site.grid.cols);
+  const r = Math.floor(site.placements['stage-b'][1] / site.height * site.grid.rows);
+  const cells = site.grid.cells.split(''); cells[r * site.grid.cols + c] = '1';
+  site.grid.cells = cells.join('');
+  const blocked = estimateEvacuation(site, 500, safety);
+  assert.equal(blocked.valid, false);
+  assert.deepEqual(blocked.originAssignments, []);
+});

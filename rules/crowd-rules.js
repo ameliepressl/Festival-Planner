@@ -72,7 +72,7 @@ function strictEvacuationRoute(site, from, to) {
 
 function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
   const safety = normalizeCrowdSafety(input);
-  const invalid = detail => ({ valid: false, minutes: null, detail, exits: [] });
+  const invalid = detail => ({ valid: false, minutes: null, detail, exits: [], originAssignments: [] });
   if (!validCrowdCount(visitors) || visitors === 0) return invalid('Enter the expected visitor count.');
   if (!CROWD_STAGE_IDS.every(id => validCrowdCount(safety.stages[id].audience))) return invalid('Enter the audience at each stage for the same evacuation scenario.');
   const stageTotal = CROWD_STAGE_IDS.reduce((sum, id) => sum + safety.stages[id].audience, 0);
@@ -97,11 +97,13 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
     origins.push({ id: 'other-visitors', people: other, point: [0, 1].map(k => pitches.reduce((sum, at) => sum + at[k], 0) / pitches.length) });
   }
   const allocation = Object.fromEntries(exits.map(id => [id, { id, people: 0, longestMetres: 0, width: safety.exits[id].width }]));
+  const originAssignments = [];
   for (const origin of origins) {
     const options = exits.map(id => ({ id, ...strictEvacuationRoute(site, origin.point, site.placements[id]) }))
       .filter(route => route.reachable).sort((a, b) => a.metres - b.metres);
     if (!options.length) return invalid(`No usable route from ${origin.id === 'other-visitors' ? 'the food court' : origin.id.replace('stage-', 'Stage ').toUpperCase()} to an open exit.`);
     const route = options[0], exit = allocation[route.id];
+    originAssignments.push({ originId: origin.id, exitId: route.id, people: origin.people, metres: route.metres });
     exit.people += origin.people; exit.longestMetres = Math.max(exit.longestMetres, route.metres);
   }
   const results = Object.values(allocation).map(exit => ({ ...exit,
@@ -109,7 +111,7 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
     queueMinutes: exit.people / (exit.width * safety.flowRate)
   }));
   const minutes = safety.preMovementMinutes + Math.max(...results.map(exit => exit.travelMinutes + exit.queueMinutes));
-  return { valid: true, minutes, exits: results,
+  return { valid: true, minutes, exits: results, originAssignments,
     detail: 'Response delay + the longest exit travel/queue estimate. Each audience zone uses its nearest reachable open exit; other visitors start at the food court. No shared-route bottleneck or behavioural simulation.' };
 }
 

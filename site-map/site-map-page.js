@@ -32,7 +32,7 @@
   let box = null;     // the visible part of the map (zoom and pan)
   let pointer = null; // what the mouse is doing right now
   let busy = false;
-  const snapshot = () => ({ sites, ground, currentId });
+  const snapshot = () => ({ sites, ground, currentId, pendingFence: draftBorder?.length ? draftBorder : null });
   const draft = createMapDraft(snapshot());
   const editable = () => canFestival('checklist');
   let savedReadinessCache = null;
@@ -65,7 +65,8 @@
   function applyDraft() {
     ({ sites, ground, currentId } = cloneMapDraft(draft.present));
     needs = capacityNeeds(ground.visitors); items = layoutItems(needs);
-    selectedId = null; draftBorder = null; pointer = null; box = null; mode = 'explore';
+    selectedId = null; draftBorder = draft.present.pendingFence ? cloneMapDraft(draft.present.pendingFence) : null;
+    pointer = null; box = null; mode = draftBorder?.length ? 'border' : 'explore';
     renderPage();
   }
   function commitChanges() {
@@ -157,12 +158,14 @@
           </div>
           <div class="sm-frame mode-${mode}">
             <div class="sm-hint" id="sm-hint"></div>
-            <svg id="sm-svg" viewBox="0 0 ${s.width} ${s.height}" role="img" aria-label="Map of ${escape(s.name)}">
-              ${MapDrawing.defs()}
-              <g id="sm-scene"></g><g id="sm-nogo"></g><g id="sm-paths"></g><g id="sm-objects"></g><g id="sm-edit"></g>
-            </svg>
-            <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
-            <div class="sm-scale" id="sm-scale"></div>
+            <div class="sm-map-viewport">
+              <svg id="sm-svg" viewBox="0 0 ${s.width} ${s.height}" role="img" aria-label="Map of ${escape(s.name)}">
+                ${MapDrawing.defs()}
+                <g id="sm-scene"></g><g id="sm-nogo"></g><g id="sm-paths"></g><g id="sm-objects"></g><g id="sm-edit"></g>
+              </svg>
+              <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
+              <div class="sm-scale" id="sm-scale"></div>
+            </div>
           </div>
           <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </div>
@@ -251,7 +254,7 @@
     const s = site();
     const r = box.w / 160;
     let out = '';
-    if (mode === 'border') {
+    if (mode === 'border' || draftBorder?.length) {
       const points = draftBorder || [];
       out += `<polyline points="${points.map((p) => p.join(',')).join(' ')}" fill="rgba(255,104,76,.12)" stroke="#ff684c" stroke-width="${r * 0.6}" stroke-dasharray="${r * 2} ${r}" />`;
       out += points.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="${r * 1.4}" fill="#ff684c" stroke="#fff" stroke-width="${r * 0.4}" />`).join('');
@@ -262,10 +265,11 @@
 
   function renderHint() {
     const hint = view.querySelector('#sm-hint');
-    const extra = mode === 'border'
+    const extra = mode === 'border' || draftBorder?.length
       ? ` <button type="button" class="button primary" data-border="done" ${(draftBorder || []).length < 3 ? 'disabled' : ''}>Done (${(draftBorder || []).length} corners)</button> <button type="button" class="button secondary" data-border="cancel">Cancel</button>`
       : '';
-    hint.innerHTML = `<span>${MODES[mode].hint}</span>${extra}`;
+    const pending = mode !== 'border' && draftBorder?.length ? ' Your fence draft is still pending; finish or cancel it before saving.' : '';
+    hint.innerHTML = `<span>${MODES[mode].hint}${pending}</span>${extra}`;
   }
 
   // ---------- right column ----------
@@ -324,7 +328,7 @@
     const s = site();
     view.querySelector('#sm-settings').innerHTML = `
       <label class="sm-field">Map name<input id="sm-name" maxlength="60" value="${escape(s.name)}" ${s.id === 'demo' || !editable() ? 'disabled' : ''} /></label>
-      <label class="sm-field">Real width of the map (metres)<input id="sm-width" type="number" min="20" max="20000" step="10" value="${s.widthMetres}" ${!editable() ? 'disabled' : ''} />
+      <label class="sm-field">Real width of the map (metres)<input id="sm-width" type="number" min="20" max="20000" step="any" value="${s.widthMetres}" ${!editable() ? 'disabled' : ''} />
         <small>Sets the scale for all map distances and facility sizes.</small></label>
       <div class="sm-setting-buttons"><label class="button secondary sm-upload">⇪ Upload map<input type="file" accept="image/*" id="sm-upload" class="hidden" /></label>
         ${s.image ? '<button type="button" class="button secondary" data-action="detect">Detect water automatically</button>' : ''}
@@ -354,6 +358,13 @@
     if (!panel) return;
     const assumptionsOpen = !!panel.querySelector('.sm-assumptions')?.open;
     const { safety, checks, evacuation } = crowdSafetyChecks(site(), ground.visitors);
+    const routeLabels = evacuation.valid ? CROWD_STAGE_IDS.map(id => {
+      const route = evacuation.originAssignments.find(value => value.originId === id);
+      const label = `Stage ${id.slice(-1).toUpperCase()}`;
+      return route ? `${label} → Exit ${route.exitId.slice(-1)}` : `${label}: no audience`;
+    }) : [];
+    const otherRoute = evacuation.originAssignments.find(route => route.originId === 'other-visitors');
+    if (otherRoute) routeLabels.push(`Other visitors → Exit ${otherRoute.exitId.slice(-1)}`);
     const input = (label, path, value, min = '0', step = '1', unit = '') => `<label class="sm-field">${label}${unit ? ` (${unit})` : ''}<input type="number" data-crowd-field="${path}" min="${min}" step="${step}" value="${value === null ? '' : escape(value)}" ${!editable() ? 'disabled' : ''} /></label>`;
     panel.innerHTML = `
       <p class="sm-note">Enter measured usable audience areas, excluding stages, barriers and obstructions. Audience numbers describe the same peak scenario. Blank measurements cannot pass the checks.</p>
@@ -376,6 +387,7 @@
       <p class="sm-note">References: <a href="https://www.hse.gov.uk/event-safety/venue-site-design.htm" target="_blank" rel="noopener noreferrer">HSE site design</a> · <a href="https://www.gov.uk/government/publications/fire-safety-risk-assessment-open-air-events-and-venues" target="_blank" rel="noopener noreferrer">Home Office open-air guidance</a> · <a href="https://sgsa.org.uk/wp-content/uploads/2025/09/Vehicle-Security-Barriers-at-Event-Venues.pdf" target="_blank" rel="noopener noreferrer">SGSA flow reference</a></p></details>
       <ul class="sm-rules">${checks.map(rule => `<li class="${rule.ok ? 'ok' : 'problem'}"><b>${rule.ok ? '✓' : '!'}</b><span>${escape(rule.label)}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>
       ${evacuation.valid ? `<p class="sm-note">${evacuation.exits.map(exit => `Exit ${exit.id.slice(-1)}: ${exit.people.toLocaleString('en-GB')} people · longest route ${Math.round(exit.longestMetres)} m · travel ${exit.travelMinutes.toFixed(1)} min + queue ${exit.queueMinutes.toFixed(1)} min`).join('<br>')}</p>` : ''}
+      ${evacuation.valid ? `<p class="sm-note" id="sm-evacuation-routes">Estimated routes: ${escape(routeLabels.join(' · '))}</p>` : ''}
       <p class="sm-note">Planning estimates only. A qualified assessment and applicable local requirements determine real event capacity and evacuation arrangements. Choose Save changes to include these inputs in the saved plan and Overview readiness.</p>`;
   }
 
@@ -405,21 +417,25 @@
   }
 
   function switchMap(id, skipNavigationCheck = false) {
-    if (id === currentId) return;
-    if (!skipNavigationCheck && !window.confirmMapNavigation()) { renderSettings(); return; }
+    if (id === currentId) return true;
+    if (!skipNavigationCheck && !window.confirmMapNavigation()) {
+      view.querySelector('#sm-select').value = currentId;
+      renderSettings(); return false;
+    }
     currentId = id; selectedId = null; draftBorder = null; box = null; mode = 'explore';
     // Choosing the festival's active map is saved deliberately too. Overview keeps
     // using the previous committed map until Save changes is chosen.
     if (!skipNavigationCheck && editable()) save();
     renderPage();
+    return true;
   }
 
   function setMode(next) {
     mode = next;
-    if (mode === 'border') draftBorder = [];
+    if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
     view.querySelectorAll('[data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-pressed', b.dataset.mode === mode); });
-    drawNogo(); drawEdit(); renderHint(); renderDetails();
+    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions();
   }
 
   function select(id) {
@@ -528,7 +544,7 @@
       pointer = { start: [event.clientX, event.clientY], startBox: { ...box }, moved: false, itemId: itemEl?.dataset.id || null, el: itemEl };
       svg.setPointerCapture(event.pointerId);
       if ((!editable() || busy) && mode !== 'explore') { pointer = null; return; }
-      if (mode === 'border') { draftBorder = [...(draftBorder || []), p]; drawEdit(); renderHint(); renderDraftActions(); pointer = null; return; }
+      if (mode === 'border') { draftBorder = [...(draftBorder || []), p]; save(); drawEdit(); renderHint(); renderDraftActions(); pointer = null; return; }
       if (mode === 'entrance') {
         s.entrance = nearestBoundaryPoint(s, p);
         s.placements.entrance = s.entrance;
@@ -604,7 +620,7 @@
       if (border.dataset.border === 'done' && draftBorder.length >= 3) {
         s.boundary = draftBorder; draftBorder = null; save(); drawScene(); setMode('explore'); drawAll();
         mapMessage('Fence changed in the draft. Press “Suggest optimal layout” to plan inside it, then Save changes.');
-      } else { draftBorder = null; setMode('explore'); }
+      } else { draftBorder = null; save(); setMode('explore'); }
       renderDraftActions();
       return;
     }
@@ -640,7 +656,10 @@
 
   view.addEventListener('change', (event) => {
     const s = site();
-    if (event.target.id === 'sm-select') { switchMap(event.target.value); mapMessage('Map selected.'); }
+    if (event.target.id === 'sm-select') {
+      const changed = switchMap(event.target.value);
+      mapMessage(changed ? 'Map selected.' : 'Map selection cancelled. Your unsaved changes are still here.');
+    }
     else if (event.target.id === 'sm-show-nogo') { showNogo = event.target.checked; drawNogo(); }
     else if (!editable() || busy) return;
     else if (event.target.matches('[data-crowd-field]')) {
@@ -656,7 +675,11 @@
     else if (event.target.id === 'sm-name') { s.name = event.target.value.trim() || 'My map'; save(); view.querySelector(`#sm-select option[value="${s.id}"]`).textContent = s.name; }
     else if (event.target.id === 'sm-width') {
       const metres = Number(event.target.value);
-      if (metres >= 20 && metres <= 20000) { s.widthMetres = metres; save(); drawAll(); }
+      if (validMapWidth(event.target.value)) { s.widthMetres = metres; save(); drawAll(); }
+      else {
+        event.target.value = String(s.widthMetres);
+        mapMessage('Enter a map width from 20 to 20,000 metres. The previous valid width has been kept.');
+      }
     }
   });
   view.addEventListener('keydown', (event) => {

@@ -132,6 +132,7 @@ function showSection(section) {
 document.querySelectorAll('.sidebar-item').forEach(button => {
   button.addEventListener('click', () => {
     const section = button.dataset.section;
+    if (!section) return; // Sign out has its own account handler, not a page destination.
     if (Object.hasOwn(sectionViews, section)) showSection(section);
     else toast(`${section} will be added in a later feature branch.`);
   });

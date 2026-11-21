@@ -65,6 +65,60 @@ function removeProjectEntry(plan, { stepId, taskId }) {
   return next;
 }
 
+// Editing keeps the subtask's identity, so progress and completion history stay
+// attached even when it moves to a different task group or work area.
+function editProjectEntry(plan, { stepId, areaId, taskId, parentName, title, start, end, newTaskId }) {
+  if (typeof title !== 'string' || !title.trim() || title.trim().length > 160
+      || !validProjectDate(start) || !validProjectDate(end) || start > end) {
+    throw new Error('Enter a task name and valid dates. The end date must be on or after the start date.');
+  }
+  const next = JSON.parse(JSON.stringify(plan));
+  let sourceArea, sourceTask, step;
+  for (const area of next) for (const group of area.tasks) {
+    const found = group.subtasks.find(item => String(item.id) === String(stepId));
+    if (found) { sourceArea = area; sourceTask = group; step = found; }
+  }
+  if (!step) throw new Error('This task no longer exists. Reload the project and try again.');
+  const targetArea = next.find(area => String(area.id) === String(areaId));
+  if (!targetArea) throw new Error('Choose a work area.');
+  let targetTask = targetArea.tasks.find(group => String(group.id) === String(taskId));
+  if (!taskId) {
+    if (typeof parentName !== 'string' || !parentName.trim() || parentName.trim().length > 160) {
+      throw new Error('Enter a name for the new task group.');
+    }
+    if (!newTaskId || next.some(area => area.tasks.some(group => String(group.id) === String(newTaskId)))) {
+      throw new Error('Could not create the task group. Please try again.');
+    }
+    targetTask = { id: newTaskId, title: parentName.trim(), subtasks: [] };
+    targetArea.tasks.push(targetTask);
+  }
+  if (!targetTask) throw new Error('Choose a task group in the selected work area.');
+  step.title = title.trim();
+  step.start = start;
+  step.end = end;
+  const moved = sourceTask !== targetTask;
+  if (moved) {
+    sourceTask.subtasks = sourceTask.subtasks.filter(item => item !== step);
+    targetTask.subtasks.push(step);
+    if (!sourceTask.subtasks.length) sourceArea.tasks = sourceArea.tasks.filter(group => group !== sourceTask);
+  }
+  return { plan: next, sourceTaskId: String(sourceTask.id), targetTaskId: String(targetTask.id), targetAreaId: String(targetArea.id), moved };
+}
+
+// Group ownership is inherited by older tasks. Regrouping must not silently
+// reassign them, and Editors must never write the protected assignments section.
+function assignmentsAfterProjectMove(assignments, { stepId, sourceTaskId, targetTaskId, mayAssign }) {
+  const next = JSON.parse(JSON.stringify(assignments));
+  if (sourceTaskId === targetTaskId || Object.hasOwn(next.steps, String(stepId))) return next;
+  const before = next.groups[sourceTaskId] || '';
+  const after = next.groups[targetTaskId] || '';
+  if (!mayAssign && before !== after) {
+    throw new Error('Only an Admin can move this task to a group with a different owner. Choose a group with the same owner, or ask an Admin.');
+  }
+  if (mayAssign) next.steps[String(stepId)] = before;
+  return next;
+}
+
 function projectTaskIds(plan) {
   return { groups: new Set(plan.flatMap(area => area.tasks.map(group => String(group.id)))),
     steps: new Set(plan.flatMap(area => area.tasks.flatMap(group => group.subtasks.map(step => String(step.id))))) };
@@ -79,5 +133,6 @@ function cleanProjectTracking(plan, statuses = {}, assignments = { groups: {}, s
 
 if (typeof module !== 'undefined') module.exports = {
   PROJECT_SETUP_KEY, PROJECT_STATUS_KEY, projectToday, validProjectDate,
-  shiftProjectDay, suggestedProject, removeProjectEntry, cleanProjectTracking, projectTaskIds
+  shiftProjectDay, suggestedProject, removeProjectEntry, editProjectEntry,
+  assignmentsAfterProjectMove, cleanProjectTracking, projectTaskIds
 };

@@ -29,6 +29,8 @@
 .sm-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start;padding-bottom:48px}
 .sm-main{min-width:0}
 .sm-frame{position:relative;background:#2b3a2c;border:1px solid var(--ink);overflow:hidden;user-select:none}
+/* Anchor overlays to the drawing, below the wrapping instructions/fence actions. */
+.sm-map-viewport{position:relative;overflow:hidden}
 .sm-frame svg{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 .sm-frame svg:active{cursor:grabbing}
 .sm-frame.mode-move .fa-item{cursor:move}
@@ -38,7 +40,7 @@
 .fa-item .fa-pin{transition:transform .15s}
 .fa-item:hover .fa-pin,.fa-item:focus-visible .fa-pin{transform:scale(1.15)}
 .fa-pin.selected{transform:scale(1.25)}
-.fa-pin-pulse{animation:fa-pulse 1.6s ease-out infinite;transform-origin:center}
+.fa-pin-pulse{animation:fa-pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes fa-pulse{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(1.8)}}
 .sm-zoom{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .sm-zoom button{width:34px;height:34px;border:0;border-bottom:1px solid var(--line);background:var(--white);font:600 17px 'DM Sans';cursor:pointer;color:var(--ink)}

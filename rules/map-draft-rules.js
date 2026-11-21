@@ -1,6 +1,12 @@
 // Map edits stay in memory until the organiser explicitly saves them.
 const cloneMapDraft = value => JSON.parse(JSON.stringify(value));
-const mapDraftFingerprint = value => JSON.stringify({ sites: value.sites, ground: value.ground, currentId: value.currentId });
+const mapDraftFingerprint = value => JSON.stringify({ sites: value.sites, ground: value.ground,
+  currentId: value.currentId, pendingFence: value.pendingFence?.length ? value.pendingFence : null });
+
+function validMapWidth(value) {
+  const metres = Number(value);
+  return Number.isFinite(metres) && metres >= 20 && metres <= 20000;
+}
 
 function createMapDraft(snapshot) {
   return { saved: cloneMapDraft(snapshot), present: cloneMapDraft(snapshot), previous: null };
@@ -30,6 +36,8 @@ function discardMapDraft(draft) {
 // localStorage has no transaction: restore all three previous values if any write fails.
 // Account sync runs after this synchronous operation and therefore sees the restored values.
 function saveMapDraft(draft, storage, keys) {
+  if (draft.present.pendingFence?.length) return { ok: false, restored: true,
+    error: new Error('Finish or cancel the fence before saving the map.') };
   const writes = [[keys.sites, JSON.stringify(draft.present.sites)],
     [keys.ground, JSON.stringify(draft.present.ground)], [keys.selected, draft.present.currentId]];
   let before;
@@ -49,5 +57,5 @@ function saveMapDraft(draft, storage, keys) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  createMapDraft, mapDraftDirty, changeMapDraft, undoMapDraft, discardMapDraft, saveMapDraft
+  createMapDraft, mapDraftDirty, changeMapDraft, undoMapDraft, discardMapDraft, saveMapDraft, validMapWidth
 };

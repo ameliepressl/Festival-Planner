@@ -116,3 +116,104 @@ test('starting with an explicitly empty account removes previous task dates, pro
   applyFestivalData(storage, imported);
   assert.deepEqual(collectFestivalData(storage), imported);
 });
+
+const { editProjectEntry, assignmentsAfterProjectMove } = require('../rules/project-rules.js');
+
+function editableProject() {
+  return suggestedProject(template, { startDate: '2028-04-03', endDate: '2028-04-06' }, '2027-04-03');
+}
+
+function taskEdit(extra = {}) {
+  return { stepId: 'early', areaId: '1', taskId: 'concept', parentName: '',
+    title: 'Updated venue task', start: '2028-01-01', end: '2028-01-03', ...extra };
+}
+
+test('editing task names and dates preserves identity, order and the saved input until committed', () => {
+  const saved = editableProject();
+  saved[0].tasks[0].subtasks[0].notes = 'Keep this extra information';
+  const before = JSON.stringify(saved);
+  const updated = editProjectEntry(saved, taskEdit());
+  assert.equal(updated.moved, false);
+  assert.deepEqual(updated.plan[0].tasks[0].subtasks.map(step => step.id), ['early', 'late']);
+  assert.deepEqual(updated.plan[0].tasks[0].subtasks[0], {
+    id: 'early', title: 'Updated venue task', start: '2028-01-01', end: '2028-01-03', notes: 'Keep this extra information'
+  });
+  assert.equal(JSON.stringify(saved), before);
+});
+
+test('moving an existing task to another work area removes its empty former group and preserves its ID', () => {
+  const saved = editableProject();
+  const updated = editProjectEntry(saved, taskEdit({ stepId: 'clear' }));
+  assert.deepEqual(updated.plan[1].tasks, []);
+  assert.deepEqual(updated.plan[0].tasks[0].subtasks.map(step => step.id), ['early', 'late', 'clear']);
+  assert.equal(updated.sourceTaskId, 'cleanup');
+  assert.equal(updated.targetTaskId, 'concept');
+  assert.equal(updated.targetAreaId, '1');
+  assert.equal(updated.moved, true);
+  assert.equal(saved[1].tasks[0].subtasks[0].id, 'clear');
+});
+
+test('editing can create a destination task group without recreating the task', () => {
+  const updated = editProjectEntry(editableProject(), taskEdit({
+    areaId: '13', taskId: '', parentName: '  New supplier group  ', newTaskId: 'new-group'
+  }));
+  assert.deepEqual(updated.plan[0].tasks[0].subtasks.map(step => step.id), ['late']);
+  const group = updated.plan[1].tasks.find(group => group.id === 'new-group');
+  assert.equal(group.title, 'New supplier group');
+  assert.deepEqual(group.subtasks.map(step => step.id), ['early']);
+});
+
+test('invalid task edits leave the saved plan intact', () => {
+  const saved = editableProject(), before = JSON.stringify(saved);
+  for (const extra of [
+    { title: ' ' }, { title: 'x'.repeat(161) }, { start: '2028-02-30' },
+    { start: '2028-01-04', end: '2028-01-03' }, { stepId: 'missing' },
+    { areaId: 'missing' }, { taskId: 'cleanup' }, { taskId: '', parentName: '' },
+    { taskId: '', parentName: 'New group', newTaskId: 'concept' }
+  ]) assert.throws(() => editProjectEntry(saved, taskEdit(extra)));
+  assert.equal(JSON.stringify(saved), before);
+});
+
+test('Admin regrouping preserves an inherited owner instead of adopting the new group owner', () => {
+  const owners = { groups: { concept: 'alice', cleanup: 'bob' }, steps: {} };
+  const after = assignmentsAfterProjectMove(owners, {
+    stepId: 'early', sourceTaskId: 'concept', targetTaskId: 'cleanup', mayAssign: true
+  });
+  assert.equal(after.steps.early, 'alice');
+  assert.deepEqual(owners.steps, {});
+  const unassigned = assignmentsAfterProjectMove({ groups: { cleanup: 'bob' }, steps: {} }, {
+    stepId: 'early', sourceTaskId: 'concept', targetTaskId: 'cleanup', mayAssign: true
+  });
+  assert.equal(unassigned.steps.early, '', 'a previously unassigned task stays unassigned');
+});
+
+test('Editors can regroup tasks with the same inherited owner without changing the assignments section', () => {
+  const owners = { groups: { concept: 'alice', cleanup: 'alice' }, steps: {} };
+  assert.deepEqual(assignmentsAfterProjectMove(owners, {
+    stepId: 'early', sourceTaskId: 'concept', targetTaskId: 'cleanup', mayAssign: false
+  }), owners);
+  assert.throws(() => assignmentsAfterProjectMove(owners, {
+    stepId: 'early', sourceTaskId: 'concept', targetTaskId: 'new-unassigned-group', mayAssign: false
+  }), /Only an Admin/);
+});
+
+test('regrouping keeps explicit task owners and completion history, including for Editors', () => {
+  const saved = editableProject();
+  const progress = { early: { status: 'done', completedAt: 1234, completedBy: 'alice' }, late: 'progress' };
+  const owners = { groups: { concept: 'alice', cleanup: 'bob' }, steps: { early: 'carol' } };
+  const updated = editProjectEntry(saved, taskEdit({ areaId: '13', taskId: 'cleanup' }));
+  const after = assignmentsAfterProjectMove(owners, {
+    stepId: 'early', sourceTaskId: updated.sourceTaskId, targetTaskId: updated.targetTaskId, mayAssign: false
+  });
+  assert.deepEqual(after, owners);
+  const cleaned = cleanProjectTracking(updated.plan, progress, after);
+  assert.deepEqual(cleaned.statuses, progress);
+  assert.equal(cleaned.assignments.steps.early, 'carol');
+});
+
+test('editing within the same task group does not change inherited assignments', () => {
+  const owners = { groups: { concept: 'alice' }, steps: {} };
+  for (const mayAssign of [true, false]) assert.deepEqual(assignmentsAfterProjectMove(owners, {
+    stepId: 'early', sourceTaskId: 'concept', targetTaskId: 'concept', mayAssign
+  }), owners);
+});

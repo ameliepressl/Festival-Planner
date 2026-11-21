@@ -7,8 +7,16 @@
   const button = document.querySelector('#load-demo');
   const dialog = document.querySelector('#demo-dialog');
   if (!button || !dialog) return;
+  // Loading replaces festival details and finances as well as the lineup.
+  const canLoadDemo = () => typeof canFestival === 'function'
+    && canFestival('lineup') && canFestival('overview') && canFestival('budget');
+  const permissionMessage = 'Only the festival creator and Admins can replace the festival with the demo.';
+  button.disabled = !canLoadDemo();
+  if (button.disabled) button.title = permissionMessage;
 
   function loadDemo() {
+    // Recheck before writing, even if a dialog was opened earlier or triggered directly.
+    if (!canLoadDemo()) { toast(permissionMessage); return false; }
     const demo = demoFestival();
     const pitches = capacityNeeds(demo.ground.visitors).pitches;
     const placements = demo.vendors.reduce((p, id) => confirmVendor(p, id, pitches).placements, {});
@@ -21,12 +29,12 @@
     localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify({ ...DEFAULT_FINANCE, ...demo.finance }));
     localStorage.setItem(SITE_MAPS_STORAGE_KEY, JSON.stringify(maps));
     localStorage.setItem('festival-architect-site-map-selected', 'demo');
+    return true;
   }
 
   button.addEventListener('click', () => {
-    // Viewers without edit rights for the lineup cannot replace the plan.
-    if (typeof canFestival === 'function' && !canFestival('lineup')) {
-      toast('Only team members who can edit the lineup can load the demo festival.');
+    if (!canLoadDemo()) {
+      toast(permissionMessage);
       return;
     }
     dialog.showModal();
@@ -35,8 +43,7 @@
   dialog.addEventListener('close', () => {
     if (dialog.returnValue !== 'load') return;
     try {
-      loadDemo();
-      location.reload();
+      if (loadDemo()) location.reload();
     } catch {
       toast('The demo could not be saved in this browser (storage full or blocked).');
     }

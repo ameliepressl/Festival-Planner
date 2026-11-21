@@ -283,18 +283,11 @@
         item.append(meta, element('h3',null,card.title),
           element('p','work-board-context',card.area + ' · ' + card.task), assigneeLine(card), control);
         if (canEditTasks) {
-          const remove = element('button', 'button quiet', 'Delete task');
-          remove.type = 'button';
-          remove.setAttribute('aria-label', 'Delete task ' + card.title);
-          remove.onclick = () => {
-            if (!canFestival('lineup') || !window.confirm(`Delete task “${card.title}”? This removes it from the board and timeline without completing it.`)) return;
-            try { window.deleteBoardSubtask(card.id); }
-            catch (failure) { summary.textContent = failure.message; return; }
-            render();
-            publishBoardUpdate();
-            summary.textContent = 'Task deleted. ' + summary.textContent;
-          };
-          item.append(remove);
+          const edit = element('button', 'button quiet', 'Edit task');
+          edit.type = 'button';
+          edit.setAttribute('aria-label', 'Edit task ' + card.title);
+          edit.onclick = () => openTaskDialog(card.id);
+          item.append(edit);
         }
         const doneBy = id === 'done' && assignments.nameOf(saved[card.id]?.completedBy, team);
         if (doneBy) item.append(element('p', 'work-board-done-by', 'Done by ' + doneBy));
@@ -405,6 +398,9 @@
   const fields = form.elements;
   const error = document.querySelector('#board-create-error');
   const addTaskButton = document.querySelector('#board-add-task');
+  const saveTaskButton = document.querySelector('#board-create-save');
+  const deleteTaskButton = document.querySelector('#board-edit-delete');
+  let editingStepId = null;
   addTaskButton.hidden = !canFestival('lineup');
   form.querySelector('.hero-copy').textContent = 'Choose a work area, then select one of its task groups or create a new group. Your task appears on both the board and timeline.';
   const groupHelp = element('p', 'field-help', 'Task groups belong to the selected work area. Choose an existing group or “Create a task group”.');
@@ -429,30 +425,59 @@
     groupHelp.textContent = area ? `Showing task groups in ${area.title}. You can also create a new group.` : 'Choose a work area first to see its task groups.';
     updateParentName();
   }
-  addTaskButton.onclick = () => {
+  function openTaskDialog(stepId = null) {
     if (!canFestival('lineup')) return;
+    const card = stepId === null ? null : projectSteps().find(item => String(item.id) === String(stepId));
+    if (stepId !== null && !card) {
+      summary.textContent = 'This task no longer exists. Reload the project and try again.';
+      return;
+    }
+    editingStepId = card ? String(card.id) : null;
     form.reset();
     error.textContent = '';
+    document.querySelector('#board-create-title').textContent = card ? 'Edit task' : 'Add new task';
+    saveTaskButton.textContent = card ? 'Save changes' : 'Create task';
+    deleteTaskButton.hidden = !card;
     fields.area.replaceChildren(new Option('Choose an area', ''));
     window.getSavedGanttPlan().forEach(area => fields.area.add(new Option(area.title, String(area.id))));
-    fields.area.value = areaSelect.value || String(window.getSavedGanttPlan()[0]?.id || '');
-    fields.start.value = projectToday();
-    fields.end.value = projectToday();
+    fields.area.value = card?.areaId || areaSelect.value || String(window.getSavedGanttPlan()[0]?.id || '');
+    fields.title.value = card?.title || '';
+    fields.start.value = card?.start || projectToday();
+    fields.end.value = card?.end || projectToday();
     updateParents();
+    if (card) fields.parent.value = card.taskId;
+    updateParentName();
     dialog.showModal();
-  };
+  }
+  addTaskButton.onclick = () => openTaskDialog();
   fields.area.onchange = updateParents;
   fields.parent.onchange = updateParentName;
   document.querySelector('#board-create-cancel').onclick = () => dialog.close();
+  dialog.addEventListener('close', () => { editingStepId = null; });
+  deleteTaskButton.onclick = () => {
+    if (!canFestival('lineup') || editingStepId === null) return;
+    const card = projectSteps().find(item => String(item.id) === editingStepId);
+    if (!card) { error.textContent = 'This task no longer exists. Reload the project and try again.'; return; }
+    if (!window.confirm(`Delete task “${card.title}”? This removes it from the board and timeline without completing it.`)) return;
+    try { window.deleteBoardSubtask(editingStepId); }
+    catch (failure) { error.textContent = failure.message; return; }
+    dialog.close();
+    render();
+    publishBoardUpdate();
+    summary.textContent = 'Task deleted. ' + summary.textContent;
+  };
   form.onsubmit = event => {
     event.preventDefault();
     if (!canFestival('lineup')) return;
+    const updating = editingStepId !== null;
     try {
-      window.addBoardSubtask({
+      const details = {
         areaId:fields.area.value, taskId:fields.parent.value === 'new' ? '' : fields.parent.value,
         parentName:fields.parentName.value, title:fields.title.value,
         start:fields.start.value, end:fields.end.value
-      });
+      };
+      if (updating) window.updateBoardSubtask({ ...details, stepId: editingStepId });
+      else window.addBoardSubtask(details);
     } catch (failure) {
       error.textContent = failure.message;
       return;
@@ -461,7 +486,7 @@
     search.value = '';
     areaSelect.value = fields.area.value;
     render();
-    summary.textContent = 'Task added to the board and project timeline. ' + summary.textContent;
+    summary.textContent = (updating ? 'Task updated on the board and project timeline. ' : 'Task added to the board and project timeline. ') + summary.textContent;
   };
   window.addEventListener('task-assignments-changed', () => {
     if (!board.classList.contains('hidden')) render();

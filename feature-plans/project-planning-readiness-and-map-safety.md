@@ -2,9 +2,10 @@
 
 Owner: Kira · Branch: `codex/project-planning-readiness-and-map-safety` · Approved: 21 November 2026
 
-Status: implemented; 197 automated tests pass and isolated browser flows pass.
-Commit and branch publication approved by Kira on 21 November 2026. Team review
-and merge are pending. See PROJECT_PROGRESS.md for verification.
+Status: baseline published as commit `983c568`, with draft PR #24. Approved
+follow-up changes are ready for publication, authorised by Kira on 21 November
+2026; 218 automated tests pass and browser checks pass. Team review and merge are
+pending. See PROJECT_PROGRESS.md for verification.
 
 ## Why
 
@@ -74,3 +75,38 @@ rules or deleting existing festival data.
 - Existing tests plus meaningful regression scenarios pass without weakening tests.
 - Changed flows are checked in a browser through a local server, including reloads;
   remaining limits and final test output are recorded in PROJECT_PROGRESS.md.
+
+## Approved follow-up — map controls and task editing
+
+Kira requested the following after trying the published branch and confirmed
+"please continue my changes". Kira subsequently approved committing and pushing
+these follow-ups to the existing feature branch on 21 November 2026.
+
+- Keep map zoom/reset controls in a dedicated map viewport, clear of the fence
+  instruction and Done/Cancel controls at desktop and narrow widths.
+- Replace the task-board Delete task shortcut with Edit task. Reuse the creation
+  form with the existing work area, group, name and dates filled in. In editing
+  mode provide Save changes, Cancel and Delete task with deletion confirmation.
+- Preserve task identity, progress and ownership when editing or regrouping;
+  protected assignment changes remain restricted to Admins. Failed saves and
+  cancelled dialogs retain the previous task.
+- Check the existing tests plus editing/regrouping, validation, cancellation,
+  role restrictions, reload persistence and responsive map button hit targets.
+
+Kira separately approved fixing all six button-audit findings: unfinished fence
+tool transitions, silently ignored invalid map widths, cancelled map selections,
+Viewer vendor edits, Editor demo replacement and the Sign out navigation message.
+Keep these controls and correct their behaviour and permission checks. Kira also
+approved centring the selected-pin pulse on the pin; keep the entrance-lane art.
+
+### Approved evacuation explanation
+
+Add one small grey "Estimated routes" line below the evacuation result, showing
+which exit is used for Stage A, Stage B and any remaining visitors. Read the actual
+nearest-reachable-open-exit choices made by the existing calculation; do not
+recalculate routes for the label. A stage with zero audience is labelled accordingly;
+invalid/incomplete estimates show no stale routing. This is derived output only:
+no formula or saved data changes. Verify mapping, closed-exit rerouting, zero
+audience, invalid input and browser reload. This addition is included in the
+approved follow-up publication. The later request to move this section below
+the map was cancelled; its position remains unchanged.
