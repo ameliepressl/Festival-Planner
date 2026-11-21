@@ -131,6 +131,9 @@ function render() {
     e.onmouseleave=e.onblur=hidePerformanceDetails;
     e.onkeydown=event => { if(event.key==='Escape') hidePerformanceDetails(); };
   });
+  if (typeof window.dispatchEvent === 'function' && typeof window.Event === 'function') {
+    window.dispatchEvent(new window.Event('festival-plan-updated'));
+  }
 }
 // Empty-stage clicks map one CSS pixel to one minute. Header + buttons provide a keyboard alternative.
 $('#calendar').onclick = event => {

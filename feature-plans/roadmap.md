@@ -11,8 +11,8 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 | # | Idea | Why first | Owner |
 | --- | --- | --- | --- |
 | 1 | **Automatic tests on GitHub (CI) + "Load demo festival" button** | Tests run on every pull request; the presentation never shows an empty app | **Frederik** |
-| 2 | **Readiness score + problems become tasks** | One number on the Overview; every red rule turns into a task on the task board — the pages become one product | |
-| 3 | **Crowd density + evacuation time** | Real safety numbers on our own map | |
+| 2 | ✅ **Readiness score + problems become tasks** | Implemented on `codex/project-planning-readiness-and-map-safety`, pending review: Overview checks and linked task-board issues ([plan](project-planning-readiness-and-map-safety.md)) | **Kira** |
+| 3 | ✅ **Crowd density + evacuation time** | Implemented on `codex/project-planning-readiness-and-map-safety`, pending review: measured inputs and explicit planning assumptions, not safety certification ([plan](project-planning-readiness-and-map-safety.md)) | **Kira** |
 | 4 | **Ticket tiers + bar revenue + cash-flow plan** | Finances on a professional level | **Frederik** |
 | 5 | **"Copy for next year" + final report** | Closes the loop | |
 | 6 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
@@ -47,7 +47,7 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 
 - [ ] **Fence calculator** — metres and cost from the drawn fence. ✅ site map fence
 - [ ] **Power plan** — kW per stage, food truck and light tower; generators needed; overload warning
-- [ ] **Crowd density in front of stages** — area in m² vs. expected crowd; warning above 2–3 people per m². ✅ map areas + visitors
+- [x] **Crowd density in front of stages** — entered usable area in m² vs. expected audience, with an editable project density limit. Implemented on `codex/project-planning-readiness-and-map-safety`, pending review ([plan](project-planning-readiness-and-map-safety.md)).
 - [ ] **Signage list** — "12× toilets sign, 4× emergency exit, 6× water" with positions, generated from the map
 - [ ] **Light towers** — every walkway lit after sunset
 - [ ] **Accessibility** — wheelchair platform at every stage, share of accessible toilets, step-free routes; as layout rules. ✅ layout check
@@ -65,7 +65,7 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 - [ ] **Permit tracker** — event, noise, alcohol, fire safety: authority, deadline, status; deadlines in the Gantt
 - [ ] **Risk matrix** — likelihood × impact, colour-coded, with measure and responsible team
 - [ ] **Weather thresholds** — e.g. stop the stage above a set wind speed; clear procedure for the crew
-- [ ] **Evacuation calculator** — visitors, exit width and walking routes → minutes until everyone is out. ✅ walkway routing
+- [x] **Evacuation planning estimate** — visitors, measured exit widths and reachable routes → estimated minutes, with visible editable assumptions and limitations. Implemented on `codex/project-planning-readiness-and-map-safety`, pending review ([plan](project-planning-readiness-and-map-safety.md)).
 - [ ] **Noise check** — distance from stages to neighbours and time of day → traffic light for noise limits
 
 ## 7. Vendors & sponsors
@@ -98,6 +98,6 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 - [ ] **Two-factor authentication (2FA)** — *owner: Amelie.* After the password, a one-time code from an authenticator app (TOTP); recovery codes in case the phone is lost; only for the shared/online mode. Needs the login from "Shared data on the server".
 - [ ] **Finer roles & rights** — e.g. a booker who only edits the lineup, finance who only edits the finances. ✅ Admin / Editor / Viewer exist and are enforced in the database ([shared-festivals.md](shared-festivals.md))
 - [ ] **Change log** — who changed what, when
-- [ ] **Readiness score** on the Overview; **problems become tasks** on the task board
+- [x] **Readiness score** on the Overview; **problems become linked tasks** on the task board. Implemented on `codex/project-planning-readiness-and-map-safety`, pending review ([plan](project-planning-readiness-and-map-safety.md)).
 - [ ] **Languages** — English / German / Portuguese
 - [ ] **CI, demo festival, export / import** of all data in one file

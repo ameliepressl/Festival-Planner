@@ -98,8 +98,10 @@ function openFestivalDetails() {
   $('#overview-dialog-title').textContent = event.name ? 'Edit festival details' : 'Set up festival';
   $('#festival-name').value = event.name || '';
   $('#festival-venue').value = event.venue || '';
-  $('#festival-start-date').value = event.startDate;
-  $('#festival-end-date').value = event.endDate;
+  const fresh = !event.name && !state.bookings.length && !localStorage.getItem('festival-gantt-project-v1');
+  const today = typeof projectToday === 'function' ? projectToday() : freshFestivalEvent().startDate;
+  $('#festival-start-date').value = fresh ? today : event.startDate;
+  $('#festival-end-date').value = fresh ? freshFestivalEvent().endDate : event.endDate;
   $('#festival-open').value = timeText(event.startMinutes);
   $('#festival-close').value = timeText(event.endMinutes);
   $('#overview-custom-hours').hidden = !Object.keys(event.dayHours || {}).length;
@@ -149,6 +151,11 @@ $('#overview-setup').onclick = openFestivalDetails;
 $('#overview-edit').onclick = openFestivalDetails;
 $('#settings-edit-festival').onclick = openFestivalDetails;
 $('#overview-cancel').onclick = () => $('#overview-dialog').close();
+$('#festival-start-date').addEventListener('change', () => {
+  const first = $('#festival-start-date').value;
+  const last = $('#festival-end-date');
+  if (first && (!last.value || last.value < first)) last.value = first;
+});
 $('#overview-dialog').addEventListener('close', () => {
   if (!$('#settings-view').classList.contains('hidden')) $('#settings-edit-festival').focus();
   else if (state.event.name) document.querySelector('[data-section="Settings"]').focus();
@@ -173,15 +180,26 @@ $('#overview-form').addEventListener('submit', event => {
   $('#overview-error').textContent = problem;
   if (problem) return;
 
+  const previousPlan = state;
+  let previousSavedPlan;
   const nextPlan = { ...state, event: updatedEvent };
   try {
+    previousSavedPlan = localStorage.getItem(STORAGE_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPlan));
   } catch {
     $('#overview-error').textContent = 'Could not save festival details in this browser.';
     return;
   }
   state = nextPlan;
-  window.refreshGanttFestivalDates?.();
+  if (window.refreshGanttFestivalDates?.() === false) {
+    state = previousPlan;
+    try {
+      if (previousSavedPlan === null) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, previousSavedPlan);
+    } catch {}
+    $('#overview-error').textContent = 'Could not save the project timeline. Your previous festival details are kept; try again when browser storage is available.';
+    return;
+  }
   render();
   $('#overview-dialog').close();
   renderOverview();

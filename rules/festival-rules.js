@@ -103,6 +103,14 @@ function catalogueForSavedPlan(saved) {
 }
 // Shared event configuration for the overview and lineup.
 const DEFAULT_EVENT = { startDate: '2027-03-20', endDate: '2027-03-21', startMinutes: 840, endMinutes: 1380 };
+function freshFestivalEvent(now = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now).map(({ type, value }) => [type, value]));
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  const tomorrow = new Date(Date.parse(today + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10);
+  return { ...DEFAULT_EVENT, startDate: today, endDate: tomorrow };
+}
 const timeText = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 function eventDays(event) {
   const dates = [], d = new Date(event.startDate + 'T12:00:00Z'), end = new Date(event.endDate + 'T12:00:00Z');
@@ -138,7 +146,7 @@ function normalizePlan(saved) {
     final: source.final === true,
     artists: catalogueForSavedPlan(source),
     settings: { stages: 2, budget: 10000, ...source.settings },
-    event: { ...DEFAULT_EVENT, ...source.event }
+    event: { ...freshFestivalEvent(), ...source.event }
   };
   delete result.settings.required;
   result.settings.stageNames = { ...result.settings.stageNames };

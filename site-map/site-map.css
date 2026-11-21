@@ -106,5 +106,22 @@
 .sm-setting-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .sm-setting-buttons .button{padding:8px 11px;font-size:11px}
 
+/* Explicit draft controls and transparent, collapsible crowd calculations. */
+.sm-save-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 0;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.sm-save-actions [role=status]{flex:1;min-width:150px;font-size:12px;color:var(--muted)}
+.sm-save-actions .button{font-size:12px;padding:9px 13px}
+.sm-save-actions .button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.sm-crowd-disclosure{margin-bottom:18px}
+.sm-crowd-disclosure>summary,.sm-assumptions>summary{cursor:pointer;font-weight:600}
+.sm-crowd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:12px 0}
+.sm-crowd-grid fieldset{min-width:0;border:1px solid var(--line);padding:8px 12px}
+.sm-crowd-grid legend{font-size:12px;font-weight:600;padding:0 4px}
+.sm-crowd-checkbox{display:flex;align-items:center;gap:7px;font-size:11px;margin:12px 0}
+.sm-crowd-checkbox input{accent-color:var(--coral)}
+.sm-assumptions{padding:10px 0;border-top:1px solid var(--line);font-size:12px}
+.sm-crowd-disclosure .sm-note{margin:10px 0}
+@media(max-width:900px){.sm-crowd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.sm-crowd-grid{grid-template-columns:1fr}}
+
 @media(max-width:1100px){.sm-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.sm-select select{min-width:0;width:100%}.sm-select{flex:1}.sm-toggle{margin-left:0}}

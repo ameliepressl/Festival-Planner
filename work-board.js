@@ -282,6 +282,20 @@
         meta.append(element('span','work-board-number',card.number), due);
         item.append(meta, element('h3',null,card.title),
           element('p','work-board-context',card.area + ' · ' + card.task), assigneeLine(card), control);
+        if (canEditTasks) {
+          const remove = element('button', 'button quiet', 'Delete task');
+          remove.type = 'button';
+          remove.setAttribute('aria-label', 'Delete task ' + card.title);
+          remove.onclick = () => {
+            if (!canFestival('lineup') || !window.confirm(`Delete task “${card.title}”? This removes it from the board and timeline without completing it.`)) return;
+            try { window.deleteBoardSubtask(card.id); }
+            catch (failure) { summary.textContent = failure.message; return; }
+            render();
+            publishBoardUpdate();
+            summary.textContent = 'Task deleted. ' + summary.textContent;
+          };
+          item.append(remove);
+        }
         const doneBy = id === 'done' && assignments.nameOf(saved[card.id]?.completedBy, team);
         if (doneBy) item.append(element('p', 'work-board-done-by', 'Done by ' + doneBy));
         lane.append(item);
@@ -348,8 +362,12 @@
   });
   document.querySelector('#back-task-board').addEventListener('click', renderStats);
   window.addEventListener('gantt-project-changed', () => {
-    if (!overview.classList.contains('hidden')) renderStats();
+    if (!board.classList.contains('hidden')) render();
+    else if (!overview.classList.contains('hidden')) renderStats();
     publishBoardUpdate();
+  });
+  window.addEventListener('project-task-tracking-changed', () => {
+    try { saved = JSON.parse(localStorage.getItem(key)) || {}; } catch { saved = {}; }
   });
   setInterval(() => {
     if (!overview.classList.contains('hidden')) renderStats();
@@ -388,6 +406,11 @@
   const error = document.querySelector('#board-create-error');
   const addTaskButton = document.querySelector('#board-add-task');
   addTaskButton.hidden = !canFestival('lineup');
+  form.querySelector('.hero-copy').textContent = 'Choose a work area, then select one of its task groups or create a new group. Your task appears on both the board and timeline.';
+  const groupHelp = element('p', 'field-help', 'Task groups belong to the selected work area. Choose an existing group or “Create a task group”.');
+  groupHelp.id = 'board-group-help';
+  fields.parent.setAttribute('aria-describedby', groupHelp.id);
+  form.querySelector('.form-grid').after(groupHelp);
 
   function updateParentName() {
     const creating = fields.parent.value === 'new';
@@ -403,6 +426,7 @@
       fields.parent.add(new Option('+ Create a task group', 'new'));
     }
     fields.parent.disabled = !area;
+    groupHelp.textContent = area ? `Showing task groups in ${area.title}. You can also create a new group.` : 'Choose a work area first to see its task groups.';
     updateParentName();
   }
   addTaskButton.onclick = () => {
@@ -411,7 +435,9 @@
     error.textContent = '';
     fields.area.replaceChildren(new Option('Choose an area', ''));
     window.getSavedGanttPlan().forEach(area => fields.area.add(new Option(area.title, String(area.id))));
-    fields.area.value = areaSelect.value;
+    fields.area.value = areaSelect.value || String(window.getSavedGanttPlan()[0]?.id || '');
+    fields.start.value = projectToday();
+    fields.end.value = projectToday();
     updateParents();
     dialog.showModal();
   };

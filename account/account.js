@@ -482,6 +482,10 @@
     const select = $('#festival-switch');
     const row = festivals.find((item) => item.festival_id === id);
     if (!row || id === meta.festivalId) return;
+    if (window.confirmMapNavigation && !window.confirmMapNavigation()) {
+      select.value = meta.festivalId;
+      return;
+    }
     select.disabled = true;
     try {
       if (meta.dirty && !(await saveNow()) && access.role !== 'Viewer') {
@@ -554,6 +558,7 @@
   let signingOut = false;
   let leaveUnsaved = false;
   async function signOut() {
+    if (window.confirmMapNavigation && !window.confirmMapNavigation()) return;
     const button = $('#sign-out');
     if (meta.dirty && !leaveUnsaved && access.role !== 'Viewer') {
       button.disabled = true;
@@ -709,6 +714,7 @@
     $('#sign-out').onclick = signOut;
     $('#account-retry').onclick = () => window.location.reload();
     $('#account-notice-reload').onclick = async () => {
+      if (window.confirmMapNavigation && !window.confirmMapNavigation()) return;
       if (meta.dirty && access.role !== 'Viewer') await saveNow();
       window.location.reload();
     };
