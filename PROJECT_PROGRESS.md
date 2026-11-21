@@ -573,3 +573,16 @@ publication and matches the original feature commit; draft PR #24 is open and
 unmerged. All 218 tests pass, none fail or are skipped, `git diff --check` passes,
 and the reviewed files contain no secret literals. The draft PR receives the new
 commit and updated validation notes; team review is still required before merging.
+
+## Several festivals per account — 21 November 2026
+
+Branch: `feature-multiple-festivals` (owner: Amelie). Plan: `feature-plans/several-festivals.md`.
+An account can now own up to 20 festivals. The sidebar always shows the FESTIVAL list with
+"＋ New festival"; "Load demo festival" opens Lisbon or Munich as a new festival instead of
+overwriting the open one, so you can switch back to your own festival at any time. Settings →
+This festival → "Delete this festival" removes a festival you created (not your last one).
+Database change: `migrations/005_several_festivals.sql` — **must be run once in the Supabase SQL
+Editor before or right after merging**; until then "New festival" and the demo show a message
+asking for it. Tested: 9 new tests (no existing test changed), migrations 001–005 in a local
+Postgres, and the whole flow in Chrome against a stand-in for Supabase. Status: PR open, needs a
+team review and a check with the real Supabase after running 005.

@@ -18,6 +18,8 @@ const ACCOUNT_ASSIGNMENTS_KEY = 'festival-task-assignments-v1';
 // Sections only the owner and Admins may change; the database refuses Editors (migrations/003, 004).
 const ACCOUNT_ADMIN_ONLY_KEYS = Object.freeze([ACCOUNT_FINANCE_KEY, ACCOUNT_ASSIGNMENTS_KEY]);
 const ACCOUNT_ROLES = ['Admin', 'Editor', 'Viewer'];
+// How many festivals one account may own (the database enforces the same limit, migrations/005).
+const MAX_OWN_FESTIVALS = 20;
 
 const USERNAME_PATTERN = /^[A-Za-z0-9._-]{3,32}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -91,6 +93,13 @@ function accountErrorMessage(error) {
   }
   if (status === 429 || code.includes('rate_limit')) {
     return 'Too many attempts. Wait a minute and try again.';
+  }
+  // Several festivals per account (migrations/005_several_festivals.sql)
+  if (message.includes('festivals_one_per_account')) {
+    return 'Several festivals need a database update first: run migrations/005_several_festivals.sql in the Supabase SQL Editor (Amelie).';
+  }
+  if (code === '54000' || message.includes('at most 20 festivals')) {
+    return `You already have ${MAX_OWN_FESTIVALS} festivals. Delete one you no longer need (Settings → This festival) first.`;
   }
   if (status === 0 || code === 'network' || message.includes('failed to fetch') || message.includes('network')) {
     return 'Cannot reach the account service. Check your internet connection and try again.';
@@ -302,6 +311,35 @@ function festivalLabel(row, userId) {
   return `${name} · by ${owner} · ${role}`;
 }
 
+// --- Several festivals per account (feature-plans/several-festivals.md) -------------------
+// rows: what my_festivals() returned — { festival_id, owner_id, updated_at, ... }, own ones first.
+
+function ownFestivals(rows, userId) {
+  return (Array.isArray(rows) ? rows : []).filter((row) => row && row.owner_id === userId
+    && typeof row.festival_id === 'string' && ACCOUNT_ID_PATTERN.test(row.festival_id));
+}
+
+// May this account start one more festival of its own (new or demo)?
+function canCreateFestival(rows, userId) {
+  return ownFestivals(rows, userId).length < MAX_OWN_FESTIVALS;
+}
+
+// Only the creator deletes a festival, and never their last own one: after deleting there
+// must still be a festival of their own to open.
+function canDeleteFestival(rows, userId, festivalId) {
+  const own = ownFestivals(rows, userId);
+  return own.length >= 2 && own.some((row) => row.festival_id === festivalId);
+}
+
+// The festival to open after deleting one: the most recently changed other own festival,
+// otherwise any other festival. null if there is none.
+function festivalAfterDelete(rows, userId, deletedId) {
+  const others = (Array.isArray(rows) ? rows : []).filter((row) => row && row.festival_id !== deletedId
+    && typeof row.festival_id === 'string' && ACCOUNT_ID_PATTERN.test(row.festival_id));
+  const newest = (list) => [...list].sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0] || null;
+  return newest(others.filter((row) => row.owner_id === userId)) || newest(others);
+}
+
 // --- Finding teammates -----------------------------------------------------------------
 
 // rows: what Supabase returned for a username. Exactly one valid row means "found".
@@ -320,6 +358,7 @@ if (typeof module !== 'undefined') {
     ACCOUNT_ASSIGNMENTS_KEY, ACCOUNT_ADMIN_ONLY_KEYS,
     ACCOUNT_ROLES, PASSWORD_MIN, PASSWORD_MAX, isSyncedKey, accessFor, sameAccess, sectionsToSave,
     rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
+    MAX_OWN_FESTIVALS, ownFestivals, canCreateFestival, canDeleteFestival, festivalAfterDelete,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,
     accountErrorMessage, isFestivalDataKey, collectFestivalData, cleanFestivalData, hasFestivalData,
     clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows

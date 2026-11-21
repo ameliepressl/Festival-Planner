@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="site-map/site-map.css" />
     <link rel="stylesheet" href="vendors/vendors.css?v=vendor-catalogue" />
     <link rel="stylesheet" href="finance/finance.css" />
-    <link rel="stylesheet" href="account/account.css" />
+    <link rel="stylesheet" href="account/account.css?v=several-festivals" />
     <link rel="stylesheet" href="compact.css?v=stages-tasks" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
@@ -21,8 +21,8 @@
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
     <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
     <script src="supabase-config.js"></script>
-    <script src="rules/account-rules.js"></script>
-    <script src="account/account.js"></script>
+    <script src="rules/account-rules.js?v=several-festivals"></script>
+    <script src="account/account.js?v=several-festivals"></script>
   </head>
   <body>
     <section id="account-screen" class="account-screen" aria-labelledby="account-title">
@@ -87,12 +87,13 @@
           <button class="sidebar-item" data-section="Finances"><span>€</span>Finances</button>
           <button class="sidebar-item" data-section="Final checklist"><span>☑</span>Final checklist</button>
         </nav>
-        <button type="button" class="sidebar-demo" id="load-demo" title="Fill every section with an example festival">✦ Load demo festival</button>
+        <button type="button" class="sidebar-demo" id="load-demo" title="Open an example festival next to your own">✦ Load demo festival</button>
         <div class="sidebar-account" id="sidebar-account" hidden>
           <label class="festival-switch" id="festival-switch-label" hidden>
             <span class="sidebar-label">FESTIVAL</span>
             <select id="festival-switch" aria-label="Open festival"></select>
           </label>
+          <button type="button" class="sidebar-new-festival" id="new-festival" hidden>＋ New festival</button>
           <p class="sidebar-label">SIGNED IN AS</p>
           <strong id="account-username"></strong>
           <small id="account-sync-status" role="status" aria-live="polite"></small>
@@ -181,7 +182,7 @@
 
       </main>
 
-      <main id="settings-view" class="hidden"><section class="checklist-hero"><p class="eyebrow">SETTINGS</p><h1>Settings</h1></section><section class="overview-card" aria-labelledby="project-settings-title"><h2 id="project-settings-title">Festival details</h2><p id="project-settings-summary"></p><button type="button" class="button secondary" id="settings-edit-festival">Edit festival details</button><p class="field-help" id="project-settings-help"></p></section>        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
+      <main id="settings-view" class="hidden"><section class="checklist-hero"><p class="eyebrow">SETTINGS</p><h1>Settings</h1></section><section class="overview-card" aria-labelledby="project-settings-title"><h2 id="project-settings-title">Festival details</h2><p id="project-settings-summary"></p><button type="button" class="button secondary" id="settings-edit-festival">Edit festival details</button><p class="field-help" id="project-settings-help"></p></section><section class="overview-card" id="festival-manage" aria-labelledby="festival-manage-title" hidden><h2 id="festival-manage-title">This festival</h2><p id="festival-manage-summary"></p><button type="button" class="button danger" id="delete-festival" hidden>Delete this festival</button><p class="field-help" id="festival-manage-help"></p></section>        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
           <h2 id="overview-team-title">Manage team</h2>
           <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
           <div class="overview-table-wrap" tabindex="0" role="region" aria-label="Festival team">
@@ -730,7 +731,9 @@
       <form method="dialog"><p class="eyebrow">READY TO LOCK IT IN?</p><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
     </dialog>
     <section id="print-plan-content" aria-label="Printable festival plan"></section>
-    <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DEMO FESTIVAL</p><h2>Load a demo festival?</h2><p>This replaces the lineup, festival size, vendors and finance assumptions in this browser. Choose <b>“Lisbon Sound Festival”</b> (small: 10 artists, 5,000 visitors, 11 vendors) or <b>“Munich Loud Weekend”</b> (big hip-hop weekend: 34 shows by real artists from the library, 3 stages, 20,000 visitors; the boring parts are done, artists, ticket price and food stands are left for you to plan). Uploaded maps, the Gantt plan and the checklist stay as they are. Munich also marks the project tasks as done, except artists, lineup, food stands and ticket sales. Download a lineup backup first if you want to keep your plan.</p><div class="dialog-actions demo-choices"><button class="button secondary" value="cancel">Keep my plan</button><button class="button secondary" value="load">Load Lisbon (small)</button><button class="button primary" value="load-munich">Load Munich (big)</button></div></form></dialog>
+    <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DEMO FESTIVAL</p><h2>Open a demo festival?</h2><p>The demo opens as a <b>new festival</b> in your account. The festival you have open now stays exactly as it is; switch back to it any time with the <b>FESTIVAL</b> list in the sidebar, and delete the demo in Settings when you no longer need it. Choose <b>“Lisbon Sound Festival”</b> (small: 10 artists, 5,000 visitors, 11 vendors) or <b>“Munich Loud Weekend”</b> (big hip-hop weekend: 34 shows by real artists from the library, 3 stages, 20,000 visitors; the boring parts are done, artists, ticket price and food stands are left for you to plan). Munich also marks the project tasks as done, except artists, lineup, food stands and ticket sales.</p><div class="dialog-actions demo-choices"><button class="button secondary" value="cancel">Cancel</button><button class="button secondary" value="load">Open Lisbon (small)</button><button class="button primary" value="load-munich">Open Munich (big)</button></div></form></dialog>
+    <dialog id="new-festival-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">NEW FESTIVAL</p><h2>Start a new festival?</h2><p>A new, empty festival is added to your account and opens now. The festival you have open stays saved; switch between your festivals with the <b>FESTIVAL</b> list in the sidebar.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Cancel</button><button class="button primary" value="create">Create festival</button></div></form></dialog>
+    <dialog id="delete-festival-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DELETE FESTIVAL</p><h2>Delete “<span id="delete-festival-name"></span>”?</h2><p>The whole festival is deleted for you and for everyone on its team: lineup, tasks, site maps, vendors and finances. This cannot be undone. Your other festivals are not touched.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep festival</button><button class="button danger" value="delete">Delete festival</button></div></form></dialog>
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DOUBLE BOOKING</p><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
@@ -748,7 +751,7 @@
     <script src="rules/task-rules.js"></script>
     <script src="task-assignments.js?v=subtask-owners-only"></script>
     <script src="gantt-defaults.js"></script>
-    <script src="gantt-editor.js?v=subtask-owners-only"></script>
+    <script src="gantt-editor.js?v=several-festivals"></script>
     <script src="gantt-placeholder.js?v=project-wide-stats"></script>
     <script src="gantt-schedule.js?v=stable-edit-toolbar"></script>
     <script src="work-board.js?v=subtask-owners-only"></script>
@@ -764,7 +767,7 @@
     <script src="rules/finance-rules.js"></script>
     <script src="finance/finance-page.js?v=munich-demo"></script>
     <script src="rules/demo-festival.js?v=fun-open"></script>
-    <script src="demo/demo-loader.js?v=fun-open"></script>
+    <script src="demo/demo-loader.js?v=several-festivals"></script>
     <script src="overview.js?v=review-followups"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js"></script>
