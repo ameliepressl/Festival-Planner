@@ -78,7 +78,7 @@
       } else overview.querySelector('details').open = true;
     };
     heading.append(score, title, button);
-    const explanation = node('p', 'Each check has equal weight. Checks cover festival details, lineup, saved map and finances. Missing measurements stay unassessed. This is planning progress, not a safety approval.', 'field-help');
+    const explanation = node('p', 'Checks festival details, lineup, site map and finances; each check counts the same. It shows planning progress and is not a safety approval.', 'field-help');
     const details = node('details', undefined, 'readiness-breakdown');
     details.open = expanded;
     details.append(node('summary', 'Check breakdown'));

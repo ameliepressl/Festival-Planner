@@ -472,7 +472,8 @@
     for (const row of festivals) {
       const option = document.createElement('option');
       option.value = row.festival_id;
-      option.textContent = festivalLabel(row, currentUser.id);
+      // Own festivals by name only; shared ones also say who created them and your role.
+      option.textContent = row.owner_id === currentUser.id ? (row.festival_name || 'Untitled festival') : festivalLabel(row, currentUser.id);
       option.selected = row.festival_id === meta.festivalId;
       select.append(option);
     }
@@ -789,6 +790,7 @@
 
   function showAccountBox() {
     $('#account-username').textContent = currentUser.username;
+    $('#account-avatar').textContent = currentUser.username.trim().charAt(0).toUpperCase();
     $('#sidebar-account').hidden = false;
   }
 

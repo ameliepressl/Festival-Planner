@@ -18,8 +18,7 @@ function renderProjectSettings() {
 
 function renderOverview() {
   const event = state.event;
-  $('#overview-title').textContent = event.name || 'Overview';
-  $('#overview-tagline').textContent = event.name ? festivalTagline(event) : '';
+  $('#overview-title').textContent = event.name || 'Untitled festival';
   $('#overview-venue').textContent = event.venue || '';
   $('#overview-venue-fact').hidden = !event.venue;
   const firstDay = `${dateText(event.startDate)} ${event.startDate.slice(0, 4)}`;
@@ -54,21 +53,6 @@ function renderOverviewFinance() {
   $('#overview-profit-label').textContent = loss ? 'Projected loss' : 'Projected profit';
   $('#overview-profit').textContent = euros(finance.profit);
   $('#overview-profit').classList.toggle('is-loss', loss);
-}
-
-// The orange second line of the headline: how long until the festival (Lisbon date).
-function festivalTagline(event) {
-  if (typeof festivalCountdown !== 'function') return '';
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  try {
-    const { days, status } = festivalCountdown(today, event.startDate, event.endDate);
-    if (status === 'today') return 'Gates open today.';
-    if (status === 'ongoing') return 'Happening right now.';
-    if (status === 'ended') return 'That’s a wrap.';
-    return days === 1 ? '1 day to go.' : `${days} days to go.`;
-  } catch {
-    return '';
-  }
 }
 
 function renderOverviewTaskProgress() {

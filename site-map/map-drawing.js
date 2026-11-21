@@ -197,7 +197,7 @@ const MapDrawing = (function () {
     return `<g class="fa-pin ${selected ? 'selected' : ''}" filter="url(#fa-pin-shadow)">
       ${selected ? `<circle class="fa-pin-pulse" r="${r * 1.4}" fill="none" stroke="${colour}" stroke-width="${r * 0.25}" />` : ''}
       <path d="M0 0 L${-r * 0.55} ${-r * 1.25} A ${r} ${r} 0 1 1 ${r * 0.55} ${-r * 1.25} Z" transform="translate(0 0)" fill="${colour}" stroke="#fff" stroke-width="${r * 0.14}" />
-      <text y="${-r * 2.08}" dy="0.35em" text-anchor="middle" font-size="${label.length > 2 ? r * 0.72 : r * 0.95}" font-family="DM Sans, sans-serif" font-weight="700" fill="#17272b">${label}</text></g>`;
+      <text y="${-r * 2.08}" dy="0.35em" text-anchor="middle" font-size="${label.length > 2 ? r * 0.72 : r * 0.95}" font-family="Archivo, sans-serif" font-weight="700" fill="#17272b">${label}</text></g>`;
   }
 
   return { defs, scene, nogo, walkways, object, pin };

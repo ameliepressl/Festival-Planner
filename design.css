@@ -1,0 +1,201 @@
+/* Festival Architect — design system (feature-plans/design-polish.md).
+   Loaded after every other stylesheet. It sets the fonts, colours, buttons and the frame
+   (sidebar and header) for all pages, and the Overview. Page files keep their own layout.
+
+   Type: Archivo Narrow for headings and big figures (festival-poster feel), Archivo for
+   everything else. Numbers use tabular figures so columns of euros line up.
+   Colour: the cream paper and coral of the brand stay. Coral is for primary actions and
+   highlights only; dark text on coral keeps it readable (white on coral is too faint). */
+
+:root {
+  --font-display: 'Archivo Narrow', 'Arial Narrow', sans-serif;
+  --font-text: Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --paper: #f7f5ee;
+  --surface: #fffdf8;
+  --white: #fffdf8;            /* older pages use --white for card backgrounds */
+  --ink: #17272b;
+  --muted: #5b686b;
+  --line: #e2e0d6;
+  --line-strong: #c9cac0;
+  --coral: #ff684c;
+  --coral-hover: #ff8166;
+  --coral-soft: #ffe7e0;
+  --teal: #237a6a;
+  --danger: #a7321f;
+  --night: #17272b;            /* sidebar */
+  --night-text: #c2cecc;
+
+  --radius-control: 6px;
+  --radius-panel: 10px;
+}
+
+body {
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.icon { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Buttons: one shape, three kinds ---------- */
+
+.button {
+  border-radius: var(--radius-control);
+  font: 600 13px/1.2 var(--font-text);
+  padding: 9px 14px;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.button:hover { transform: none; }
+.button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.button:disabled { opacity: .5; cursor: not-allowed; }
+.button.primary { background: var(--coral); border: 1px solid var(--coral); color: var(--ink); }
+.button.primary:hover:not(:disabled) { background: var(--coral-hover); border-color: var(--coral-hover); }
+.button.secondary { background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink); }
+.button.secondary:hover:not(:disabled) { border-color: var(--ink); }
+.button.danger { background: var(--surface); border: 1px solid #e2b3aa; color: var(--danger); }
+.button.danger:hover:not(:disabled) { border-color: var(--danger); }
+/* Pressed toggle buttons (Daily view / Festival view, Task board / Timeline, …). */
+.button[aria-pressed="true"], .button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* ---------- Headings and small text on every page ---------- */
+
+.app-shell :is(.hero, .checklist-hero, .overview-hero) h1,
+#board-page > h1 {
+  font: 700 var(--page-title-size, 36px)/1.05 var(--font-display);
+  letter-spacing: -.01em;
+}
+.app-shell .eyebrow { font: 600 11px/1.4 var(--font-text); letter-spacing: .04em; color: var(--muted); }
+.field-help { font-size: 13px; line-height: 1.5; }
+dialog { border-radius: var(--radius-panel); }
+dialog h2 { font: 700 26px/1.15 var(--font-display); letter-spacing: -.005em; margin-bottom: 14px; }
+.confirm-dialog form > p:not(.eyebrow) { font-size: 14px; margin-bottom: 16px; }
+.demo-options { display: grid; gap: 10px; margin: 0 0 24px; }
+.demo-options div { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--paper); }
+.demo-options dt { font-weight: 600; }
+.demo-options dd { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+/* ---------- Sidebar ---------- */
+
+.sidebar { background: var(--night); padding: 22px 14px 18px; }
+.sidebar-brand { font: 700 19px/1 var(--font-display); letter-spacing: 0; gap: 10px; padding: 0 8px; }
+.sidebar-brand .brand-mark { height: 24px; width: 22px; }
+.sidebar-nav { gap: 2px; margin-top: 30px; }
+.sidebar-item {
+  font: 500 14px/1.2 var(--font-text);
+  color: var(--night-text);
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  gap: 11px;
+}
+.sidebar-item:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+.sidebar-item.active { background: rgba(255, 255, 255, .1); color: #fff; font-weight: 600; box-shadow: inset 3px 0 0 var(--coral); }
+.sidebar-item:focus-visible { outline: 2px solid var(--coral); outline-offset: -2px; }
+.sidebar-item .icon { opacity: .9; }
+
+.sidebar-account { border-top: 1px solid rgba(255, 255, 255, .1); padding-top: 14px; }
+.sidebar-festival { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+.sidebar-account .sidebar-label,
+.festival-switch .sidebar-label { font: 500 12px/1.3 var(--font-text); letter-spacing: 0; color: #93a3a1; margin: 0 10px 6px; }
+.festival-switch { margin: 0 0 6px; }
+.festival-switch select {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, .05);
+  color: #fff;
+  font: 600 13px var(--font-text);
+}
+.sidebar-item.sidebar-minor { font-size: 13px; padding: 7px 10px; color: #a9b8b6; }
+.sidebar-item.sidebar-minor:hover:not(:disabled) { color: #fff; }
+.sidebar-item.sidebar-minor:disabled { opacity: .45; cursor: not-allowed; }
+.sidebar-item[hidden] { display: none; }
+
+.sidebar-person { display: flex; align-items: center; gap: 10px; padding: 0 10px; margin-bottom: 8px; }
+.sidebar-avatar {
+  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--coral); color: var(--ink);
+  font: 700 14px/1 var(--font-display);
+}
+.sidebar-person-text { min-width: 0; }
+.sidebar-account .sidebar-person strong { margin: 0; font: 600 13px/1.3 var(--font-text); color: #fff; }
+.sidebar-account .sidebar-person small { margin: 1px 0 0; font: 400 12px/1.35 var(--font-text); color: #93a3a1; }
+.sidebar-account small[data-state="saved"]::before { content: none; }
+.sidebar-account small[data-state="saved"] { color: #93a3a1; }
+
+/* ---------- Header ---------- */
+
+.topbar { min-height: 64px; height: auto; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.festival-meta { font: 400 13px/1.35 var(--font-text); color: var(--muted); letter-spacing: 0; display: grid; gap: 1px; text-align: left; }
+.festival-meta strong { font-weight: 600; font-size: 14px; color: var(--ink); }
+.plan-actions { margin-left: auto; }
+.festival-countdown { border-right: 0; padding-right: 0; margin-right: 0; display: grid; justify-items: end; gap: 0; }
+.festival-countdown + .lineup-actions:not(.hidden) { padding-left: 16px; border-left: 1px solid var(--line); }
+.countdown-label { font: 500 12px/1.3 var(--font-text); letter-spacing: 0; color: var(--muted); }
+.countdown-label:empty { display: none; }
+.countdown-total { font-size: 13px; color: var(--muted); }
+.countdown-total strong { font: 700 24px/1.1 var(--font-display); color: var(--ink); }
+.countdown-working { font-size: 12px; color: var(--muted); }
+.countdown-working b { font-weight: 500; color: var(--muted); }
+
+/* ---------- Overview ---------- */
+
+/* The festival name is the one big, poster-like element of the app. */
+.app-shell .overview-hero h1 {
+  font: 700 clamp(40px, 5.2vw, 68px)/.95 var(--font-display);
+  letter-spacing: -.015em;
+  margin: 6px 0 18px;
+}
+.overview-facts { gap: 10px 36px; margin: 0; }
+.overview-facts dt { font: 400 12px/1.3 var(--font-text); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.overview-facts dd { margin-top: 3px; font-size: 15px; font-weight: 500; }
+.overview-hero #overview-setup { margin-top: 20px; }
+
+.overview-kpis { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+.overview-kpi { padding: 16px 20px 18px; }
+.overview-kpi:first-child { padding-left: 0; }
+.overview-kpi:hover { background: transparent; }
+.overview-kpi:hover strong { color: var(--teal); }
+.overview-kpi > span { font: 500 13px/1.3 var(--font-text); letter-spacing: 0; text-transform: none; color: var(--muted); margin-bottom: 6px; }
+.overview-kpi strong { font: 700 34px/1.05 var(--font-display); letter-spacing: -.01em; transition: color .15s; }
+.overview-kpi small { font-size: 13px; }
+
+.overview-card { border-radius: var(--radius-panel); border-color: var(--line); background: var(--surface); padding: 18px 20px; }
+.app-shell :is(.overview-card-heading h2, .fin-card h2, .section-heading h2, .gantt-preview-heading, .cleanup-disclosure > summary) {
+  font: 700 21px/1.2 var(--font-display);
+  letter-spacing: 0;
+}
+.overview-card-heading h2 small { font: 400 13px/1.4 var(--font-text); letter-spacing: 0; margin-top: 3px; }
+.overview-open { font: 600 13px var(--font-text); color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; padding: 4px 0; }
+.overview-open:hover { text-decoration-color: var(--coral); }
+#overview-task-list button { padding: 11px 0; }
+#overview-task-list small, #overview-task-list time { font-size: 13px; }
+.overview-finances dd { font: 700 22px/1.1 var(--font-display); }
+
+.readiness-score { font: 700 44px/1 var(--font-display); }
+.readiness-heading h2 { font: 700 21px/1.2 var(--font-display); }
+.readiness-heading p, .readiness-card > .field-help { font-size: 13px; }
+.readiness-card > .field-help { max-width: 72ch; }
+
+/* ---------- Small screens ---------- */
+
+@media (min-width: 621px) and (max-width: 850px) {
+  .sidebar { padding: 20px 10px 16px; }
+  .sidebar-item { font-size: 13px; padding: 8px 8px; gap: 9px; }
+}
+@media (max-width: 620px) {
+  .sidebar { padding: 14px 16px; }
+  .sidebar-nav { margin-top: 12px; }
+  .sidebar-item.active { box-shadow: inset 0 -2px 0 var(--coral); }
+  .sidebar-festival { width: 100%; display: flex; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 8px; }
+  .sidebar-person { margin: 0 auto 0 0; padding: 0; }
+  .overview-kpi:first-child { padding-left: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button, .overview-kpi strong { transition: none; }
+}

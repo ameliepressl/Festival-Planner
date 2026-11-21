@@ -2,7 +2,7 @@
    Chart colours: #1a9a7c (revenue/profit) and #e0563b (costs/loss), checked for colour blindness and contrast. */
 
 .fin-sources{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;border-top:1px solid var(--ink);padding:12px 0;font-size:12px}
-.fin-sources span{font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted)}
+.fin-sources span{font:10px var(--font-text);letter-spacing:.8px;color:var(--muted)}
 .fin-sources a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--coral)}
 .fin-sources span:last-child{margin-left:auto}
 
@@ -10,8 +10,8 @@
 .fin-kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);margin-bottom:22px}
 .fin-kpi{padding:18px 20px;border-right:1px solid var(--line)}
 .fin-kpi:last-child{border-right:0}
-.fin-kpi span{display:block;font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
-.fin-kpi strong{display:block;font:600 28px/1.1 Fraunces,serif;letter-spacing:-.6px}
+.fin-kpi span{display:block;font:10px var(--font-text);letter-spacing:.8px;color:var(--muted);margin-bottom:8px}
+.fin-kpi strong{display:block;font:600 28px/1.1 var(--font-display);letter-spacing:-.6px}
 .fin-kpi small{display:block;font-size:12px;color:var(--muted);margin-top:6px}
 .pos{color:#167a63}
 .neg{color:#c1452e}
@@ -22,10 +22,10 @@
 .fin-card{background:var(--white);border:1px solid var(--line);padding:18px 20px;margin-bottom:18px;min-width:0}
 .fin-grid2 .fin-card{margin-bottom:0}
 .fin-card header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
-.fin-card h2{font:600 20px Fraunces,serif;letter-spacing:-.3px;margin:0}
-.fin-card header span{font:11px 'DM Mono';color:var(--muted)}
+.fin-card h2{font:600 20px var(--font-display);letter-spacing:-.3px;margin:0}
+.fin-card header span{font:11px var(--font-text);color:var(--muted)}
 .fin-card header .button{padding:6px 11px;font-size:11px}
-.fin-card h3{font:10px 'DM Mono';letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin:14px 0 8px;font-weight:500}
+.fin-card h3{font:10px var(--font-text);letter-spacing:.8px;color:var(--muted);text-transform:uppercase;margin:14px 0 8px;font-weight:500}
 .fin-card h3:first-child{margin-top:0}
 .fin-note{font-size:12px;color:var(--muted);line-height:1.5;margin:12px 0 0}
 .fin-note b{color:var(--ink)}
@@ -39,14 +39,14 @@
 .fin-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fin-bar-track{height:14px;display:block}
 .fin-bar-track i{display:block;height:100%;border-radius:0 4px 4px 0}
-.fin-bar-value{font:500 12px 'DM Mono';text-align:right;color:var(--ink)}
+.fin-bar-value{font:500 12px var(--font-text);text-align:right;color:var(--ink)}
 .fin-bar-value small{display:block;font-size:10px;color:var(--muted)}
 
 /* Price chart */
 .fin-chart svg{display:block;width:100%;height:auto;overflow:visible}
 .fin-grid{stroke:#e6e7e0;stroke-width:1}
 .fin-grid.zero{stroke:var(--ink);stroke-width:1.2}
-.fin-axis{font:10px 'DM Mono';fill:var(--muted)}
+.fin-axis{font:10px var(--font-text);fill:var(--muted)}
 .fin-axis.strong{fill:var(--ink);font-weight:500}
 .fin-be{stroke:var(--ink);stroke-width:1;stroke-dasharray:4 3}
 .fin-cross-line{stroke:var(--muted);stroke-width:1}
@@ -64,38 +64,38 @@
 .fin-scenarios.with-loss .fin-scenario-down{flex:1}
 .fin-scenario i{display:block;width:44px;border-radius:4px 4px 0 0}
 .fin-scenario-down i{border-radius:0 0 4px 4px}
-.fin-scenario strong{display:block;font:600 19px Fraunces,serif;margin-top:8px}
+.fin-scenario strong{display:block;font:600 19px var(--font-display);margin-top:8px}
 .fin-scenario span{display:block;font-size:12px;font-weight:600}
 .fin-scenario small{display:block;font-size:11px;color:var(--muted)}
 
 /* Artist spending */
 .fin-artists{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:24px}
 .fin-budget-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}
-.fin-budget-top strong{font:600 26px Fraunces,serif}
+.fin-budget-top strong{font:600 26px var(--font-display)}
 .fin-budget-bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0}
 .fin-budget-bar i{display:block;height:100%;border-radius:5px}
 .fin-budget small{font-size:12px;color:var(--muted)}
 .fin-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0 0}
 .fin-facts div{background:var(--paper);padding:9px 10px}
-.fin-facts dt{font:10px 'DM Mono';color:var(--muted);letter-spacing:.4px}
-.fin-facts dd{margin:3px 0 0;font:600 16px Fraunces,serif}
+.fin-facts dt{font:10px var(--font-text);color:var(--muted);letter-spacing:.4px}
+.fin-facts dd{margin:3px 0 0;font:600 16px var(--font-display)}
 .fin-artists .fin-bar-row{grid-template-columns:90px 1fr 64px}
 
 /* Tables */
 .fin-table{width:100%;border-collapse:collapse;font-size:12px}
 .fin-table th,.fin-table td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
-.fin-table th{font:10px 'DM Mono';letter-spacing:.6px;color:var(--muted);font-weight:500}
-.fin-table td:last-child,.fin-table th:last-child{text-align:right;font-family:'DM Mono'}
-.fin-pl tr.head th{padding-top:12px;color:var(--ink);text-transform:uppercase;text-align:left;font-family:"DM Mono"}
+.fin-table th{font:10px var(--font-text);letter-spacing:.6px;color:var(--muted);font-weight:500}
+.fin-table td:last-child,.fin-table th:last-child{text-align:right;font-family:var(--font-text)}
+.fin-pl tr.head th{padding-top:12px;color:var(--ink);text-transform:uppercase;text-align:left;font-family:var(--font-text)}
 .fin-pl tr.sum td{font-weight:700;border-bottom:1px solid var(--ink)}
-.fin-pl tr.result td{font:600 17px Fraunces,serif;border-bottom:0;padding-top:12px}
+.fin-pl tr.result td{font:600 17px var(--font-display);border-bottom:0;padding-top:12px}
 
 /* Assumptions form */
 .fin-form{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}
-.fin-form label{font:10px 'DM Mono';letter-spacing:.5px;color:var(--muted);padding:6px 0}
-.fin-form input{display:block;width:100%;margin-top:4px;font:14px 'DM Sans';color:var(--ink);border:0;border-bottom:1px solid var(--ink);background:transparent;padding:5px 0;outline:none}
+.fin-form label{font:10px var(--font-text);letter-spacing:.5px;color:var(--muted);padding:6px 0}
+.fin-form input{display:block;width:100%;margin-top:4px;font:14px var(--font-text);color:var(--ink);border:0;border-bottom:1px solid var(--ink);background:transparent;padding:5px 0;outline:none}
 .fin-form input:focus{border-bottom-color:var(--coral)}
-.fin-form small{display:block;font:11px 'DM Sans';letter-spacing:0;margin-top:3px}
+.fin-form small{display:block;font:11px var(--font-text);letter-spacing:0;margin-top:3px}
 
 /* Assumptions at the top: revenue and costs side by side, fields in several columns */
 .fin-assumptions .fin-groups{display:grid;grid-template-columns:1.5fr 0.8fr 2fr;gap:24px}
@@ -112,9 +112,9 @@
 
 /* Profit matrix: diverging colours (green profit, red loss), outlined cell = your plan */
 .fin-matrix-wrap{overflow-x:auto}
-.fin-matrix{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;font:500 12px 'DM Mono'}
+.fin-matrix{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:3px;font:500 12px var(--font-text)}
 .fin-matrix thead th:first-child{width:150px}
-.fin-matrix th{font:10px 'DM Mono';color:var(--muted);font-weight:500;padding:6px;text-align:center}
+.fin-matrix th{font:10px var(--font-text);color:var(--muted);font-weight:500;padding:6px;text-align:center}
 .fin-matrix thead th:first-child{text-align:left}
 .fin-matrix tbody th{text-align:left;color:var(--ink)}
 .fin-matrix td{text-align:center;padding:10px 6px;color:var(--ink);border-radius:3px;cursor:default}
@@ -142,8 +142,8 @@
 .fin-cash-callout.ok{background:rgba(26,154,124,.08);border-color:#1a9a7c}
 .fin-cash-callout strong{font-size:15px}
 .fin-cash-callout span{font-size:13px;color:var(--muted)}
-.fin-cash-callout .fin-cash-peak{font:11px 'DM Mono'}
-.fin-legend{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 0;font:11px 'DM Mono';color:var(--muted)}
+.fin-cash-callout .fin-cash-peak{font:11px var(--font-text)}
+.fin-legend{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 0;font:11px var(--font-text);color:var(--muted)}
 .fin-legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-2px}
 .fin-legend i.hatch{background:repeating-linear-gradient(45deg,#e0563b 0 3px,#f0a998 3px 5px)}
 .fin-legend i.line{height:2px;background:#17272b;vertical-align:3px}

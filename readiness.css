@@ -1,8 +1,8 @@
 /* The score and its linked tasks share the compact page styles. */
 .readiness-card{margin:0 0 16px}
 .readiness-heading{display:flex;align-items:center;gap:18px}
-.readiness-score{font:600 38px/1 Fraunces,serif;min-width:92px;color:var(--ink)}
-.readiness-heading h2{font:600 20px/1.2 Fraunces,serif;margin:0 0 5px}
+.readiness-score{font:600 38px/1 var(--font-display);min-width:92px;color:var(--ink)}
+.readiness-heading h2{font:600 20px/1.2 var(--font-display);margin:0 0 5px}
 .readiness-heading p{font-size:12px;color:var(--muted);margin:0}
 .readiness-heading>.button{margin-left:auto}
 .readiness-card>.field-help{margin:12px 0;font-size:11px;max-width:100ch}
