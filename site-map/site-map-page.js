@@ -710,7 +710,10 @@
         if (!site()) currentId = 'demo';
         // Re-entering can pick up saved changes made elsewhere in this app.
         const fresh = snapshot();
-        const committedId = read(SELECTED_KEY) || draft.saved.currentId;
+        // If the saved selection no longer exists (e.g. deleted on another device), the page shows the
+        // demo map; count that as the saved state too, so it is not reported as an unsaved change.
+        const storedId = read(SELECTED_KEY) || draft.saved.currentId;
+        const committedId = sites.some((m) => m.id === storedId) ? storedId : currentId;
         committedMapIds = new Set(parseSiteMaps(read(SITE_MAPS_STORAGE_KEY)).map(map => map.id));
         draft.saved = { ...cloneMapDraft(fresh), currentId: committedId };
         draft.present = cloneMapDraft(editable() ? fresh : draft.saved); draft.previous = null;

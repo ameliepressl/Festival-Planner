@@ -29,7 +29,8 @@
       ? { bookings: state.bookings, artists: state.artists, budget: state.settings.budget, stages: state.settings.stages, days: days().length }
       : { bookings: [], artists: [], budget: 0, stages: 2, days: 1 };
     const visitors = parseGround(read(GROUND_STORAGE_KEY)).visitors;
-    const vendors = parsePlacements(read(VENDOR_STORAGE_KEY));
+    // Only vendors on pitches that still exist for this festival size bring in pitch fees.
+    const vendors = fitPlacements(parsePlacements(read(VENDOR_STORAGE_KEY)), capacityNeeds(visitors).pitches).placements;
     const artists = artistSpending(lineup);
     const input = { settings: financeSettings, visitors, days: lineup.days, stages: lineup.stages, needs: capacityNeeds(visitors), artistFees: artists.total, pitchIncome: pitchIncome(vendors) };
     return { input, artists, lineup, vendorCount: Object.keys(vendors).length, model: financeModel(input) };

@@ -102,9 +102,13 @@
       message = null;
       // If the festival got smaller, vendors on pitches that no longer exist lose their pitch.
       const fitted = fitPlacements(placements, festivalSize().pitches);
-      if (fitted.removed.length && canEditVendors()) {
-        placements = fitted.placements; save();
-        toast(`The food court is smaller now: ${fitted.removed.map((v) => v.name).join(', ')} lost their pitch.`);
+      if (fitted.removed.length) {
+        // Everyone sees only pitches that still exist; only people who may edit vendors save the change.
+        placements = fitted.placements;
+        if (canEditVendors()) {
+          save();
+          toast(`The food court is smaller now: ${fitted.removed.map((v) => v.name).join(', ')} lost their pitch.`);
+        }
       }
       render();
     }
