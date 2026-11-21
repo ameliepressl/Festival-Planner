@@ -131,7 +131,7 @@ dialog h2 { font: 700 26px/1.15 var(--font-display); letter-spacing: -.005em; ma
 /* ---------- Header ---------- */
 
 .topbar { min-height: 64px; height: auto; padding: 14px 0; border-bottom: 1px solid var(--line); }
-.festival-meta { font: 500 13px/1.35 var(--font-text); color: var(--ink); letter-spacing: 0; text-align: left; }
+.festival-meta { font: 500 13px/1.35 var(--font-text); color: var(--ink); letter-spacing: 0; text-align: left; max-width: none; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plan-actions { margin-left: auto; }
 .festival-countdown { border-right: 0; padding-right: 0; margin-right: 0; display: grid; justify-items: end; gap: 0; }
 .festival-countdown + .lineup-actions:not(.hidden) { padding-left: 16px; border-left: 1px solid var(--line); }
