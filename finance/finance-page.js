@@ -193,23 +193,22 @@
 
     view.innerHTML = `
       <section class="checklist-hero">
-        <p class="eyebrow">FINANCIAL OVERVIEW</p>
         <h1>Finances</h1>
-        <p class="hero-copy">Profit and loss, break-even, scenarios and price sensitivity, calculated from your lineup, vendors and festival size.${canEditAssumptions ? ' Review Financial assumptions to adjust the forecast.' : ''}</p>
+        <p class="hero-copy">Profit, break-even and scenarios, calculated from your lineup, vendors and festival size.${canEditAssumptions ? ' Change the numbers under Financial assumptions.' : ''}</p>
       </section>
       <div class="fin-sources">
-        <span>DATA FROM</span>
+        <span>Based on</span>
         <a href="#" data-go="Lineup planner">Lineup · ${artists.performances} performance${artists.performances === 1 ? '' : 's'}</a>
         <a href="#" data-go="Vendors">Vendors · ${data.vendorCount} confirmed</a>
         <a href="#" data-go="Site map">Festival size · ${number(input.visitors)} visitors</a>
         <span>${input.days} day${input.days === 1 ? '' : 's'} · ${input.stages} stages</span>
       </div>
       <section class="fin-kpis five">
-        <div class="fin-kpi"><span>${model.profit >= 0 ? 'PROFIT' : 'LOSS'}</span><strong class="${model.profit >= 0 ? 'pos' : 'neg'}">${model.profit >= 0 ? '▲' : '▼'} ${profitText}</strong><small>${model.margin}% margin</small></div>
-        <div class="fin-kpi"><span>REVENUE</span><strong>${money(model.totalRevenue)}</strong><small>${number(model.ticketsSold)} tickets · average €${model.averageTicketPrice.toFixed(2)}</small></div>
-        <div class="fin-kpi"><span>COSTS</span><strong>${money(model.totalCosts)}</strong><small>incl. ${money(model.costs.find((c) => c.id === 'contingency').amount)} reserve</small></div>
-        <div class="fin-kpi"><span>BREAK-EVEN</span><strong>${beText}</strong><small>${beNote}</small></div>
-        <div class="fin-kpi"><span>SAFETY MARGIN</span><strong class="${safety !== null && safety < 0 ? 'neg' : ''}">${safetyText}</strong><small>${safetyNote}</small></div>
+        <div class="fin-kpi"><span>${model.profit >= 0 ? 'Profit' : 'Loss'}</span><strong class="${model.profit >= 0 ? 'pos' : 'neg'}">${profitText}</strong><small>${model.margin}% margin</small></div>
+        <div class="fin-kpi"><span>Revenue</span><strong>${money(model.totalRevenue)}</strong><small>${number(model.ticketsSold)} tickets · average €${model.averageTicketPrice.toFixed(2)}</small></div>
+        <div class="fin-kpi"><span>Costs</span><strong>${money(model.totalCosts)}</strong><small>incl. ${money(model.costs.find((c) => c.id === 'contingency').amount)} reserve</small></div>
+        <div class="fin-kpi"><span>Break-even</span><strong>${beText}</strong><small>${beNote}</small></div>
+        <div class="fin-kpi"><span>Safety margin</span><strong class="${safety !== null && safety < 0 ? 'neg' : ''}">${safetyText}</strong><small>${safetyNote}</small></div>
       </section>
       <section class="fin-card fin-assumptions"><details class="cleanup-disclosure"><summary>Financial assumptions</summary><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
         <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<details class="cleanup-disclosure"><summary>${group}</summary><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `

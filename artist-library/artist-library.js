@@ -55,7 +55,7 @@
       </div>
       <div class="lib-actions">
         ${added ? '<span class="lib-added">✓ In festival</span>' : `<button type="button" class="button secondary" data-lib-add="${a.id}" ${locked ? 'disabled' : ''}>Add</button>`}
-        <button type="button" class="button primary" data-lib-book="${a.id}" ${locked ? 'disabled' : ''}>Book</button>
+        <button type="button" class="button secondary" data-lib-book="${a.id}" ${locked ? 'disabled' : ''}>Book</button>
       </div>
     </article>`;
   }

@@ -74,6 +74,10 @@ body {
 dialog { border-radius: var(--radius-panel); }
 dialog h2 { font: 700 26px/1.15 var(--font-display); letter-spacing: -.005em; margin-bottom: 14px; }
 .confirm-dialog form > p:not(.eyebrow) { font-size: 14px; margin-bottom: 16px; }
+/* Dialog buttons on the right; a "Remove/Delete" button that starts the row sits on the left. */
+.dialog-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px; }
+.dialog-actions > span:empty { display: none; }
+.dialog-actions > .danger:first-child { margin-right: auto; }
 .demo-options { display: grid; gap: 10px; margin: 0 0 24px; }
 .demo-options div { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--paper); }
 .demo-options dt { font-weight: 600; }
@@ -180,6 +184,106 @@ dialog h2 { font: 700 26px/1.15 var(--font-display); letter-spacing: -.005em; ma
 .readiness-heading h2 { font: 700 21px/1.2 var(--font-display); }
 .readiness-heading p, .readiness-card > .field-help { font-size: 13px; }
 .readiness-card > .field-help { max-width: 72ch; }
+
+/* ---------- Small labels and form fields on every page ---------- */
+
+/* One label style: 12px, sentence case, no letter-spacing (was 9–10px capitals). */
+:is(.metric span, .fin-kpi span, .fin-sources span, .fin-card h3, .fin-facts dt, .fin-table th, .fin-form label,
+    .vendor-filters label, .lib-filters label, .checklist-progress-top span, .sm-select, .map-facts dt, .sm-sub,
+    .sm-field, .gantt-control-label, .form-grid label, .map-pill, .booking-status-label, .sm-score-label) {
+  font-family: var(--font-text) !important;
+  font-size: 12px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+.fin-card h3 { color: var(--ink); font-weight: 600; }
+.vendor-card small { font-size: 12px; letter-spacing: 0; }
+.gantt-count { font-size: 13px; color: var(--muted); }
+
+:is(.app-shell, dialog, .account-card) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), select, textarea) {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background-color: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 14px;
+  padding: 8px 10px;
+}
+:is(.app-shell, dialog, .account-card) :is(input, select, textarea):focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
+:is(.app-shell, dialog) input[type=checkbox] { accent-color: var(--ink); }
+.form-grid label, .fin-form label { color: var(--muted); }
+.form-grid label :is(input, select) { margin-top: 4px; }
+
+/* Panels: the same white card on every page. */
+:is(.fin-card, .sm-card, .vendor-card, .checklist-card, .readiness-tasks, .work-board-tools, .gantt-preview-card) {
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.button.quiet { border-radius: 0; padding: 6px 0; font-weight: 600; }
+
+/* ---------- Lineup planner ---------- */
+
+.metrics { border-top-color: var(--ink); border-bottom-color: var(--line); }
+.metric strong, .budget-values strong { font-family: var(--font-display); font-weight: 700; letter-spacing: -.01em; }
+.hero-shape { display: none; }
+
+/* ---------- Project tasks ---------- */
+
+/* Status tiles and columns: white with a coloured marker, instead of four pastel fills. */
+.work-board-stat[data-status] { background: var(--surface); box-shadow: inset 0 3px var(--status-accent); }
+#task-board-view .work-board-stats { border-radius: var(--radius-panel); overflow: hidden; background: var(--surface); }
+.work-board-stat-label { font-size: 13px; color: var(--muted); }
+.work-board-stat-value { font: 700 22px/1.1 var(--font-display); color: var(--ink); }
+.work-board-lane { background: #efeee7; border-color: var(--line); border-radius: var(--radius-panel); }
+.work-board-lane-title { background: transparent; padding: 8px 6px 10px; font: 700 17px/1.2 var(--font-display); border-bottom: 3px solid var(--lane); border-radius: 0; }
+.work-board-lane[data-status=planned] { --lane: #8a7cb3; }
+.work-board-lane[data-status=progress] { --lane: #5d9a62; }
+.work-board-lane[data-status=overdue] { --lane: #d1553d; }
+.work-board-lane[data-status=done] { --lane: #4d86a8; }
+.work-board-card { border-radius: 8px; border-left-width: 3px; }
+
+/* ---------- Vendors ---------- */
+
+.pitch-slot { border-radius: var(--radius-control); border-color: var(--line-strong); }
+.pitch-slot:hover { transform: none; border-color: var(--ink); }
+.pitch-slot span { font: 700 15px/1 var(--font-display); color: var(--muted); letter-spacing: .02em; }
+.pitch-slot.taken { border-color: transparent; background: var(--tint, var(--surface)); }
+.pitch-slot.taken span { color: var(--ink); }
+.cat-food { --tint: #ffe2d9; }
+.cat-drinks { --tint: #d3ece6; }
+.cat-merch { --tint: #e6e0f2; }
+.vendor-icon { background: var(--tint, var(--paper)); font: 700 15px/1 var(--font-display); color: var(--ink); letter-spacing: .02em; }
+.vendor-icon.has-photo { background: var(--paper); }
+.vendor-card.confirmed { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.vendor-pitch { border-radius: 4px; }
+.vendor-actions { align-items: center; flex-wrap: wrap; }
+.vendor-actions .button { white-space: nowrap; padding: 7px 11px; }
+.vendor-actions .button.quiet { padding: 7px 0; }
+
+/* ---------- Final checklist ---------- */
+
+.checklist-card header { gap: 10px; }
+.checklist-card h2 { font: 700 19px/1.2 var(--font-display); }
+
+/* ---------- Site map ---------- */
+
+.sm-score-label { margin: 0 0 2px; color: var(--muted); }
+
+/* ---------- Settings ---------- */
+
+#settings-view .overview-card h2 { font: 700 21px/1.2 var(--font-display); letter-spacing: 0; margin: 0 0 6px; }
+#settings-view .overview-card > p { margin: 0 0 12px; }
+
+/* ---------- Sign-in screen ---------- */
+
+.account-card { border-radius: 12px; box-shadow: 0 12px 40px rgba(23, 39, 43, .08); }
+.account-brand { font: 700 20px/1 var(--font-display); letter-spacing: 0; }
+.account-card h1 { font: 700 34px/1.05 var(--font-display); letter-spacing: -.01em; }
+.account-intro { font-size: 14px; }
+.account-form label { font-size: 13px; }
+.account-form label input { display: block; width: 100%; margin-top: 4px; }
+.account-form small { font-size: 12px; }
 
 /* ---------- Small screens ---------- */
 

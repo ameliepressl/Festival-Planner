@@ -196,7 +196,7 @@
 
       </main>
 
-      <main id="settings-view" class="hidden"><section class="checklist-hero"><p class="eyebrow">SETTINGS</p><h1>Settings</h1></section><section class="overview-card" aria-labelledby="project-settings-title"><h2 id="project-settings-title">Festival details</h2><p id="project-settings-summary"></p><button type="button" class="button secondary" id="settings-edit-festival">Edit festival details</button><p class="field-help" id="project-settings-help"></p></section><section class="overview-card" id="festival-manage" aria-labelledby="festival-manage-title" hidden><h2 id="festival-manage-title">This festival</h2><p id="festival-manage-summary"></p><button type="button" class="button danger" id="delete-festival" hidden>Delete this festival</button><p class="field-help" id="festival-manage-help"></p></section>        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
+      <main id="settings-view" class="hidden"><section class="checklist-hero"><h1>Settings</h1></section><section class="overview-card" aria-labelledby="project-settings-title"><h2 id="project-settings-title">Festival details</h2><p id="project-settings-summary"></p><button type="button" class="button secondary" id="settings-edit-festival">Edit festival details</button><p class="field-help" id="project-settings-help"></p></section><section class="overview-card" id="festival-manage" aria-labelledby="festival-manage-title" hidden><h2 id="festival-manage-title">This festival</h2><p id="festival-manage-summary"></p><button type="button" class="button danger" id="delete-festival" hidden>Delete this festival</button><p class="field-help" id="festival-manage-help"></p></section>        <section class="overview-card overview-team" aria-labelledby="overview-team-title">
           <h2 id="overview-team-title">Manage team</h2>
           <p class="field-help" id="team-help">Admins invite teammates by their account username. Teammates open this festival from the sidebar and work on it with their role.</p>
           <div class="overview-table-wrap" tabindex="0" role="region" aria-label="Festival team">
@@ -216,18 +216,17 @@
       <main id="lineup-view" class="hidden">
         <section class="hero">
           <div>
-            <p class="eyebrow">LINEUP PLANNER / 2026</p>
             <h1>Lineup planner</h1>
-            <p class="hero-copy">Build your festival programme, balance the budget, and turn a shortlist into a lineup that can actually run.</p>
+            <p class="hero-copy">Book artists into stage slots and keep the artist budget in view.</p>
           </div>
           <div class="hero-shape" aria-hidden="true"><span></span><span></span><span></span></div>
         </section>
 
         <div class="lineup-details-row"><dl class="overview-facts lineup-facts"><div id="lineup-venue-fact"><dt>Venue</dt><dd id="lineup-venue"></dd></div><div><dt>Festival dates</dt><dd id="lineup-dates"></dd></div><div><dt>Daily opening hours</dt><dd id="lineup-hours"></dd></div></dl><button class="button secondary" id="edit-settings">Edit stage planning settings</button></div>
         <section class="metrics" aria-label="Festival plan summary">
-          <div class="metric"><span>PERFORMANCES BOOKED</span><strong id="performance-count"></strong></div>
-          <div class="metric"><span>STAGES</span><strong id="stage-count"></strong></div>
-          <div class="metric budget-metric"><span>ARTIST BOOKING BUDGET</span><div class="budget-values"><div><small>Total</small><strong id="budget-total"></strong></div><div><small>Used</small><strong id="committed"></strong></div><div><small>Remaining</small><strong id="remaining"></strong></div></div><progress id="budget-progress" value="0" max="100" aria-label="Artist budget used"></progress></div>
+          <div class="metric"><span>Performances booked</span><strong id="performance-count"></strong></div>
+          <div class="metric"><span>Stages</span><strong id="stage-count"></strong></div>
+          <div class="metric budget-metric"><span>Artist booking budget</span><div class="budget-values"><div><small>Total</small><strong id="budget-total"></strong></div><div><small>Used</small><strong id="committed"></strong></div><div><small>Remaining</small><strong id="remaining"></strong></div></div><progress id="budget-progress" value="0" max="100" aria-label="Artist budget used"></progress></div>
         </section>
 
 
@@ -236,7 +235,7 @@
           <section class="schedule-panel panel">
             <div class="section-heading schedule-heading">
               <div class="timetable-heading"><h2>Festival timetable</h2><div class="lineup-view-toggle" role="group" aria-label="Timetable view"><button type="button" class="button secondary" id="lineup-daily" aria-pressed="false">Daily view</button><button type="button" class="button secondary" id="lineup-festival" aria-pressed="true">Festival view</button></div></div>
-              <div class="schedule-tools"><button class="button primary" id="book-performance">Book artist</button><button class="button secondary" id="add-block">Add calendar block</button><button type="button" class="button quiet" id="backup-plan"><span aria-hidden="true">⤓</span> Download backup</button><button type="button" class="button quiet" id="restore-plan"><span aria-hidden="true">↥</span> Restore backup</button><input type="file" id="backup-file" class="hidden" accept=".json,application/json" aria-label="Choose lineup backup" /></div>
+              <div class="schedule-tools"><button class="button primary" id="book-performance">Book artist</button><button class="button secondary" id="add-block">Add calendar block</button><button type="button" class="button quiet" id="backup-plan">Download backup</button><button type="button" class="button quiet" id="restore-plan">Restore backup</button><input type="file" id="backup-file" class="hidden" accept=".json,application/json" aria-label="Choose lineup backup" /></div>
             </div>
             <p id="backup-message" class="tools-message" role="status"></p><div class="day-navigation"><button class="button secondary" id="previous-day" aria-label="Previous day">←</button><div id="current-day" aria-live="polite"></div><button class="button secondary" id="next-day" aria-label="Next day">→</button></div>
             <p class="calendar-help">Click an empty stage slot to add a performance or block. <span class="booking-legend"><i class="tentative-dot"></i>Tentative <i class="confirmed-dot"></i>Confirmed</span></p>
@@ -263,17 +262,16 @@
       <div class="checklist-view hidden" id="finance-view"></div>
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
-          <p class="eyebrow">PROJECT TASKS</p>
           <h1>Project tasks</h1>
-          <p class="hero-copy">See the project timeline and track tasks by status.</p><div class="project-view-switch" role="group" aria-label="Project tasks view"><button type="button" class="button secondary" id="project-board-view" aria-pressed="true">Task Board</button><button type="button" class="button secondary" id="project-timeline-view" aria-pressed="false">Timeline</button></div>
-          <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart <span aria-hidden="true">↗</span></span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
+          <p class="hero-copy">Every preparation task, on the board or on the timeline.</p><div class="project-view-switch" role="group" aria-label="Project tasks view"><button type="button" class="button secondary" id="project-board-view" aria-pressed="true">Task board</button><button type="button" class="button secondary" id="project-timeline-view" aria-pressed="false">Timeline</button></div>
+          <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart</span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
           <section class="work-board-overview" id="open-board-page" aria-labelledby="task-overview-title">
             <div class="gantt-preview-heading">
               <div>
                 <h2 id="task-overview-title">Task overview</h2>
                 <small id="task-overview-total"></small>
               </div>
-              <button type="button" class="gantt-preview-link work-board-open">Open Task Board <span aria-hidden="true">↗</span></button>
+              <button type="button" class="gantt-preview-link work-board-open">Open task board</button>
             </div>
             <div class="work-board-stats"><button type="button" class="work-board-stat" data-status="all"><span class="work-board-stat-label">All tasks</span><span class="work-board-stat-value" id="board-all-count"></span></button></div>
           </section>
@@ -324,12 +322,11 @@
       <div class="checklist-view hidden" id="gantt-view">
         <section class="checklist-hero">
           <button class="button secondary" id="back-task-board">← Back to task board</button>
-          <p class="eyebrow">TASK BOARD / PRELIMINARY TIMELINE</p>
           <div class="gantt-intro-row"><h1>Project timeline</h1>
           <p class="hero-copy">Your festival preparation, scheduled backwards from opening day. Expand a task group to see its daily plan.</p></div>
         </section>
         <section class="gantt-panel" aria-labelledby="gantt-title">
-          <div class="gantt-heading"><h2 id="gantt-title">Gantt chart</h2><span class="eyebrow">13 AREAS · 52 TASKS · 209 SUBTASKS</span></div>
+          <div class="gantt-heading"><h2 id="gantt-title">Gantt chart</h2><span class="gantt-count">13 areas, 52 tasks, 209 subtasks</span></div>
           <div class="gantt-controls">
             <div class="gantt-control-group"><span class="gantt-control-label" id="outline-label">Outline</span><div class="gantt-segmented" role="group" aria-labelledby="outline-label"><button type="button" data-outline="areas" aria-pressed="false">Areas</button><button type="button" data-outline="tasks" aria-pressed="true">Tasks</button><button type="button" data-outline="subtasks" aria-pressed="false">Subtasks</button></div><span class="gantt-view-state" id="outline-state" aria-live="polite"></span></div>
             <div class="gantt-control-group"><span class="gantt-control-label" id="timeline-label">Timeline</span><div class="gantt-segmented" role="group" aria-labelledby="timeline-label"><button type="button" data-timeline="weeks" aria-pressed="false">Weeks</button><button type="button" data-timeline="days" aria-pressed="true">Days</button></div><span class="gantt-view-state" id="timeline-state" aria-live="polite"></span></div>
@@ -660,7 +657,6 @@
 
     <dialog id="settings-dialog">
       <form id="settings-form">
-        <p class="eyebrow">PLANNING SETTINGS</p>
         <h2>Shape your festival</h2>
         <div class="form-grid">
           <label>Number of stages<input id="stages-input" type="number" min="1" max="12" required /></label>
@@ -679,7 +675,6 @@
     <dialog id="booking-dialog">
       <form method="dialog" id="booking-form">
         <button type="button" class="close" id="close-dialog" aria-label="Close">×</button>
-        <p class="eyebrow" id="dialog-step">CREATE PERFORMANCE</p>
         <h2 id="dialog-title">Book artist</h2>
         <label class="notes-label" id="booking-artist-field">Artist<select id="booking-artist" required></select></label>
         <div class="artist-preview" id="artist-preview"></div>
@@ -702,7 +697,6 @@
 
     <dialog id="slot-dialog" class="confirm-dialog">
       <form method="dialog">
-        <p class="eyebrow">BUILD YOUR PROGRAMME</p>
         <h2>Selected calendar time</h2>
         <p id="slot-summary"></p>
         <div class="slot-actions">
@@ -715,7 +709,6 @@
 
     <dialog id="print-dialog" class="confirm-dialog">
       <form id="print-form">
-        <p class="eyebrow">SHARE THE RIGHT DETAILS</p>
         <h2>Print your lineup</h2>
         <label class="notes-label">Version<select id="print-mode"><option value="internal">Internal — full plan</option><option value="public">Public — confirmed performances only</option></select></label>
         <p class="field-help">Internal includes fees, notes, tentative bookings and changeovers. Public includes confirmed artists, stages and set times, without fees or private notes.</p>
@@ -726,7 +719,6 @@
 
     <dialog id="restore-dialog" class="confirm-dialog">
       <form method="dialog">
-        <p class="eyebrow">RESTORE A SAVED LINEUP</p>
         <h2>Replace this lineup?</h2>
         <p id="restore-summary"></p>
         <p>This replaces your current lineup, artist catalogue and planning settings. Your Final checklist is kept separately and will stay as it is.</p>
@@ -738,18 +730,18 @@
       </form>
     </dialog>
 
-    <dialog id="block-dialog"><form id="block-form"><p class="eyebrow">CALENDAR BLOCK</p><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="time" step="60" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
-    <dialog id="artist-dialog"><form id="artist-form"><p class="eyebrow">MANAGE CATALOGUE</p><h2 id="artist-dialog-title">Add artist</h2><div class="form-grid"><label>Name<input id="name-input" maxlength="100" required></label><label>Genre<input id="genre-input" maxlength="80" required></label><label>Price per performance (€)<input id="fee-input" type="number" min="0" step="1" required></label><label>Set duration (minutes)<input id="duration-input" type="number" min="15" max="540" step="5" required></label></div><p class="form-message" id="artist-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="delete-artist">Delete artist</button><span></span><button type="button" class="button secondary" id="cancel-artist">Cancel</button><button class="button primary">Save artist</button></div></form></dialog>
+    <dialog id="block-dialog"><form id="block-form"><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="time" step="60" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
+    <dialog id="artist-dialog"><form id="artist-form"><h2 id="artist-dialog-title">Add artist</h2><div class="form-grid"><label>Name<input id="name-input" maxlength="100" required></label><label>Genre<input id="genre-input" maxlength="80" required></label><label>Price per performance (€)<input id="fee-input" type="number" min="0" step="1" required></label><label>Set duration (minutes)<input id="duration-input" type="number" min="15" max="540" step="5" required></label></div><p class="form-message" id="artist-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="delete-artist">Delete artist</button><span></span><button type="button" class="button secondary" id="cancel-artist">Cancel</button><button class="button primary">Save artist</button></div></form></dialog>
     <dialog id="delete-dialog" class="confirm-dialog"><form method="dialog"><h2>Delete this artist?</h2><p id="delete-description"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep artist</button><button class="button danger" id="confirm-delete">Delete artist</button></div></form></dialog>
     <dialog id="finalise-dialog" class="confirm-dialog">
-      <form method="dialog"><p class="eyebrow">READY TO LOCK IT IN?</p><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
+      <form method="dialog"><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
     </dialog>
     <section id="print-plan-content" aria-label="Printable festival plan"></section>
     <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><h2>Open a demo festival</h2><p>The demo opens as a new festival in your account. Your current festival stays as it is: switch back with the festival list in the sidebar, and delete the demo in Settings when you are done.</p><dl class="demo-options"><div><dt>Lisbon Sound Festival</dt><dd>Small: 10 artists, 2 stages, 5,000 visitors.</dd></div><div><dt>Munich Loud Weekend</dt><dd>Large: 34 shows on 3 stages, 20,000 visitors. Most planning is done; artists, ticket prices and food stands are left to try out.</dd></div></dl><div class="dialog-actions demo-choices"><button class="button secondary" value="cancel">Cancel</button><button class="button secondary" value="load">Open Lisbon</button><button class="button primary" value="load-munich">Open Munich</button></div></form></dialog>
-    <dialog id="new-festival-dialog" class="confirm-dialog"><form method="dialog"><h2>Start a new festival?</h2><p>A new, empty festival is added to your account and opens now. The festival you have open stays saved; switch between your festivals with the <b>FESTIVAL</b> list in the sidebar.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Cancel</button><button class="button primary" value="create">Create festival</button></div></form></dialog>
+    <dialog id="new-festival-dialog" class="confirm-dialog"><form method="dialog"><h2>Start a new festival?</h2><p>A new, empty festival is added to your account and opens now. The festival you have open stays saved; switch between your festivals with the festival list in the sidebar.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Cancel</button><button class="button primary" value="create">Create festival</button></div></form></dialog>
     <dialog id="delete-festival-dialog" class="confirm-dialog"><form method="dialog"><h2>Delete “<span id="delete-festival-name"></span>”?</h2><p>The whole festival is deleted for you and for everyone on its team: lineup, tasks, site maps, vendors and finances. This cannot be undone. Your other festivals are not touched.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep festival</button><button class="button danger" value="delete">Delete festival</button></div></form></dialog>
-    <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
-    <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DOUBLE BOOKING</p><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
+    <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
+    <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
     <script src="rules/project-rules.js"></script>

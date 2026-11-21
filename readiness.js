@@ -104,7 +104,7 @@
     issuesPanel.replaceChildren();
     const details = node('details'); details.open = expanded;
     details.append(node('summary', `Planning issues · ${result.issues.length}`));
-    details.append(node('p', 'Linked tasks update from the saved plan. Open the source page to fix an issue; completing or deleting a normal project task does not clear these checks.', 'field-help'));
+    details.append(node('p', 'These come from your plan and clear themselves once you fix them on the page they link to.', 'field-help'));
     if (!result.issues.length) details.append(node('p', 'All assessed planning checks pass.'));
     const list = node('ul', undefined, 'readiness-issue-list');
     result.issues.forEach(issue => {

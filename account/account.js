@@ -565,7 +565,8 @@
     if (!row) return;
     const own = row.owner_id === currentUser.id;
     const deletable = canDeleteFestival(festivals, currentUser.id, row.festival_id);
-    $('#festival-manage-summary').textContent = `${festivalLabel(row, currentUser.id)}. You have access to ${festivals.length} festival${festivals.length === 1 ? '' : 's'}.`;
+    const count = `You have access to ${festivals.length} festival${festivals.length === 1 ? '' : 's'}.`;
+    $('#festival-manage-summary').textContent = own ? `You created this festival. ${count}` : `${festivalLabel(row, currentUser.id)}. ${count}`;
     $('#delete-festival').hidden = !deletable;
     $('#festival-manage-help').textContent = deletable ? ''
       : own ? 'This is your only own festival, so it cannot be deleted. Create another festival first.'

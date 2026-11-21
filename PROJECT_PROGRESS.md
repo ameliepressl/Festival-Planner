@@ -586,3 +586,14 @@ Editor before or right after merging**; until then "New festival" and the demo s
 asking for it. Tested: 9 new tests (no existing test changed), migrations 001–005 in a local
 Postgres, and the whole flow in Chrome against a stand-in for Supabase. Status: PR open, needs a
 team review and a check with the real Supabase after running 005.
+
+## Design polish — 21 November 2026
+
+Branch: `feature-design-polish` (owner: Amelie, builds on PR #29). Plan: `feature-plans/design-polish.md`.
+The app looked "AI-made". It keeps the cream paper and coral, but now has one system (`design.css`,
+loaded last): Archivo Narrow for headings and big figures, Archivo for text (no serif, no
+typewriter font); one button style (coral with dark text for the main action); line icons in
+the sidebar; the logo once; labels in sentence case instead of tiny capitals; no repeated
+labels above page titles; vendor initials instead of emojis; shorter, plainer texts (and no more
+"saves in this browser"). No feature changed. Tests: 273 pass, none changed. Checked every page
+in Chrome at laptop and phone width, no console errors. Status: PR open, needs a team review.
