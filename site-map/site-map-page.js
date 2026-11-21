@@ -88,7 +88,7 @@
     savedReadinessCache = null;
     renderDraftActions();
     window.dispatchEvent(new Event('festival-map-saved'));
-    mapMessage('Map changes saved in this browser. The account status shows whether cloud saving has finished.');
+    mapMessage('Map changes saved.');
     return true;
   }
 
@@ -138,9 +138,8 @@
     const s = site();
     view.innerHTML = `
       <section class="checklist-hero sm-hero">
-        <p class="eyebrow">SITE MAP · LAYOUT PLANNER</p>
         <h1>Site map</h1>
-        <p class="hero-copy">Click any pin to see its details. Upload an aerial photo or site plan of your own ground and the planner suggests the optimal layout: stages, first aid, toilets, water, food court, gate and emergency exits.</p>
+        <p class="hero-copy">Upload a photo or plan of your ground and the planner places stages, facilities and exits for you. Click a pin to see its details.</p>
       </section>
       <details class="sm-card sm-size-disclosure" open><summary>Festival size</summary><div id="sm-size"></div></details>
       <div class="sm-save-actions" role="group" aria-label="Save map changes">
@@ -156,7 +155,7 @@
           <div class="sm-tools" role="group" aria-label="Map tools">
             ${Object.entries(MODES).map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
             <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> Show no-go areas</label>
-            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">✦ Suggest optimal layout</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
+            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
           </div>
           <div class="map-chips" role="group" aria-label="Show categories">
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
@@ -283,7 +282,7 @@
     const s = site();
     const item = selectedId && s.placements[selectedId] ? findItem(selectedId, items) : null;
     if (!item) {
-      panel.innerHTML = `<p class="eyebrow">DETAILS</p><h2>Click a pin</h2><p class="map-text">Every pin on the map is a facility. Click it to see what it is, who is responsible, how far it is from the gate and which layout rules it meets.</p>`;
+      panel.innerHTML = `<h2>Click a pin</h2><p class="map-text">Every pin on the map is a facility. Click it to see what it is, who is responsible, how far it is from the gate and which layout rules it meets.</p>`;
       return;
     }
     const at = s.placements[item.id];
@@ -300,18 +299,17 @@
       : `<p class="map-free">Free pitch. Confirm a vendor on the Vendors page to fill it.</p>
          <button class="button primary" type="button" data-go-vendors>Choose a vendor</button>`;
     panel.innerHTML = `
-      <p class="eyebrow">DETAILS</p>
       <h2>${escape(item.name)}</h2>
       <span class="map-pill" style="--marker:${colourOf(item.category)}">${titleOf(item.category)}</span>
       <p class="map-text">${escape(item.text)}</p>
       ${vendorPart}
       <dl class="map-facts">
-        <div><dt>RESPONSIBLE TEAM</dt><dd>${item.team}</dd></div>
+        <div><dt>Responsible team</dt><dd>${item.team}</dd></div>
         <div><dt>OPEN</dt><dd>${item.hours}</dd></div>
-        <div><dt>FROM THE MAIN GATE</dt><dd>${fromGate}</dd></div>
+        <div><dt>From the main gate</dt><dd>${fromGate}</dd></div>
       </dl>
-      ${nearby ? `<p class="sm-sub">NEAREST</p><ul class="sm-nearby">${nearby}</ul>` : ''}
-      ${rules.length ? `<p class="sm-sub">LAYOUT RULES</p><ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>` : ''}
+      ${nearby ? `<p class="sm-sub">Nearest</p><ul class="sm-nearby">${nearby}</ul>` : ''}
+      ${rules.length ? `<p class="sm-sub">Layout rules</p><ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>` : ''}
       <p class="sm-sub">${mode === 'move' ? 'Drag the pin to move it.' : 'Switch to “Move pins” to move it.'}</p>`;
   }
 
@@ -323,7 +321,7 @@
     view.querySelector('#sm-score').innerHTML = `
       <div class="sm-score-top">
         <div class="sm-ring" style="--score:${score}"><span>${score}<small>%</small></span></div>
-        <div><p class="eyebrow">LAYOUT CHECK</p><strong>${passed} of ${rules.length} rules met</strong><small>${score === 100 ? 'This layout is ready to work with.' : 'Click a rule to see what to fix.'}</small></div>
+        <div><p class="sm-score-label">Layout check</p><strong>${passed} of ${rules.length} rules met</strong><small>${score === 100 ? 'This layout is ready to work with.' : 'Click a rule to see what to fix.'}</small></div>
       </div>
       ${rules[0].ok ? '' : `<div class="sm-missing"><span>${items.filter((i) => !s.placements[i.id]).length} facilities for ${needs.visitors.toLocaleString('en-GB')} visitors still need a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
       <ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}" data-rule="${rule.id}" tabindex="0"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>`;
@@ -407,7 +405,7 @@
     if (selectedId && !findItem(selectedId, items)) selectedId = null;
     renderSize(); drawAll(); renderCrowd();
     const missing = items.filter((i) => !site().placements[i.id]).length;
-    mapMessage(missing ? `${missing} new facilities need a place. Press “Plan them” or “Suggest optimal layout”, then Save changes.` : 'Festival size changed in the draft. Choose Save changes to keep it.');
+    mapMessage(missing ? `${missing} new facilities need a place. Press “Plan them” or “Suggest layout”, then Save changes.` : 'Festival size changed in the draft. Choose Save changes to keep it.');
   }
 
   // ---------- actions ----------
@@ -555,7 +553,7 @@
         s.entrance = nearestBoundaryPoint(s, p);
         s.placements.entrance = s.entrance;
         save(); drawAll(); select('entrance');
-        mapMessage('Gate set. Press “Suggest optimal layout” to plan around it.');
+        mapMessage('Gate set. Press “Suggest layout” to plan around it.');
         pointer = null; return;
       }
       if (mode === 'paint' || mode === 'erase') { pointer.paint = mode === 'paint' ? '1' : '0'; paintAt(p, pointer.paint); return; }
@@ -625,7 +623,7 @@
       if (!editable() || busy) return;
       if (border.dataset.border === 'done' && draftBorder.length >= 3) {
         s.boundary = draftBorder; draftBorder = null; save(); drawScene(); setMode('explore'); drawAll();
-        mapMessage('Fence changed in the draft. Press “Suggest optimal layout” to plan inside it, then Save changes.');
+        mapMessage('Fence changed in the draft. Press “Suggest layout” to plan inside it, then Save changes.');
       } else { draftBorder = null; save(); setMode('explore'); }
       renderDraftActions();
       return;

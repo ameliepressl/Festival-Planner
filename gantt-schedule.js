@@ -33,7 +33,7 @@ window.initialiseGanttTimeline = function () {
   lastOffset=Math.max(lastOffset,...scheduled.map(r=>r.end));
   weekCount=Math.ceil((lastOffset-firstOffset+1)/7);
   chart.querySelector('.gantt-caption').textContent = `${formatDate(firstOffset)} – ${formatDate(lastOffset)} ${opening.getUTCFullYear()} · Festival ${formatDate(0)} – ${formatDate(afterEvent-1)} · Proposed daily schedule`;
-  chart.querySelector('.gantt-empty').textContent = 'Head of project · Edit tasks and dates using Edit plan. Changes are saved in this browser. Admins choose an owner per task in the Owner column.';
+  chart.querySelector('.gantt-empty').textContent = 'Change tasks and dates with Edit plan; changes save automatically. Admins choose an owner per task in the Owner column.';
   const header = chart.querySelector('thead tr');
   const table = chart.querySelector('table');
   const expanded = new Set(window.ganttExpandedWeeks ?? Array.from({length:weekCount},(_,i)=>i+1));

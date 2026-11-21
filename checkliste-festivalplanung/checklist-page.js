@@ -11,12 +11,11 @@
     const canEditChecklist = canFestival('checklist');
     view.innerHTML = `
       <section class="checklist-hero">
-        <p class="eyebrow">FINAL CHECKLIST</p>
         <h1>Final checklist</h1>
-        <p class="hero-copy">On the event day, confirm each checkpoint on site before ticking it off. Advance preparation belongs in the task board. Review any previously saved ticks against these checks. Your progress saves automatically in this browser.</p>
+        <p class="hero-copy">Tick each check on the event day, once it is confirmed on site. Preparation before the event belongs in Project tasks.</p>
       </section>
       <section class="checklist-progress" aria-label="Final checklist progress">
-        <div class="checklist-progress-top"><span>OVERALL PROGRESS</span><strong id="checklist-percent"></strong></div>
+        <div class="checklist-progress-top"><span>Progress</span><strong id="checklist-percent"></strong></div>
         <div class="checklist-bar" id="checklist-bar" role="progressbar" aria-label="Final checklist progress" aria-valuemin="0" aria-valuemax="100"><div></div></div>
         <small id="checklist-summary"></small>
       </section>
@@ -24,7 +23,6 @@
         ${CHECKLIST.map((group) => `
           <article class="checklist-card" data-group="${group.id}">
             <header>
-              <span class="checklist-icon" aria-hidden="true">${group.icon}</span>
               <h2>${group.title}</h2>
               <span class="checklist-count"></span>
             </header>

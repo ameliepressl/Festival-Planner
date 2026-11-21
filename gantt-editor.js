@@ -224,7 +224,7 @@
         t.subtasks.forEach((s,si)=>{steps++;row('gantt-subtask',`${ai+1}.${ti+1}.${si+1}`,s.title,s,'step-'+s.id);});
       });
     });
-    document.querySelector('.gantt-heading .eyebrow').textContent=`13 AREAS · ${count} TASKS · ${steps} SUBTASKS`;
+    document.querySelector('.gantt-heading .gantt-count').textContent=`13 areas, ${count} tasks, ${steps} subtasks`;
     renderOwners();
   }
 

@@ -78,7 +78,7 @@
       } else overview.querySelector('details').open = true;
     };
     heading.append(score, title, button);
-    const explanation = node('p', 'Each check has equal weight. Checks cover festival details, lineup, saved map and finances. Missing measurements stay unassessed. This is planning progress, not a safety approval.', 'field-help');
+    const explanation = node('p', 'Checks festival details, lineup, site map and finances; each check counts the same. It shows planning progress and is not a safety approval.', 'field-help');
     const details = node('details', undefined, 'readiness-breakdown');
     details.open = expanded;
     details.append(node('summary', 'Check breakdown'));
@@ -104,7 +104,7 @@
     issuesPanel.replaceChildren();
     const details = node('details'); details.open = expanded;
     details.append(node('summary', `Planning issues · ${result.issues.length}`));
-    details.append(node('p', 'Linked tasks update from the saved plan. Open the source page to fix an issue; completing or deleting a normal project task does not clear these checks.', 'field-help'));
+    details.append(node('p', 'These come from your plan and clear themselves once you fix them on the page they link to.', 'field-help'));
     if (!result.issues.length) details.append(node('p', 'All assessed planning checks pass.'));
     const list = node('ul', undefined, 'readiness-issue-list');
     result.issues.forEach(issue => {

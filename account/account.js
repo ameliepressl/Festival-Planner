@@ -472,7 +472,8 @@
     for (const row of festivals) {
       const option = document.createElement('option');
       option.value = row.festival_id;
-      option.textContent = festivalLabel(row, currentUser.id);
+      // Own festivals by name only; shared ones also say who created them and your role.
+      option.textContent = row.owner_id === currentUser.id ? (row.festival_name || 'Untitled festival') : festivalLabel(row, currentUser.id);
       option.selected = row.festival_id === meta.festivalId;
       select.append(option);
     }
@@ -564,7 +565,8 @@
     if (!row) return;
     const own = row.owner_id === currentUser.id;
     const deletable = canDeleteFestival(festivals, currentUser.id, row.festival_id);
-    $('#festival-manage-summary').textContent = `${festivalLabel(row, currentUser.id)}. You have access to ${festivals.length} festival${festivals.length === 1 ? '' : 's'}.`;
+    const count = `You have access to ${festivals.length} festival${festivals.length === 1 ? '' : 's'}.`;
+    $('#festival-manage-summary').textContent = own ? `You created this festival. ${count}` : `${festivalLabel(row, currentUser.id)}. ${count}`;
     $('#delete-festival').hidden = !deletable;
     $('#festival-manage-help').textContent = deletable ? ''
       : own ? 'This is your only own festival, so it cannot be deleted. Create another festival first.'
@@ -789,6 +791,7 @@
 
   function showAccountBox() {
     $('#account-username').textContent = currentUser.username;
+    $('#account-avatar').textContent = currentUser.username.trim().charAt(0).toUpperCase();
     $('#sidebar-account').hidden = false;
   }
 

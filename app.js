@@ -81,7 +81,6 @@ function render() {
   const canEditLineup = canFestival('lineup');
   const lineupLocked = state.final || !canEditLineup;
   $('#event-summary').textContent = `${state.event.name ? state.event.name + ' · ' : ''}${dates.length} ${dates.length===1?'day':'days'} · ${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''}`;
-  $('.hero .eyebrow').textContent = `LINEUP PLANNER / ${state.event.startDate.slice(0,4)}`;
   $('#performance-count').textContent = performances().length;
   $('#committed').textContent = euros(committed);
   $('#remaining').textContent = euros(state.settings.budget-committed);
@@ -106,7 +105,7 @@ function render() {
   };
   $('#artist-list').innerHTML = state.artists.map(a => {
     const booked = performances().filter(b => b.artistId===a.id).sort((x,y) => x.date.localeCompare(y.date)||x.start-y.start);
-    return `<article class="artist-card"><div class="avatar" style="background:${a.colour}"${photoAttributes(a)}>${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · default ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} default fee</div>${booked.length?`<div class="booked-label">${booked.length} scheduled performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.map(b => `<li><span class="booking-status ${b.status||'tentative'}">${b.status==='confirmed'?'Confirmed':'Tentative'}</span> · ${dateText(b.date)} · ${escapeHtml(stageName(b.stage))}<br>${timeText(b.start)}–${timeText(b.start+entryDuration(b))} · ${euros(entryFee(b))}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${lineupLocked?'disabled':''}>Edit</button><button class="button primary" data-artist="${a.id}" ${lineupLocked?'disabled':''}>Book</button></div></article>`;
+    return `<article class="artist-card"><div class="avatar" style="background:${a.colour}"${photoAttributes(a)}>${escapeHtml(a.name.slice(0,2).toUpperCase())}</div><div><div class="artist-name">${escapeHtml(a.name)}</div><div class="artist-meta">${escapeHtml(a.genre)} · default ${a.duration} min</div><div class="artist-meta">${euros(a.fee)} default fee</div>${booked.length?`<div class="booked-label">${booked.length} scheduled performance${booked.length===1?'':'s'}</div><ul class="artist-bookings">${booked.map(b => `<li><span class="booking-status ${b.status||'tentative'}">${b.status==='confirmed'?'Confirmed':'Tentative'}</span> · ${dateText(b.date)} · ${escapeHtml(stageName(b.stage))}<br>${timeText(b.start)}–${timeText(b.start+entryDuration(b))} · ${euros(entryFee(b))}</li>`).join('')}</ul>`:'<div class="artist-meta">Not planned yet</div>'}</div><div class="artist-actions"><button class="button secondary" data-edit-artist="${a.id}" ${lineupLocked?'disabled':''}>Edit</button><button class="button secondary" data-artist="${a.id}" ${lineupLocked?'disabled':''}>Book</button></div></article>`;
   }).join('') || '<p>No artists yet. Add your first artist above.</p>';
   $('#current-day').innerHTML = `<strong>${dateText(currentDay)}</strong><small>Day ${index+1} of ${dates.length}</small>`;
   $('#previous-day').disabled = index===0;
@@ -176,7 +175,6 @@ function openBooking(id,bookingId=null,slot=null) {
   selectedArtistId=b?b.artistId:id;
   const a=artist(selectedArtistId);
   if (!a) { toast('Add an artist to the catalogue first.'); return; }
-  $('#dialog-step').textContent=b?'EDIT PERFORMANCE':'CREATE PERFORMANCE';
   $('#dialog-title').textContent=b?'Edit performance':'Book artist';
   $('#booking-artist').innerHTML=state.artists.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
   $('#booking-artist').value=selectedArtistId;

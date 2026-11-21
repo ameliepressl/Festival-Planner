@@ -18,16 +18,18 @@
   const openMenus = new Set();
   let message = null; // { vendorId, text }: why the last confirm did not work
 
-  const euros = (amount) => `€ ${amount.toLocaleString('en-GB')}`;
-  const price = (amount) => `€ ${amount.toFixed(2)}`;
+  const euros = (amount) => `€${amount.toLocaleString('en-GB')}`;
+  const price = (amount) => `€${amount.toFixed(2)}`;
+  // Two letters for a stand, shown until (or instead of) its dish photo: "Taco Tribe" → "TT".
+  const initials = (name) => String(name).replace(/[^\p{L}\p{N}\s&]/gu, '').split(/\s+|&/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
   const escape = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   function save() { localStorage.setItem(VENDOR_STORAGE_KEY, JSON.stringify(placements)); }
 
   function pitchRow(count) {
     return pitchList(count).map((pitch) => {
       const vendor = vendorOnPitch(placements, pitch);
-      return `<button type="button" class="pitch-slot ${vendor ? 'taken' : ''}" data-map="${pitch}" aria-label="${pitch}: ${vendor ? escape(vendor.name) : 'free'} – show on map">
-        <span>${vendor ? vendor.icon : '+'}</span><small>${pitch}</small></button>`;
+      return `<button type="button" class="pitch-slot ${vendor ? `taken cat-${escape(vendor.category.toLowerCase())}` : ''}" data-map="${pitch}" aria-label="${pitch}: ${vendor ? escape(vendor.name) : 'free'} – show on map" title="${pitch}: ${vendor ? escape(vendor.name) : 'free'}">
+        <span>${vendor ? escape(initials(vendor.name)) : '+'}</span><small>${pitch}</small></button>`;
     }).join('');
   }
 
@@ -43,15 +45,15 @@
     const actions = pitch
       ? `<button type="button" class="button secondary" data-map="${pitch}">Show on map</button>
          <button type="button" class="button danger" data-remove="${vendor.id}" ${editPermission}>Remove</button>`
-      : `<button type="button" class="button primary" data-confirm="${vendor.id}" ${editPermission}>Confirm</button>`;
+      : `<button type="button" class="button secondary" data-confirm="${vendor.id}" ${editPermission}>Confirm</button>`;
     const photo = vendor.photo ? ` data-wiki="${escape(vendor.photo)}" data-photo-kind="dish" data-name="${escape(vendor.cuisine || vendor.name)}"` : '';
     const isOpen = openMenus.has(vendor.id);
-    const menuButton = vendor.menu ? `<button type="button" class="button secondary vendor-menu-toggle" data-menu="${vendor.id}" aria-expanded="${isOpen}">${isOpen ? 'Hide menu' : `Menu (${vendor.menu.length})`}</button>` : '';
+    const menuButton = vendor.menu ? `<button type="button" class="button quiet vendor-menu-toggle" data-menu="${vendor.id}" aria-expanded="${isOpen}">${isOpen ? 'Hide menu' : `Menu (${vendor.menu.length})`}</button>` : '';
     return `
       <article class="vendor-card ${pitch ? 'confirmed' : ''}">
         <div class="vendor-top">
-          <span class="vendor-icon"${photo}>${vendor.icon}</span>
-          <div><h2>${escape(vendor.name)}</h2><small>${vendor.category.toUpperCase()}${vendor.cuisine ? ` · ${escape(vendor.cuisine.toUpperCase())}` : ''} · ${euros(vendor.fee)} pitch fee</small></div>
+          <span class="vendor-icon cat-${escape(vendor.category.toLowerCase())}"${photo}>${escape(initials(vendor.name))}</span>
+          <div><h2>${escape(vendor.name)}</h2><small>${escape(vendor.cuisine || vendor.category)} · ${euros(vendor.fee)} pitch fee</small></div>
           ${pitch ? `<span class="vendor-pitch">${pitch}</span>` : ''}
         </div>
         <p>${escape(vendor.text)}</p>
@@ -88,14 +90,13 @@
     const results = filterVendors(all, { ...search, category: filter });
     view.innerHTML = `
       <section class="checklist-hero">
-        <p class="eyebrow">VENDORS · FOOD COURT</p>
         <h1>Vendors</h1>
-        <p class="hero-copy">Confirm vendors for the food court pitches. The number of pitches follows the expected visitors (one per 400). Each confirmed vendor appears on the site map. Your choice saves automatically in this browser.</p>
+        <p class="hero-copy">Choose the food, drink and merch stands for your food court. You get one pitch per 400 visitors, and every confirmed stand appears on the site map.</p>
       </section>
       <section class="metrics vendor-metrics">
-        <div class="metric"><span>PITCHES USED</span><strong>${used} of ${size.pitches}</strong><small>for ${size.visitors.toLocaleString('en-GB')} visitors · <a href="#" data-size>change</a></small></div>
-        <div class="metric"><span>PITCH INCOME</span><strong>${euros(pitchIncome(placements))}</strong></div>
-        <div class="metric vendor-needs"><span>VISITOR NEEDS</span>
+        <div class="metric"><span>Pitches used</span><strong>${used} of ${size.pitches}</strong><small>for ${size.visitors.toLocaleString('en-GB')} visitors · <a href="#" data-size>change</a></small></div>
+        <div class="metric"><span>Pitch income</span><strong>${euros(pitchIncome(placements))}</strong></div>
+        <div class="metric vendor-needs"><span>Visitor needs</span>
           ${needs.checks.map((c) => `<small class="${c.ok ? 'ok' : 'missing'}">${c.ok ? '✓' : '✕'} ${c.label}</small>`).join('')}
         </div>
       </section>
