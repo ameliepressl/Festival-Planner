@@ -316,3 +316,13 @@
 .gantt-editing .gantt-owner-select{display:none}
 .gantt-editing .gantt-selected-row .gantt-owner-select{display:block}
 .gantt-editing .gantt-selected-row .gantt-owner:has(select) .gantt-owner-name{display:none}
+
+/* Demo dialog: three choices; keep every button visible on phones too */
+.demo-choices{flex-wrap:wrap}
+@media(max-width:500px){.demo-choices .secondary{display:inline-block}}
+
+/* Lineup budget strip: large budgets (e.g. EUR 2,000,000) must not run into each other on smaller screens */
+#lineup-view .budget-values strong{font-size:clamp(14px,1.45vw,20px)}
+
+/* Gantt toolbar: on narrow windows the controls wrap onto a second row instead of pushing "Edit plan" out of view */
+#task-board-view #gantt-view .gantt-controls{flex-wrap:wrap;overflow-x:visible}

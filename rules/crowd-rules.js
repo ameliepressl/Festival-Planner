@@ -6,13 +6,23 @@ const CROWD_EXIT_IDS = ['exit-1', 'exit-2'];
 const CROWD_ASSUMPTIONS = Object.freeze({ walkingSpeed: 60, flowRate: 82,
   preMovementMinutes: 2, targetMinutes: 10, densityLimit: 2 });
 
-function normalizeCrowdSafety(value) {
+// Stage A and B are always measured. A festival with more stages (stage-c ... stage-l on the map)
+// also measures those: they count when they are on the map or already have measurements.
+const EXTRA_STAGE_ID = /^stage-[c-l]$/;
+function crowdStageIds(...sources) {
+  const extra = sources.flatMap(source => Object.keys(source && typeof source === 'object' ? source : {}))
+    .filter(id => EXTRA_STAGE_ID.test(id));
+  return [...CROWD_STAGE_IDS, ...[...new Set(extra)].sort()];
+}
+
+function normalizeCrowdSafety(value, stageIds) {
   const source = value && typeof value === 'object' ? value : {};
   const number = value => value !== '' && value !== null && Number.isFinite(Number(value)) ? Number(value) : null;
+  const ids = stageIds || crowdStageIds(source.stages);
   return {
     ...Object.fromEntries(Object.entries(CROWD_ASSUMPTIONS).map(([key, fallback]) =>
       [key, Object.hasOwn(source, key) ? number(source[key]) : fallback])),
-    stages: Object.fromEntries(CROWD_STAGE_IDS.map(id => [id, {
+    stages: Object.fromEntries(ids.map(id => [id, {
       area: number(source.stages?.[id]?.area), audience: number(source.stages?.[id]?.audience)
     }])),
     exits: Object.fromEntries(CROWD_EXIT_IDS.map(id => [id, {
@@ -71,11 +81,12 @@ function strictEvacuationRoute(site, from, to) {
 }
 
 function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
-  const safety = normalizeCrowdSafety(input);
+  const stageIds = crowdStageIds(input?.stages, site?.placements);
+  const safety = normalizeCrowdSafety(input, stageIds);
   const invalid = detail => ({ valid: false, minutes: null, detail, exits: [], originAssignments: [] });
   if (!validCrowdCount(visitors) || visitors === 0) return invalid('Enter the expected visitor count.');
-  if (!CROWD_STAGE_IDS.every(id => validCrowdCount(safety.stages[id].audience))) return invalid('Enter the audience at each stage for the same evacuation scenario.');
-  const stageTotal = CROWD_STAGE_IDS.reduce((sum, id) => sum + safety.stages[id].audience, 0);
+  if (!stageIds.every(id => validCrowdCount(safety.stages[id].audience))) return invalid('Enter the audience at each stage for the same evacuation scenario.');
+  const stageTotal = stageIds.reduce((sum, id) => sum + safety.stages[id].audience, 0);
   if (stageTotal > visitors) return invalid('Stage audiences together exceed the expected visitor count.');
   if (!positiveCrowdNumber(safety.walkingSpeed) || !positiveCrowdNumber(safety.flowRate)
       || !positiveCrowdNumber(safety.targetMinutes) || !positiveCrowdNumber(safety.densityLimit)
@@ -88,7 +99,7 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
   const geometry = typeof module !== 'undefined' ? require('./site-map-rules.js') : null;
   const onFence = geometry ? geometry.isOnFence : isOnFence;
   if (!exits.every(id => onFence(site, site.placements[id]))) return invalid('Every open emergency exit must be on an unblocked part of the fence.');
-  const origins = CROWD_STAGE_IDS.filter(id => safety.stages[id].audience > 0)
+  const origins = stageIds.filter(id => safety.stages[id].audience > 0)
     .map(id => ({ id, people: safety.stages[id].audience, point: site?.placements?.[id] }));
   const other = visitors - stageTotal;
   if (other > 0) {
@@ -116,8 +127,9 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
 }
 
 function crowdSafetyChecks(site, visitors) {
-  const safety = normalizeCrowdSafety(site?.crowdSafety);
-  const checks = CROWD_STAGE_IDS.map(id => {
+  const stageIds = crowdStageIds(site?.crowdSafety?.stages, site?.placements);
+  const safety = normalizeCrowdSafety(site?.crowdSafety, stageIds);
+  const checks = stageIds.map(id => {
     const { area, audience } = safety.stages[id];
     const measured = positiveCrowdNumber(area) && validCrowdCount(audience) && audience <= visitors && positiveCrowdNumber(safety.densityLimit);
     const density = measured ? audience / area : null;
@@ -141,5 +153,5 @@ function crowdSafetyChecks(site, visitors) {
   return { checks, evacuation, safety };
 }
 
-if (typeof module !== 'undefined') module.exports = { CROWD_ASSUMPTIONS, normalizeCrowdSafety,
+if (typeof module !== 'undefined') module.exports = { CROWD_ASSUMPTIONS, CROWD_STAGE_IDS, crowdStageIds, normalizeCrowdSafety,
   strictEvacuationRoute, estimateEvacuation, crowdSafetyChecks };

@@ -29,7 +29,9 @@
     img.alt = `Photo of ${name}`;
     img.loading = 'lazy';
     img.referrerPolicy = 'no-referrer';
-    img.onerror = () => { img.remove(); element.classList.remove('has-photo'); };
+    // If the image cannot load, show the initials (or emoji) again instead of an empty circle.
+    const fallback = [...element.childNodes];
+    img.onerror = () => { element.replaceChildren(...fallback); element.classList.remove('has-photo'); };
     if (entry.page && element.dataset.photoLink !== 'off') {
       const link = document.createElement('a');
       link.href = entry.page;
