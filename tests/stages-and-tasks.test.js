@@ -1,6 +1,6 @@
 // Follow-ups from the Munich bug hunt (feature-plans/demo-munich.md):
 // the site map, crowd checks and checklist know every lineup stage, and the Munich demo
-// marks about 80 % of the project tasks done.
+// marks every project task done except the fun ones (artists, lineup, food stands, tickets).
 // Run with:  uvx --from nodejs-wheel node --test
 
 const test = require('node:test');
@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { capacityNeeds } = require('../rules/capacity-rules.js');
 const { layoutItems, LAYOUT_ITEMS, demoSite, checkLayout, layoutScore, LAYOUT_RULE_COUNT, isKnownItemId, mapStageCount, parseSiteMaps } = require('../rules/site-map-rules.js');
 const { normalizeCrowdSafety, crowdSafetyChecks, estimateEvacuation, crowdStageIds } = require('../rules/crowd-rules.js');
-const { munichDemoFestival, demoTaskStatuses, MUNICH_TASKS_DONE } = require('../rules/demo-festival.js');
+const { munichDemoFestival, munichTaskStatuses, MUNICH_OPEN_TASK_GROUPS } = require('../rules/demo-festival.js');
 const { CHECKLIST } = require('../rules/checklist-rules.js');
 
 const ids = (items) => items.map((i) => i.id);
@@ -111,8 +111,8 @@ test('the Munich demo map shows all three lineup stages with measured audiences'
   ['density-stage-a', 'density-stage-b', 'density-stage-c'].forEach((id) => assert.equal(checks.find((c) => c.id === id).ok, true, id));
   const audience = Object.values(demo.crowdSafety.stages).reduce((sum, s) => sum + s.audience, 0);
   assert.ok(audience <= demo.ground.visitors);
-  // Still open on purpose: the exit widths.
-  assert.equal(checks.find((c) => c.id === 'emergency-exits-available').ok, false);
+  // The boring safety parts are done: exits measured, evacuation estimate within the target.
+  checks.forEach((c) => assert.equal(c.ok, true, c.id));
 });
 
 test('the checklist no longer speaks of exactly two stages', () => {
@@ -120,17 +120,15 @@ test('the checklist no longer speaks of exactly two stages', () => {
   assert.doesNotMatch(texts, /both stages/i);
 });
 
-test('demo task statuses: the earliest 80 % of the subtasks are done, the next one is in progress', () => {
+test('Munich task statuses: everything done except the fun task groups (artists, lineup, food, tickets)', () => {
   const plan = [
-    { id: 1, tasks: [{ id: '1.1', subtasks: [{ id: 'a', start: -80, end: -70 }, { id: 'b', start: -10, end: -1 }] }] },
-    { id: 2, tasks: [{ id: '2.1', subtasks: [{ id: 'c', start: -60, end: -50 }, { id: 'd', start: -40, end: -30 }, { id: 'e', start: -20, end: -5 }] }] }
+    { id: 1, tasks: [{ id: '1.1', title: 'Define the festival', subtasks: [{ id: 'a' }, { id: 'b' }] }] },
+    { id: 5, tasks: [{ id: '5.1', title: 'Book artists', subtasks: [{ id: 'c' }, { id: 'd' }, { id: 'e' }] }] },
+    { id: 10, tasks: [{ id: '10.1', title: ' prepare ticket sales ', subtasks: [{ id: 'f' }, { id: 'g' }] }] }
   ];
-  const statuses = demoTaskStatuses(plan, 0.8, 123);
-  assert.deepEqual(statuses, {
-    a: { status: 'done', completedAt: 123 }, c: { status: 'done', completedAt: 123 },
-    d: { status: 'done', completedAt: 123 }, e: { status: 'done', completedAt: 123 }, b: 'progress'
-  });
-  assert.deepEqual(demoTaskStatuses([], 0.8), {});
-  assert.deepEqual(demoTaskStatuses(null, 0.8), {});
-  assert.equal(MUNICH_TASKS_DONE, 0.8);
+  const done = { status: 'done', completedAt: 123 };
+  assert.deepEqual(munichTaskStatuses(plan, 123), { a: done, b: done, c: done, d: 'progress', f: done, g: 'progress' });
+  assert.deepEqual(munichTaskStatuses([]), {});
+  assert.deepEqual(munichTaskStatuses(null), {});
+  assert.deepEqual(MUNICH_OPEN_TASK_GROUPS, ['Book artists', 'Announce the lineup', 'Select food and beverage vendors', 'Prepare ticket sales']);
 });

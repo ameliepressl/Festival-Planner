@@ -3,7 +3,7 @@
 // browser and reloads the page.
 // Replaced: lineup, festival size, vendors, finance assumptions and the demo site map.
 // Not touched: uploaded maps, Gantt plan, checklist and the team roster. The task board statuses are
-// only touched by the Munich demo (about 80 % of the tasks done).
+// only touched by the Munich demo (all done except artists, lineup, food stands and ticket prices).
 
 (function () {
   const button = document.querySelector('#load-demo');
@@ -35,11 +35,11 @@
     localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify({ ...DEFAULT_FINANCE, ...demo.finance }));
     localStorage.setItem(SITE_MAPS_STORAGE_KEY, JSON.stringify(maps));
     localStorage.setItem('festival-architect-site-map-selected', 'demo');
-    // Munich only (asked for by the team for the presentation): about 80 % of the project tasks are
-    // marked done, so the Gantt and task board look "in progress". The Lisbon demo leaves tasks alone.
+    // Munich only (asked for by the team for the presentation): all project tasks are done except the
+    // fun ones (artists, lineup, food stands, ticket prices). The Lisbon demo leaves tasks alone.
     if (which === 'load-munich' && typeof window !== 'undefined' && typeof window.getSavedGanttPlan === 'function') {
       localStorage.setItem(typeof PROJECT_STATUS_KEY === 'string' ? PROJECT_STATUS_KEY : 'festival-work-board-status-v1',
-        JSON.stringify(demoTaskStatuses(window.getSavedGanttPlan(), MUNICH_TASKS_DONE)));
+        JSON.stringify(munichTaskStatuses(window.getSavedGanttPlan())));
     }
     return true;
   }

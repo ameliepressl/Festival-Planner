@@ -62,9 +62,10 @@ function demoFestival() {
 // Inspired by the kind of large hip-hop festival that came to Munich in July 2023 (three days,
 // several stages, US and European rap). The name, plan and numbers are made up for this app; the
 // artists are real entries from the artist library (rules/artist-library.js) with its fictional fees.
-// It is planned to about 80 %: some bookings are still tentative, the Rising Stage has no acts on
-// Sunday yet, a few food court pitches are still free, the emergency exit widths are not measured
-// yet and the cash flow before ticket sales still needs funding.
+// The boring parts are done (site map, safety measurements, most project tasks). Only the fun parts
+// are left open to show live: some artist bookings are still tentative, the Rising Stage has no acts
+// on Sunday yet, the ticket price is too low (the forecast shows a loss until it is raised; break-even
+// is about EUR 111) and a few food court pitches are still free.
 const MUNICH_DEMO_NAME = 'Munich Loud Weekend';
 const MUNICH_VISITORS = 20000; // the largest festival this app plans for (MAX_VISITORS)
 
@@ -134,40 +135,43 @@ function munichDemoFestival() {
     plan,
     ground: { visitors: MUNICH_VISITORS },
     vendors: MUNICH_VENDORS,
-    // Measured audience areas for the site map's crowd check (all three stages are on the map).
-    // The exit widths are still open (part of the missing 20 %).
-    crowdSafety: { stages: { 'stage-a': { area: 9000, audience: 12000 }, 'stage-b': { area: 5000, audience: 5000 }, 'stage-c': { area: 2000, audience: 3000 } } },
+    // Measured audience areas and exit widths: the crowd checks and the evacuation estimate pass.
+    crowdSafety: {
+      stages: { 'stage-a': { area: 9000, audience: 12000 }, 'stage-b': { area: 5000, audience: 5000 }, 'stage-c': { area: 2000, audience: 3000 } },
+      exits: { 'exit-1': { width: 30, open: true }, 'exit-2': { width: 30, open: true } }
+    },
     finance: {
-      ticketPrice: 169, sellThrough: 90, earlyBirdShare: 30, earlyBirdDiscount: 25, doorShare: 5, doorSurcharge: 20,
+      ticketPrice: 99, sellThrough: 90, earlyBirdShare: 30, earlyBirdDiscount: 25, doorShare: 5, doorSurcharge: 20,
       barSpend: 35, barMargin: 55, sponsorship: 650000, stagePerDay: 45000, toiletPerDay: 95, waterPerDay: 300,
       securityPerDay: 220, firstAidPerDay: 180, venue: 450000, marketing: 350000, ticketingFee: 6, contingency: 10
     }
   };
 }
 
-// Share of the project tasks (Gantt subtasks) that the Munich demo marks as done.
-const MUNICH_TASKS_DONE = 0.8;
+// The task groups the Munich demo leaves open: the fun parts to show live (artists, lineup,
+// food stands, ticket prices). Every other project task is done.
+const MUNICH_OPEN_TASK_GROUPS = ['Book artists', 'Announce the lineup', 'Select food and beverage vendors', 'Prepare ticket sales'];
 
-// Task board statuses for a demo: the earliest subtasks (by start date) count as done, the next one
-// is in progress, the rest stays planned. Same order as a real team would work through the plan.
-function demoTaskStatuses(plan, shareDone, completedAt = Date.UTC(2026, 10, 1)) {
-  const steps = (Array.isArray(plan) ? plan : []).flatMap((area) => (area.tasks || []).flatMap((task) => task.subtasks || []))
-    .filter((step) => step && step.id !== undefined)
-    .map((step, i) => ({ id: String(step.id), start: step.start, end: step.end, i }))
-    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.end < b.end ? -1 : a.end > b.end ? 1 : a.i - b.i));
-  const done = Math.round(steps.length * shareDone);
+// Task board statuses for the Munich demo. In an open group the first subtask is done, the second is
+// in progress and the rest is still planned. Groups are found by their title, so a team's own plan works too.
+function munichTaskStatuses(plan, completedAt = Date.UTC(2026, 10, 1)) {
+  const open = new Set(MUNICH_OPEN_TASK_GROUPS.map((title) => title.toLowerCase()));
   const statuses = {};
-  steps.forEach((step, i) => {
-    if (i < done) statuses[step.id] = { status: 'done', completedAt };
-    else if (i === done) statuses[step.id] = 'progress';
-  });
+  (Array.isArray(plan) ? plan : []).forEach((area) => (area?.tasks || []).forEach((task) => {
+    const isOpen = open.has(String(task?.title || '').trim().toLowerCase());
+    (task?.subtasks || []).forEach((step, i) => {
+      if (!step || step.id === undefined) return;
+      if (!isOpen || i === 0) statuses[String(step.id)] = { status: 'done', completedAt };
+      else if (i === 1) statuses[String(step.id)] = 'progress';
+    });
+  }));
   return statuses;
 }
 
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    DEMO_FESTIVAL_NAME, DEMO_ARTISTS, DEMO_SLOTS, DEMO_VENDORS, demoFestival, MUNICH_TASKS_DONE, demoTaskStatuses,
+    DEMO_FESTIVAL_NAME, DEMO_ARTISTS, DEMO_SLOTS, DEMO_VENDORS, demoFestival, MUNICH_OPEN_TASK_GROUPS, munichTaskStatuses,
     MUNICH_DEMO_NAME, MUNICH_VISITORS, MUNICH_SLOTS, MUNICH_VENDORS, munichDemoFestival
   };
 }
