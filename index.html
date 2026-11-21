@@ -619,7 +619,9 @@
           <label>Last day<input id="festival-end-date" type="date" required /></label>
           <label>Daily opening time<input id="festival-open" type="time" required /></label>
           <label>Daily closing time<input id="festival-close" required pattern="[0-9]{2}:[0-9]{2}" aria-describedby="overview-hours-help" /></label>
+          <label>Artist booking budget (€)<input id="festival-budget" type="number" min="0" step="any" required aria-describedby="overview-budget-help" /></label>
         </div>
+        <p class="field-help" id="overview-budget-help">Your own budget for all artist fees. You can change it any time.</p>
         <p class="field-help" id="overview-hours-help">Use HH:MM for closing time. Enter 24:00 for midnight.</p>
         <p class="field-help" id="overview-custom-hours" hidden>Existing hours for specific days still apply to those days.</p>
         <p class="form-message" id="overview-error" role="alert"></p>
@@ -730,12 +732,13 @@
     <section id="print-plan-content" aria-label="Printable festival plan"></section>
     <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DEMO FESTIVAL</p><h2>Load the demo festival?</h2><p>This replaces the lineup, festival size, vendors and finance assumptions in this browser with “Lisbon Sound Festival” (10 artists, 5,000 visitors, 11 vendors). Uploaded maps, the task board, the Gantt and the checklist stay as they are. Download a lineup backup first if you want to keep your plan.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep my plan</button><button class="button primary" value="load">Load demo</button></div></form></dialog>
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
+    <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DOUBLE BOOKING</p><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
     <script src="rules/project-rules.js"></script>
-    <script src="rules/festival-rules.js?v=bug-fixes"></script>
+    <script src="rules/festival-rules.js?v=review-followups"></script>
     <script src="rules/artist-library.js?v=artist-library-2"></script>
-    <script src="app.js?v=artist-library"></script>
+    <script src="app.js?v=artist-library-merge"></script>
     <script src="artist-library/artist-photos.js?v=artist-library-2"></script>
     <script src="artist-library/artist-library.js?v=artist-library-2"></script>
     <script src="rules/checklist-rules.js"></script>
@@ -751,9 +754,9 @@
     <script src="work-board.js?v=subtask-owners-only"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js"></script>
-    <script src="rules/site-map-rules.js"></script>
+    <script src="rules/site-map-rules.js?v=review-followups"></script>
     <script src="rules/map-draft-rules.js"></script>
-    <script src="rules/crowd-rules.js?v=stage-exit-summary"></script>
+    <script src="rules/crowd-rules.js?v=review-followups"></script>
     <script src="site-map/map-drawing.js"></script>
     <script src="site-map/site-map-page.js?v=stage-exit-summary"></script>
     <script src="vendors/vendors-page.js?v=compact-pages"></script>
@@ -761,7 +764,7 @@
     <script src="finance/finance-page.js?v=compact-pages"></script>
     <script src="rules/demo-festival.js?v=march-2027-demo"></script>
     <script src="demo/demo-loader.js"></script>
-    <script src="overview.js?v=bug-fixes"></script>
+    <script src="overview.js?v=review-followups"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js"></script>
   </body>

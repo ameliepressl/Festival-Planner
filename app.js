@@ -253,6 +253,21 @@ function savePerformance(b) {
   if (problem) { showBookingIssue(b,problem);return false; }
   const old=state.bookings.find(x => x.id===b.id);
   const projected=total()-(old?entryFee(old):0)+entryFee(b);
+  // A second booking of the same artist is allowed, but only after a warning (new booking or new artist).
+  const warning=old?.artistId===b.artistId ? '' : doubleBookingWarning(b,b.id,state);
+  if (warning) {
+    pendingDoubleBooking=() => savePerformanceAfterWarning(b,projected);
+    $('#double-warning').textContent=warning;
+    $('#double-dialog').showModal();
+    return true;
+  }
+  savePerformanceAfterWarning(b,projected);
+  return true;
+}
+let pendingDoubleBooking=null;
+$('#confirm-double').onclick=() => { const apply=pendingDoubleBooking;pendingDoubleBooking=null;if(apply)apply(); };
+$('#double-dialog').addEventListener('close',() => {pendingDoubleBooking=null;});
+function savePerformanceAfterWarning(b,projected) {
   confirmBudget(projected,() => {
     if (!writable()) return;
     const issue=validation(b,b.id);

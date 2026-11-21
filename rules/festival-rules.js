@@ -211,6 +211,17 @@ function bookingProblem(b, ignoreId, plan, skipLinkedId = null) {
   }
   return '';
 }
+// Booking the same artist more than once is allowed (e.g. two days), but the organiser gets a
+// warning first. Returns '' when the artist has no other performance, otherwise the warning text.
+// ignoreId = the booking being edited; it never counts as "another" performance.
+function doubleBookingWarning(b, ignoreId, plan) {
+  if (!b || !isPerformance(b)) return '';
+  const others = plan.bookings.filter(x => isPerformance(x) && x.id !== ignoreId && x.artistId === b.artistId)
+    .sort((x, y) => x.date.localeCompare(y.date) || x.start - y.start);
+  if (!others.length) return '';
+  const list = others.map(x => `${dateText(x.date)} · ${stageName(x.stage, plan)} ${timeText(x.start)}–${timeText(x.start + entryDuration(x, plan))}`).join('; ');
+  return `${entryName(b, plan)} is already booked ${others.length === 1 ? 'once' : others.length + ' times'}: ${list}. Book them again?`;
+}
 function validation(b, ignoreId = null) {
   if (state.final) return 'This lineup is final. Reopen it to make changes.';
   if (ignoreId && state.bookings.some(x => x.id === ignoreId && x.linkedTo)) return 'Edit the linked performance to change its automatic changeover.';
