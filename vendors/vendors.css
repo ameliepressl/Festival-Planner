@@ -32,3 +32,22 @@
 
 @media(max-width:700px){.vendor-metrics{grid-template-columns:1fr}}
 .vendor-metrics small a{color:var(--coral)}
+
+/* Vendor library: search and filters, menus, dish photos (feature-plans/vendor-catalogue.md) */
+.vendor-filters{display:grid;grid-template-columns:2fr repeat(4,1fr);gap:10px;margin:0 0 12px}
+.vendor-filters label{display:block;font:500 10px 'DM Mono',monospace;letter-spacing:.5px;color:var(--muted)}
+.vendor-filters input,.vendor-filters select{display:block;width:100%;margin-top:4px;min-height:36px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;background:var(--white);color:var(--ink);font:400 13px 'DM Sans',sans-serif}
+.vendor-summary{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px;font:500 11px 'DM Mono',monospace;color:var(--muted)}
+.vendor-summary .button{padding:7px 11px}
+.vendor-icon{overflow:hidden;flex:0 0 46px}
+.vendor-icon a,.vendor-icon img{display:block;width:100%;height:100%}
+.vendor-icon img{object-fit:cover}
+.vendor-menu{list-style:none;margin:12px 0 0;padding:10px 0 0;border-top:1px dashed var(--line)}
+.vendor-menu li{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px}
+.vendor-menu b{font:500 12px 'DM Mono',monospace;white-space:nowrap}
+.menu-tag{font:normal 9px 'DM Mono',monospace;padding:1px 5px;margin-left:3px;background:var(--paper);color:#258371;white-space:nowrap}
+.vendor-actions .vendor-menu-toggle{margin-right:auto}
+.vendor-empty{color:var(--muted);font-size:13px}
+.vendor-more{text-align:center;padding:0 0 24px}
+.vendor-note{margin:0 0 40px;font:400 11px/1.5 'DM Sans',sans-serif;color:var(--muted)}
+@media(max-width:900px){.vendor-filters{grid-template-columns:1fr 1fr}.vendor-filters .vendor-search{grid-column:1/-1}}
