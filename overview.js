@@ -102,6 +102,8 @@ function openFestivalDetails() {
   const today = typeof projectToday === 'function' ? projectToday() : freshFestivalEvent().startDate;
   $('#festival-start-date').value = fresh ? today : event.startDate;
   $('#festival-end-date').value = fresh ? freshFestivalEvent().endDate : event.endDate;
+  $('#festival-budget').value = state.settings.budget;
+  $('#festival-budget').disabled = !canFestival('budget');
   $('#festival-open').value = timeText(event.startMinutes);
   $('#festival-close').value = timeText(event.endMinutes);
   $('#overview-custom-hours').hidden = !Object.keys(event.dayHours || {}).length;
@@ -181,9 +183,16 @@ $('#overview-form').addEventListener('submit', event => {
   $('#overview-error').textContent = problem;
   if (problem) return;
 
+  // The artist budget is the organiser's own number (any amount from €0).
+  const budget = canFestival('budget') ? Number($('#festival-budget').value) : state.settings.budget;
+  if ($('#festival-budget').value === '' || !Number.isFinite(budget) || budget < 0) {
+    $('#overview-error').textContent = 'Enter an artist booking budget of €0 or more.';
+    return;
+  }
+
   const previousPlan = state;
   let previousSavedPlan;
-  const nextPlan = { ...state, event: updatedEvent };
+  const nextPlan = { ...state, event: updatedEvent, settings: { ...state.settings, budget } };
   try {
     previousSavedPlan = localStorage.getItem(STORAGE_KEY);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextPlan));

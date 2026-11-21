@@ -310,50 +310,91 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
 
 // The shortest walkable route between two points that goes around no-go areas and stays inside the fence.
 // It searches the grid cell by cell (the A* method, like a navigation app). Returns a list of points.
-function walkwayRoute(site, from, to) {
+// Shortest path over the map grid (A*), shared by the walkways and the evacuation estimate.
+// passable(c, r, isEndpoint) says which cells may be used; strictCorners forbids diagonal steps
+// that squeeze between two blocked cells. Returns the list of [col, row] cells, or null.
+// The open list is a binary heap; ties are broken by insertion order, which gives exactly the
+// same paths as sorting the whole list every step, only much faster.
+function gridSearch(site, from, to, passable, strictCorners = false) {
   const { cols, rows } = site.grid;
   const cw = site.width / cols;
   const ch = site.height / rows;
   const cellOf = (p) => [Math.min(cols - 1, Math.max(0, Math.floor(p[0] / cw))), Math.min(rows - 1, Math.max(0, Math.floor(p[1] / ch)))];
-  const centre = (c, r) => [(c + 0.5) * cw, (r + 0.5) * ch];
   const [sc, sr] = cellOf(from);
   const [ec, er] = cellOf(to);
   const key = (c, r) => r * cols + c;
-  const walkable = (c, r) => (c === sc && r === sr) || (c === ec && r === er) || isUsable(site, centre(c, r));
+  const ok = (c, r) => c >= 0 && r >= 0 && c < cols && r < rows && passable(c, r, (c === sc && r === sr) || (c === ec && r === er));
   const guess = (c, r) => Math.hypot((c - ec) * cw, (r - er) * ch);
+  const heap = [];
+  let order = 0;
+  const before = (a, b) => a[0] < b[0] || (a[0] === b[0] && a[3] < b[3]);
+  const push = (item) => {
+    heap.push(item);
+    for (let i = heap.length - 1; i > 0;) {
+      const parent = (i - 1) >> 1;
+      if (!before(heap[i], heap[parent])) break;
+      [heap[i], heap[parent]] = [heap[parent], heap[i]]; i = parent;
+    }
+  };
+  const pop = () => {
+    const top = heap[0];
+    const last = heap.pop();
+    if (heap.length) {
+      heap[0] = last;
+      for (let i = 0; ;) {
+        const l = 2 * i + 1, r = l + 1;
+        let best = i;
+        if (l < heap.length && before(heap[l], heap[best])) best = l;
+        if (r < heap.length && before(heap[r], heap[best])) best = r;
+        if (best === i) break;
+        [heap[i], heap[best]] = [heap[best], heap[i]]; i = best;
+      }
+    }
+    return top;
+  };
   const cost = new Map([[key(sc, sr), 0]]);
   const cameFrom = new Map();
-  const open = [[guess(sc, sr), sc, sr]];
   const done = new Set();
-  while (open.length) {
-    open.sort((a, b) => a[0] - b[0]);
-    const [, c, r] = open.shift();
+  push([guess(sc, sr), sc, sr, order++]);
+  while (heap.length) {
+    const [, c, r] = pop();
     const k = key(c, r);
     if (done.has(k)) continue;
     done.add(k);
     if (c === ec && r === er) {
       const cells = [];
       for (let at = k; at !== undefined; at = cameFrom.get(at)) cells.unshift([at % cols, Math.floor(at / cols)]);
-      const points = [from, ...cells.slice(1, -1).map(([cc, rr]) => centre(cc, rr)), to];
-      // Keep only the corners, so the line is not jagged.
-      return points.filter((p, i) => i === 0 || i === points.length - 1
-        || Math.abs((p[0] - points[i - 1][0]) * (points[i + 1][1] - p[1]) - (p[1] - points[i - 1][1]) * (points[i + 1][0] - p[0])) > 1e-6)
-        .map((p) => p.map(Math.round));
+      return cells;
     }
     for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
       const nc = c + dc;
       const nr = r + dr;
-      if ((dc || dr) && nc >= 0 && nr >= 0 && nc < cols && nr < rows && walkable(nc, nr) && !done.has(key(nc, nr))) {
-        const next = cost.get(k) + Math.hypot(dc * cw, dr * ch);
-        if (next < (cost.get(key(nc, nr)) ?? Infinity)) {
-          cost.set(key(nc, nr), next);
-          cameFrom.set(key(nc, nr), k);
-          open.push([next + guess(nc, nr), nc, nr]);
-        }
+      if ((!dc && !dr) || !ok(nc, nr) || done.has(key(nc, nr))) continue;
+      if (strictCorners && dc && dr && (!ok(c + dc, r) || !ok(c, r + dr))) continue;
+      const next = cost.get(k) + Math.hypot(dc * cw, dr * ch);
+      if (next < (cost.get(key(nc, nr)) ?? Infinity)) {
+        cost.set(key(nc, nr), next);
+        cameFrom.set(key(nc, nr), k);
+        push([next + guess(nc, nr), nc, nr, order++]);
       }
     }
   }
-  return [from, to]; // no way around: draw a straight line
+  return null;
+}
+
+// The centre of a grid cell in map coordinates.
+function cellCentre(site, [c, r]) {
+  return [(c + 0.5) * (site.width / site.grid.cols), (r + 0.5) * (site.height / site.grid.rows)];
+}
+
+function walkwayRoute(site, from, to) {
+  const cells = gridSearch(site, from, to, (c, r, isEndpoint) => isEndpoint || isUsable(site, cellCentre(site, [c, r])));
+  if (!cells) return [from, to]; // no way around: draw a straight line
+  const points = [from, ...cells.slice(1, -1).map((cell) => cellCentre(site, cell)), to];
+  // Keep only the corners, so the line is not jagged.
+  return points.filter((p, i) => i === 0 || i === points.length - 1
+    || Math.abs((p[0] - points[i - 1][0]) * (points[i + 1][1] - p[1]) - (p[1] - points[i - 1][1]) * (points[i + 1][0] - p[0])) > 1e-6)
+    .map((p) => p.map(Math.round));
 }
 
 // ---------- the layout check: the rules a good festival ground follows ----------
@@ -474,7 +515,7 @@ function parseSiteMaps(text) {
 if (typeof module !== 'undefined') {
   module.exports = {
     SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE, layoutItems, isKnownItemId, mapStageCount, MAX_MAP_STAGES,
-    findItem, distance, metresPerUnit, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
+    findItem, distance, metresPerUnit, gridSearch, cellCentre, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
     suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps
   };

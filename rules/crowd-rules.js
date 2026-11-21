@@ -44,40 +44,14 @@ function strictEvacuationRoute(site, from, to) {
   const blocked = geometry ? geometry.isBlocked : isBlocked;
   const onFence = geometry ? geometry.isOnFence : isOnFence;
   if (!usable(site, from) || blocked(site, to) || !(usable(site, to) || onFence(site, to))) return fail;
-  const { cols, rows } = site.grid;
-  const cw = site.width / cols, ch = site.height / rows;
-  const cell = p => [Math.min(cols - 1, Math.max(0, Math.floor(p[0] / cw))), Math.min(rows - 1, Math.max(0, Math.floor(p[1] / ch)))];
-  const [sc, sr] = cell(from), [ec, er] = cell(to);
-  const key = (c, r) => r * cols + c;
-  const centre = (c, r) => [(c + .5) * cw, (r + .5) * ch];
-  const walkable = (c, r) => c >= 0 && r >= 0 && c < cols && r < rows
-    && site.grid.cells[key(c, r)] !== '1'
-    && ((c === sc && r === sr) || (c === ec && r === er) || usable(site, centre(c, r)));
-  const costs = new Map([[key(sc, sr), 0]]), previous = new Map(), done = new Set();
-  const open = [[0, sc, sr]];
-  while (open.length) {
-    open.sort((a, b) => a[0] - b[0]);
-    const [, c, r] = open.shift(), k = key(c, r);
-    if (done.has(k)) continue;
-    done.add(k);
-    if (c === ec && r === er) {
-      const cells = [];
-      for (let at = k; at !== undefined; at = previous.get(at)) cells.unshift([at % cols, Math.floor(at / cols)]);
-      const points = [from, ...cells.slice(1, -1).map(([cc, rr]) => centre(cc, rr)), to];
-      const metres = points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - points[i][0], p[1] - points[i][1]), 0) * site.widthMetres / site.width;
-      return { reachable: true, points, metres };
-    }
-    for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
-      if ((!dc && !dr) || !walkable(c + dc, r + dr)) continue;
-      if (dc && dr && (!walkable(c + dc, r) || !walkable(c, r + dr))) continue;
-      const nextKey = key(c + dc, r + dr), cost = costs.get(k) + Math.hypot(dc * cw, dr * ch);
-      if (cost < (costs.get(nextKey) ?? Infinity)) {
-        costs.set(nextKey, cost); previous.set(nextKey, k);
-        open.push([cost + Math.hypot((c + dc - ec) * cw, (r + dr - er) * ch), c + dc, r + dr]);
-      }
-    }
-  }
-  return fail;
+  const search = geometry ? geometry.gridSearch : gridSearch;
+  const centreOf = geometry ? geometry.cellCentre : cellCentre;
+  const cells = search(site, from, to, (c, r, isEndpoint) => site.grid.cells[r * site.grid.cols + c] !== '1'
+    && (isEndpoint || usable(site, centreOf(site, [c, r]))), true);
+  if (!cells) return fail;
+  const points = [from, ...cells.slice(1, -1).map(cell => centreOf(site, cell)), to];
+  const metres = points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - points[i][0], p[1] - points[i][1]), 0) * site.widthMetres / site.width;
+  return { reachable: true, points, metres };
 }
 
 function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
@@ -105,7 +79,13 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
   if (other > 0) {
     const pitches = Object.entries(site?.placements || {}).filter(([id]) => /^P\d+$/.test(id)).map(([, at]) => at);
     if (!pitches.length) return invalid('Place food-court pitches: other visitors are assumed to start at their centre.');
-    origins.push({ id: 'other-visitors', people: other, point: [0, 1].map(k => pitches.reduce((sum, at) => sum + at[k], 0) / pitches.length) });
+    // Other visitors start at the centre of the food court. If that centre is not walkable (e.g. the
+    // pitches stand around a pond), use the pitch closest to it instead, which always is.
+    const centre = [0, 1].map(k => pitches.reduce((sum, at) => sum + at[k], 0) / pitches.length);
+    const walkable = typeof module !== 'undefined' ? require('./site-map-rules.js').isUsable : isUsable;
+    const start = walkable(site, centre) ? centre
+      : pitches.reduce((best, at) => (Math.hypot(at[0] - centre[0], at[1] - centre[1]) < Math.hypot(best[0] - centre[0], best[1] - centre[1]) ? at : best));
+    origins.push({ id: 'other-visitors', people: other, point: start });
   }
   const allocation = Object.fromEntries(exits.map(id => [id, { id, people: 0, longestMetres: 0, width: safety.exits[id].width }]));
   const originAssignments = [];
