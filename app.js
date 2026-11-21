@@ -80,9 +80,7 @@ function render() {
   const index = dates.indexOf(currentDay), committed = total();
   const canEditLineup = canFestival('lineup');
   const lineupLocked = state.final || !canEditLineup;
-  // Header: festival name, then its dates (e.g. "Fri 9 July – Sun 11 July 2027").
-  $('#event-summary-name').textContent = state.event.name || 'Untitled festival';
-  $('#event-summary').textContent = `${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''} ${dates.at(-1).slice(0,4)}`;
+  $('#event-summary').textContent = `${state.event.name ? state.event.name + ' · ' : ''}${dates.length} ${dates.length===1?'day':'days'} · ${dateText(dates[0])}${dates.length>1?' – '+dateText(dates.at(-1)):''}`;
   $('.hero .eyebrow').textContent = `LINEUP PLANNER / ${state.event.startDate.slice(0,4)}`;
   $('#performance-count').textContent = performances().length;
   $('#committed').textContent = euros(committed);
