@@ -18,8 +18,13 @@
   };
 
   // Festival size: the expected visitors decide how many toilets, water points and pitches the map needs.
+  // The lineup decides how many stages the map has (Stage A, B, C, ...; at least two).
+  function lineupStages() {
+    try { return JSON.parse(read(typeof STORAGE_KEY === 'string' ? STORAGE_KEY : 'festival-architect-v2'))?.settings?.stages; } catch { return undefined; }
+  }
+  const sizeFor = (visitors) => ({ ...capacityNeeds(visitors), stages: mapStageCount(lineupStages()) });
   let ground = parseGround(read(GROUND_STORAGE_KEY));
-  let needs = capacityNeeds(ground.visitors);
+  let needs = sizeFor(ground.visitors);
   let items = layoutItems(needs);
   let sites = loadSites();
   let currentId = read(SELECTED_KEY) || 'demo';
@@ -64,7 +69,7 @@
   }
   function applyDraft() {
     ({ sites, ground, currentId } = cloneMapDraft(draft.present));
-    needs = capacityNeeds(ground.visitors); items = layoutItems(needs);
+    needs = sizeFor(ground.visitors); items = layoutItems(needs);
     selectedId = null; draftBorder = draft.present.pendingFence ? cloneMapDraft(draft.present.pendingFence) : null;
     pointer = null; box = null; mode = draftBorder?.length ? 'border' : 'explore';
     renderPage();
@@ -105,7 +110,7 @@
     const map = saved.sites.find(value => value.id === saved.currentId) || saved.sites[0];
     if (!map || !committedMapIds.has(map.id)) return [{ id: `map:${map?.id || 'missing'}:saved`, label: 'Save and assess festival map', ok: false,
       unknown: true, detail: 'The suggested map has not been saved yet. Review the layout and measurements, then choose Save changes on Site map.', section: 'Site map' }];
-    const savedItems = layoutItems(capacityNeeds(saved.ground.visitors));
+    const savedItems = layoutItems(sizeFor(saved.ground.visitors));
     const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors).checks]
       .map(rule => ({ id: `map:${map.id}:${rule.id}`, label: rule.label, ok: rule.ok, unknown: !!rule.unknown, detail: rule.detail, section: 'Site map' }));
     savedReadinessCache = { snapshot: saved, rules };
@@ -358,7 +363,8 @@
     if (!panel) return;
     const assumptionsOpen = !!panel.querySelector('.sm-assumptions')?.open;
     const { safety, checks, evacuation } = crowdSafetyChecks(site(), ground.visitors);
-    const routeLabels = evacuation.valid ? CROWD_STAGE_IDS.map(id => {
+    const crowdStages = Object.keys(safety.stages);
+    const routeLabels = evacuation.valid ? crowdStages.map(id => {
       const route = evacuation.originAssignments.find(value => value.originId === id);
       const label = `Stage ${id.slice(-1).toUpperCase()}`;
       return route ? `${label} → Exit ${route.exitId.slice(-1)}` : `${label}: no audience`;
@@ -368,7 +374,7 @@
     const input = (label, path, value, min = '0', step = '1', unit = '') => `<label class="sm-field">${label}${unit ? ` (${unit})` : ''}<input type="number" data-crowd-field="${path}" min="${min}" step="${step}" value="${value === null ? '' : escape(value)}" ${!editable() ? 'disabled' : ''} /></label>`;
     panel.innerHTML = `
       <p class="sm-note">Enter measured usable audience areas, excluding stages, barriers and obstructions. Audience numbers describe the same peak scenario. Blank measurements cannot pass the checks.</p>
-      <div class="sm-crowd-grid">${CROWD_STAGE_IDS.map(id => `<fieldset><legend>Stage ${id.slice(-1).toUpperCase()}</legend>
+      <div class="sm-crowd-grid">${crowdStages.map(id => `<fieldset><legend>Stage ${id.slice(-1).toUpperCase()}</legend>
         ${input('Usable audience area', `stages.${id}.area`, safety.stages[id].area, '.1', '.1', 'm²')}
         ${input('Expected audience', `stages.${id}.audience`, safety.stages[id].audience, '0', '1', 'people')}
       </fieldset>`).join('')}
@@ -395,7 +401,7 @@
   function changeVisitors(value) {
     if (!validVisitors(value)) { mapMessage(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
     ground = { visitors: Number(value) };
-    needs = capacityNeeds(ground.visitors);
+    needs = sizeFor(ground.visitors);
     items = layoutItems(needs);
     save();
     if (selectedId && !findItem(selectedId, items)) selectedId = null;
@@ -663,7 +669,7 @@
     else if (event.target.id === 'sm-show-nogo') { showNogo = event.target.checked; drawNogo(); }
     else if (!editable() || busy) return;
     else if (event.target.matches('[data-crowd-field]')) {
-      const safety = normalizeCrowdSafety(s.crowdSafety);
+      const safety = normalizeCrowdSafety(s.crowdSafety, crowdStageIds(s.crowdSafety?.stages, s.placements));
       const path = event.target.dataset.crowdField.split('.');
       let target = safety;
       path.slice(0, -1).forEach(key => { target = target[key]; });
@@ -706,7 +712,7 @@
     view.classList.toggle('hidden', !onMap);
     if (onMap) {
       if (!window.hasUnsavedMapChanges()) {
-        ground = parseGround(read(GROUND_STORAGE_KEY)); needs = capacityNeeds(ground.visitors); items = layoutItems(needs); sites = loadSites();
+        ground = parseGround(read(GROUND_STORAGE_KEY)); needs = sizeFor(ground.visitors); items = layoutItems(needs); sites = loadSites();
         if (!site()) currentId = 'demo';
         // Re-entering can pick up saved changes made elsewhere in this app.
         const fresh = snapshot();

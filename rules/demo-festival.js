@@ -134,8 +134,9 @@ function munichDemoFestival() {
     plan,
     ground: { visitors: MUNICH_VISITORS },
     vendors: MUNICH_VENDORS,
-    // Measured audience areas for the site map's crowd check. The exit widths are still open (part of the missing 20 %).
-    crowdSafety: { stages: { 'stage-a': { area: 9000, audience: 14000 }, 'stage-b': { area: 5000, audience: 6000 } } },
+    // Measured audience areas for the site map's crowd check (all three stages are on the map).
+    // The exit widths are still open (part of the missing 20 %).
+    crowdSafety: { stages: { 'stage-a': { area: 9000, audience: 12000 }, 'stage-b': { area: 5000, audience: 5000 }, 'stage-c': { area: 2000, audience: 3000 } } },
     finance: {
       ticketPrice: 169, sellThrough: 90, earlyBirdShare: 30, earlyBirdDiscount: 25, doorShare: 5, doorSurcharge: 20,
       barSpend: 35, barMargin: 55, sponsorship: 650000, stagePerDay: 45000, toiletPerDay: 95, waterPerDay: 300,
@@ -144,10 +145,29 @@ function munichDemoFestival() {
   };
 }
 
+// Share of the project tasks (Gantt subtasks) that the Munich demo marks as done.
+const MUNICH_TASKS_DONE = 0.8;
+
+// Task board statuses for a demo: the earliest subtasks (by start date) count as done, the next one
+// is in progress, the rest stays planned. Same order as a real team would work through the plan.
+function demoTaskStatuses(plan, shareDone, completedAt = Date.UTC(2026, 10, 1)) {
+  const steps = (Array.isArray(plan) ? plan : []).flatMap((area) => (area.tasks || []).flatMap((task) => task.subtasks || []))
+    .filter((step) => step && step.id !== undefined)
+    .map((step, i) => ({ id: String(step.id), start: step.start, end: step.end, i }))
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.end < b.end ? -1 : a.end > b.end ? 1 : a.i - b.i));
+  const done = Math.round(steps.length * shareDone);
+  const statuses = {};
+  steps.forEach((step, i) => {
+    if (i < done) statuses[step.id] = { status: 'done', completedAt };
+    else if (i === done) statuses[step.id] = 'progress';
+  });
+  return statuses;
+}
+
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    DEMO_FESTIVAL_NAME, DEMO_ARTISTS, DEMO_SLOTS, DEMO_VENDORS, demoFestival,
+    DEMO_FESTIVAL_NAME, DEMO_ARTISTS, DEMO_SLOTS, DEMO_VENDORS, demoFestival, MUNICH_TASKS_DONE, demoTaskStatuses,
     MUNICH_DEMO_NAME, MUNICH_VISITORS, MUNICH_SLOTS, MUNICH_VENDORS, munichDemoFestival
   };
 }

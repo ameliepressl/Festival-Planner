@@ -52,31 +52,50 @@ const BASE_ITEMS = [
 ];
 
 // How many toilet rows, water points and food pitches go on the map depends on the festival size
-// (see rules/capacity-rules.js). The first two toilet rows and water points belong to the two stages.
-const STAGE_SUFFIX = ['a', 'b'];
+// (see rules/capacity-rules.js). The map has one stage per lineup stage (needs.stages, 2 to 12, default 2):
+// stage-a, stage-b, stage-c, ... Every stage gets its own first aid tent, and the first toilet rows and
+// water points belong to the stages (toilets-a, toilets-b, toilets-c, ...).
+const STAGE_SUFFIX = 'abcdefghijkl'.split('');
+const MAX_MAP_STAGES = STAGE_SUFFIX.length;
+function mapStageCount(stages) {
+  const n = Number(stages);
+  return Number.isInteger(n) ? Math.min(MAX_MAP_STAGES, Math.max(2, n)) : 2;
+}
 function layoutItems(needs = { toiletBlocks: 2, waterPoints: 2, pitches: 6 }) {
-  const numbered = (count, kind, makeItem) => Array.from({ length: Math.max(2, count) }, (_, i) => makeItem(i < 2 ? `${kind}-${STAGE_SUFFIX[i]}` : `${kind}-${i + 1}`, i));
+  const stageCount = mapStageCount(needs.stages);
+  const extraStages = STAGE_SUFFIX.slice(2, stageCount).flatMap((s) => [
+    { id: `stage-${s}`, kind: 'stage', name: `Stage ${s.toUpperCase()}`, category: 'stages', symbol: s.toUpperCase(), team: 'Stage building', hours: 'During the programme',
+      text: 'Another stage, placed away from the other stages so the sound systems do not mix.' },
+    { id: `first-aid-${s}`, kind: 'first-aid', name: `First aid · Stage ${s.toUpperCase()}`, category: 'safety', symbol: '✚', team: 'First aid & safety', hours: 'Whole event',
+      text: 'Medical tent with defibrillator, close to this stage crowd.' }
+  ]);
+  const numbered = (count, kind, makeItem) => Array.from({ length: Math.max(stageCount, count) }, (_, i) => makeItem(i < stageCount ? `${kind}-${STAGE_SUFFIX[i]}` : `${kind}-${i + 1}`, i));
   const toilets = numbered(needs.toiletBlocks, 'toilets', (id, i) => ({
-    id, kind: 'toilets', name: i < 2 ? `Toilets · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Toilets ${i + 1}`, category: 'facilities', symbol: 'WC',
+    id, kind: 'toilets', name: i < stageCount ? `Toilets · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Toilets ${i + 1}`, category: 'facilities', symbol: 'WC',
     team: 'Toilets, water & waste', hours: 'From gates open', text: 'A row of 8 toilet cabins including an accessible unit.'
   }));
   const water = numbered(needs.waterPoints, 'water', (id, i) => ({
-    id, kind: 'water', name: i < 2 ? `Free water · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Free water ${i + 1}`, category: 'facilities', symbol: 'H₂O',
+    id, kind: 'water', name: i < stageCount ? `Free water · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Free water ${i + 1}`, category: 'facilities', symbol: 'H₂O',
     team: 'Toilets, water & waste', hours: 'From gates open', text: 'Free drinking water refill station.'
   }));
   const pitches = Array.from({ length: needs.pitches }, (_, i) => ({
     id: `P${i + 1}`, kind: 'pitch', name: `Food court · Pitch P${i + 1}`, category: 'food', symbol: `P${i + 1}`, team: 'Backstage & catering', hours: 'From gates open',
     text: 'Vendor pitch in the food court. Which vendor stands here is chosen on the Vendors page.'
   }));
-  return [...BASE_ITEMS, ...toilets, ...water, ...pitches];
+  return [...BASE_ITEMS, ...extraStages, ...toilets, ...water, ...pitches];
 }
+
+// The stage ids of a layout, in order (stage-a, stage-b, ...).
+const stageIdsOf = (items) => items.filter((item) => item.kind === 'stage').map((item) => item.id);
+const stageLabel = (id) => `Stage ${id.slice(6).toUpperCase()}`;
 
 // The smallest layout (two toilet rows, two water points, six pitches). Used when no festival size is given.
 const LAYOUT_ITEMS = layoutItems();
 
 // Ids that can appear in a saved layout (also those of larger festivals).
 function isKnownItemId(id) {
-  return BASE_ITEMS.some((item) => item.id === id) || /^(toilets|water)-([ab]|[3-9]|[1-9][0-9])$/.test(id) || /^P([1-9]|1[0-9]|20)$/.test(id);
+  return BASE_ITEMS.some((item) => item.id === id) || /^(stage|first-aid)-[c-l]$/.test(id)
+    || /^(toilets|water)-([a-l]|[3-9]|[1-9][0-9])$/.test(id) || /^P([1-9]|1[0-9]|20)$/.test(id);
 }
 
 // ---------- the demo ground: a 600 m wide field with a forest and a lake ----------
@@ -223,9 +242,17 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
   const stageBPool = stagePool.filter((p) => isFree(p, 40));
   const stageB = bestBy(stageBPool.length ? stageBPool : stagePool, (p) => distance(p, stageA) + 0.6 * distance(p, entrance));
   placed['stage-b'] = stageB;
+  // Any further stage goes as far as possible from the stages already placed (sound), a bit away from the gate.
+  const stageIds = stageIdsOf(items);
+  stageIds.slice(2).forEach((id) => {
+    const others = Object.keys(placed).filter((k) => k.startsWith('stage-')).map((k) => placed[k]);
+    const pool = stagePool.filter((p) => isFree(p, 40));
+    placed[id] = bestBy(pool.length ? pool : stagePool, (p) => Math.min(...others.map((q) => distance(p, q))) + 0.3 * distance(p, entrance));
+  });
+  const stages = stageIds.map((id) => placed[id]);
 
-  const middle = [(stageA[0] + stageB[0] + entrance[0]) / 3, (stageA[1] + stageB[1] + entrance[1]) / 3];
-  const awayFromStages = candidates.filter((p) => distance(p, stageA) * m >= 60 && distance(p, stageB) * m >= 60);
+  const middle = [0, 1].map((k) => (stages.reduce((sum, p) => sum + p[k], 0) + entrance[k]) / (stages.length + 1));
+  const awayFromStages = candidates.filter((p) => stages.every((s) => distance(p, s) * m >= 60));
   const court = snap(middle, 20, awayFromStages);
   // The pitches stand in rows around the middle of the food court, 14 m apart.
   const pitches = items.filter((item) => item.kind === 'pitch');
@@ -237,7 +264,7 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
     placed[pitch.id] = snap([court[0] + u(dx), court[1] + u(dy)], 8);
   });
 
-  [['a', stageA], ['b', stageB]].forEach(([suffix, stage]) => {
+  stageIds.map((id, i) => [id.slice(6), stages[i]]).forEach(([suffix, stage]) => {
     const towardsCourt = direction(stage, court);
     const side = sideways(towardsCourt);
     placed[`water-${suffix}`] = snap(stepFrom(stepFrom(stage, towardsCourt, u(45)), side, u(32)), 20);
@@ -255,8 +282,8 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
   // Extra toilet rows and water points for bigger festivals: spread along the main walkways
   // (gate–food court, food court–stages), alternating left and right of the path.
   const halfway = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  const spots = [[halfway(entrance, court), direction(entrance, court)], [halfway(court, stageA), direction(court, stageA)],
-    [halfway(court, stageB), direction(court, stageB)], [court, direction(entrance, court)]];
+  const spots = [[halfway(entrance, court), direction(entrance, court)],
+    ...stages.map((stage) => [halfway(court, stage), direction(court, stage)]), [court, direction(entrance, court)]];
   const extras = items.filter((item) => (item.kind === 'toilets' || item.kind === 'water') && !placed[item.id]);
   extras.forEach((item, k) => {
     const [spot, along] = spots[k % spots.length];
@@ -343,11 +370,12 @@ function checkLayout(site, placements, items = LAYOUT_ITEMS) {
     return { id, label, items: ids, ...check() };
   };
   const nearest = (stage, kind) => Math.min(...items.filter((i) => i.kind === kind && at(i.id)).map((i) => metres(stage, i.id)));
+  const stages = stageIdsOf(items);
   const perStage = (kind, limit) => () => {
-    const a = nearest('stage-a', kind);
-    const b = nearest('stage-b', kind);
-    return { ok: a <= limit && b <= limit, detail: `Stage A: ${a} m · Stage B: ${b} m (at most ${limit} m)` };
+    const d = stages.map((id) => nearest(id, kind));
+    return { ok: d.every((x) => x <= limit), detail: `${stages.map((id, i) => `${stageLabel(id)}: ${d[i]} m`).join(' · ')} (at most ${limit} m)` };
   };
+  const ownOf = (kind) => stages.map((id) => `${kind}-${id.slice(6)}`);
   const pitches = items.filter((item) => item.kind === 'pitch').map((item) => item.id);
 
   const rules = [
@@ -358,18 +386,20 @@ function checkLayout(site, placements, items = LAYOUT_ITEMS) {
       return { ok: wrong.length === 0, items: wrong.map((i) => i.id),
         detail: wrong.length ? `Move: ${wrong.map((i) => i.name).join(', ')}` : 'Everything is on usable ground; gate and exits are on the fence' };
     }),
-    rule('stage-distance', 'The stages are far enough apart for the sound', ['stage-a', 'stage-b'], () => {
-      const d = metres('stage-a', 'stage-b');
-      return { ok: d >= 150, detail: `${d} m apart (at least 150 m)` };
+    rule('stage-distance', 'The stages are far enough apart for the sound', stages, () => {
+      // The closest pair of stages decides (with two stages that is simply their distance).
+      const pairs = stages.flatMap((a, i) => stages.slice(i + 1).map((b) => ({ a, b, d: metres(a, b) })));
+      const close = pairs.reduce((best, p) => (p.d < best.d ? p : best));
+      const which = stages.length > 2 ? `${stageLabel(close.a)} and ${stageLabel(close.b)}: ` : '';
+      return { ok: close.d >= 150, detail: `${which}${close.d} m apart (at least 150 m)` };
     }),
-    rule('first-aid', 'First aid close to every stage', ['stage-a', 'stage-b', 'first-aid-a', 'first-aid-b'], perStage('first-aid', 200)),
-    rule('toilets', 'Toilets close to every stage', ['stage-a', 'stage-b', 'toilets-a', 'toilets-b'], perStage('toilets', 150)),
-    rule('water', 'Free water close to every stage', ['stage-a', 'stage-b', 'water-a', 'water-b'], perStage('water', 120)),
-    rule('food-court', 'The food court is not in a stage crowd', ['stage-a', 'stage-b', ...pitches], () => {
+    rule('first-aid', 'First aid close to every stage', [...stages, ...ownOf('first-aid')], perStage('first-aid', 200)),
+    rule('toilets', 'Toilets close to every stage', [...stages, ...ownOf('toilets')], perStage('toilets', 150)),
+    rule('water', 'Free water close to every stage', [...stages, ...ownOf('water')], perStage('water', 120)),
+    rule('food-court', 'The food court is not in a stage crowd', [...stages, ...pitches], () => {
       const centre = [0, 1].map((k) => pitches.reduce((sum, id) => sum + at(id)[k], 0) / pitches.length);
-      const a = metresBetweenPoints(site, centre, at('stage-a'));
-      const b = metresBetweenPoints(site, centre, at('stage-b'));
-      return { ok: a >= 50 && b >= 50, detail: `${a} m from Stage A, ${b} m from Stage B (at least 50 m)` };
+      const d = stages.map((id) => metresBetweenPoints(site, centre, at(id)));
+      return { ok: d.every((x) => x >= 50), detail: `${stages.map((id, i) => `${d[i]} m from ${stageLabel(id)}`).join(', ')} (at least 50 m)` };
     }),
     rule('exits', 'Two emergency exits, far apart', ['exit-1', 'exit-2'], () => {
       const d = metres('exit-1', 'exit-2');
@@ -443,7 +473,7 @@ function parseSiteMaps(text) {
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE, layoutItems, isKnownItemId,
+    SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE, layoutItems, isKnownItemId, mapStageCount, MAX_MAP_STAGES,
     findItem, distance, metresPerUnit, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
     suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps

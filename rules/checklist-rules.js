@@ -8,18 +8,18 @@ const CHECKLIST = [
     { id: 'security-staff', text: 'Security staff checked in, briefed and at their posts' },
     { id: 'security-entry', text: 'Entry points staffed and bag-check stations ready' },
     { id: 'security-exits', text: 'Emergency exits clearly marked and routes clear' },
-    { id: 'security-barriers', text: 'Crowd barriers in position and checked at both stages' },
+    { id: 'security-barriers', text: 'Crowd barriers in position and checked at every stage' },
     { id: 'security-lost', text: 'Lost & found and lost-child point staffed and clearly marked' }
   ] },
   { id: 'stage', title: 'Stage building', icon: '▥', tasks: [
-    { id: 'stage-build', text: 'Both stages fully assembled and ready for today’s programme' },
+    { id: 'stage-build', text: 'All stages fully assembled and ready for today’s programme' },
     { id: 'stage-inspection', text: 'Stage inspection sign-offs available to the stage manager' },
     { id: 'stage-rigging', text: 'Rigging lead has confirmed load points are checked and secure' },
     { id: 'stage-weather', text: 'Stage weather protection checked against today’s conditions' },
     { id: 'stage-access', text: 'Stairs, ramps and backstage routes checked and clear' }
   ] },
   { id: 'sound', title: 'Sound', icon: '◉', tasks: [
-    { id: 'sound-pa', text: 'PA system tested and working on both stages' },
+    { id: 'sound-pa', text: 'PA system tested and working on every stage' },
     { id: 'sound-monitors', text: 'Stage monitors and in-ear systems tested and ready' },
     { id: 'sound-backline', text: 'Backline on site and checked against today’s technical riders' },
     { id: 'sound-checks', text: 'Pre-opening soundchecks completed and remaining checks confirmed with artists' },
@@ -44,7 +44,7 @@ const CHECKLIST = [
     { id: 'backstage-riders', text: 'Hospitality supplies on site and checked against today’s riders' },
     { id: 'backstage-catering', text: 'Catering team on site and today’s serving times confirmed' },
     { id: 'backstage-diets', text: 'Catering team has confirmed dietary requests and labelled meals' },
-    { id: 'backstage-water', text: 'Drinking water stocked on and next to both stages' }
+    { id: 'backstage-water', text: 'Drinking water stocked on and next to every stage' }
   ] },
   { id: 'artists', title: 'Artist care & transport', icon: '♪', tasks: [
     { id: 'artists-arrival', text: 'Artist liaison has checked today’s arrivals and flagged any delays' },

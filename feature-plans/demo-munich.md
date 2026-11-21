@@ -33,15 +33,29 @@ Fixed:
 - A photo that fails to load left an empty circle; the initials now come back (`artist-library/artist-photos.js`).
 - An old error message in "Edit stage planning settings" stayed after correcting the field (`app.js`).
 
-Found, not fixed (bigger changes, for the team to decide):
-- The site map, crowd checks and final checklist always assume **two stages** (A and B), while the
-  lineup can have up to 12. The Munich demo's Rising Stage is not on the map.
-- The project tasks (Gantt) are not touched by the demo loader (team decision), so they stay at 0 % done.
-- The "Edit plan" button of the timeline is cut off on narrow windows.
+Also fixed (found in the bug hunt, fixed on request):
+- **The site map knows every lineup stage** (2 to 12; read from the lineup's stage settings). Each extra
+  stage (C, D, ...) gets its own pin, first aid tent, toilet row and water point; the layout planner
+  places it far from the other stages; the layout check, the walkways and the crowd checks (audience
+  area, density, evacuation) include it. Without a stage count everything stays exactly as before
+  (two stages), so saved maps and the Lisbon demo are unchanged (`rules/site-map-rules.js`,
+  `rules/crowd-rules.js`, `site-map/*`). The Munich map now shows the Rising Stage.
+- The final checklist says "every stage" instead of "both stages" (`rules/checklist-rules.js`).
+- **Project tasks for the Munich demo**: the team rule was "the demo loader does not touch tasks".
+  On request, the *Munich* demo now marks the earliest 80 % of the Gantt subtasks done and the next one
+  in progress (167 of 209 done with the default plan). The Lisbon demo still leaves tasks alone, and the
+  demo dialog says so (`demoTaskStatuses` in `rules/demo-festival.js`, `demo/demo-loader.js`).
+- The "Edit plan" button of the timeline is no longer cut off on narrow windows: the toolbar wraps onto
+  a second row instead of scrolling (`compact.css`). On wide screens it stays one row.
+
+Readiness of the Munich demo is now 83 % (19 of 23 checks: Stage C's crowd density was added).
 
 ## Tests
 
 `tests/demo-munich.test.js` (dates, stages, real library artists, all lineup rules, budget,
-the 80 % open points, vendors, site map, crowd densities, finance values and profit, fresh copies)
-and `tests/bug-hunt-fixes.test.js` (artist edit keeps the library link; fails without the fix).
+the 80 % open points, vendors, site map, crowd densities, finance values and profit, fresh copies),
+`tests/bug-hunt-fixes.test.js` (artist edit keeps the library link; fails without the fix) and
+`tests/stages-and-tasks.test.js` (two-stage layout unchanged, 3 and 4 stages planned at 100 %,
+stage-distance and first-aid failures for Stage C, saved maps keep Stage C, crowd checks for Stage C,
+Munich map with three stages, checklist wording, demo task statuses).
 No existing test was changed.
