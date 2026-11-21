@@ -29,6 +29,8 @@
 .sm-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start;padding-bottom:48px}
 .sm-main{min-width:0}
 .sm-frame{position:relative;background:#2b3a2c;border:1px solid var(--ink);overflow:hidden;user-select:none}
+/* Anchor overlays to the drawing, below the wrapping instructions/fence actions. */
+.sm-map-viewport{position:relative;overflow:hidden}
 .sm-frame svg{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 .sm-frame svg:active{cursor:grabbing}
 .sm-frame.mode-move .fa-item{cursor:move}
@@ -38,7 +40,7 @@
 .fa-item .fa-pin{transition:transform .15s}
 .fa-item:hover .fa-pin,.fa-item:focus-visible .fa-pin{transform:scale(1.15)}
 .fa-pin.selected{transform:scale(1.25)}
-.fa-pin-pulse{animation:fa-pulse 1.6s ease-out infinite;transform-origin:center}
+.fa-pin-pulse{animation:fa-pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes fa-pulse{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(1.8)}}
 .sm-zoom{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;box-shadow:0 2px 10px rgba(0,0,0,.3)}
 .sm-zoom button{width:34px;height:34px;border:0;border-bottom:1px solid var(--line);background:var(--white);font:600 17px 'DM Sans';cursor:pointer;color:var(--ink)}
@@ -105,6 +107,23 @@
 .sm-field small{display:block;font:11px 'DM Sans';letter-spacing:0;margin-top:5px}
 .sm-setting-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .sm-setting-buttons .button{padding:8px 11px;font-size:11px}
+
+/* Explicit draft controls and transparent, collapsible crowd calculations. */
+.sm-save-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 0;margin:0 0 12px;border-bottom:1px solid var(--line)}
+.sm-save-actions [role=status]{flex:1;min-width:150px;font-size:12px;color:var(--muted)}
+.sm-save-actions .button{font-size:12px;padding:9px 13px}
+.sm-save-actions .button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.sm-crowd-disclosure{margin-bottom:18px}
+.sm-crowd-disclosure>summary,.sm-assumptions>summary{cursor:pointer;font-weight:600}
+.sm-crowd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:12px 0}
+.sm-crowd-grid fieldset{min-width:0;border:1px solid var(--line);padding:8px 12px}
+.sm-crowd-grid legend{font-size:12px;font-weight:600;padding:0 4px}
+.sm-crowd-checkbox{display:flex;align-items:center;gap:7px;font-size:11px;margin:12px 0}
+.sm-crowd-checkbox input{accent-color:var(--coral)}
+.sm-assumptions{padding:10px 0;border-top:1px solid var(--line);font-size:12px}
+.sm-crowd-disclosure .sm-note{margin:10px 0}
+@media(max-width:900px){.sm-crowd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:450px){.sm-crowd-grid{grid-template-columns:1fr}}
 
 @media(max-width:1100px){.sm-layout{grid-template-columns:1fr}}
 @media(max-width:600px){.sm-select select{min-width:0;width:100%}.sm-select{flex:1}.sm-toggle{margin-left:0}}

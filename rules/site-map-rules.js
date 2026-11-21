@@ -429,7 +429,15 @@ function parseSiteMaps(text) {
     && (s.entrance === null || isPoint(s.entrance))
     && s.grid && typeof s.grid.cells === 'string' && s.grid.cells.length === s.grid.cols * s.grid.rows
     && s.placements && typeof s.placements === 'object')
-    .map((s) => ({ ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => isKnownItemId(id) && isPoint(p))) }));
+    .map((s) => {
+      const cleaned = { ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => isKnownItemId(id) && isPoint(p))) };
+      // Older maps have no measurements. Preserve that absence rather than inventing safe values.
+      if (Object.hasOwn(s, 'crowdSafety')) {
+        const normalize = typeof module !== 'undefined' ? require('./crowd-rules.js').normalizeCrowdSafety : normalizeCrowdSafety;
+        cleaned.crowdSafety = normalize(s.crowdSafety);
+      }
+      return cleaned;
+    });
 }
 
 // In the browser these are plain globals; in the tests (Node) they are exported.

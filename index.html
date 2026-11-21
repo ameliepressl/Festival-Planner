@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css" />
     <link rel="stylesheet" href="compact.css?v=subtask-owners-only" />
+    <link rel="stylesheet" href="readiness.css" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
          the body: they hide the app until someone is signed in and save every change to the account.
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
@@ -154,6 +155,7 @@
           </button>
 
         </section>
+        <section id="readiness-overview" class="overview-card readiness-card" aria-label="Festival readiness"></section>
         <div class="overview-columns">
           <section class="overview-card" id="overview-tasks" aria-labelledby="overview-tasks-title">
             <div class="overview-card-heading">
@@ -295,9 +297,10 @@
             <label>Due date<input type="date" name="end" required></label>
           </div>
           <p id="board-create-error" role="alert"></p>
-          <div class="dialog-actions">
+          <div class="overview-dialog-actions">
+            <button type="button" class="button danger" id="board-edit-delete" hidden>Delete task</button>
             <button type="button" class="button secondary" id="board-create-cancel">Cancel</button>
-            <button type="submit" class="button primary">Create task</button>
+            <button type="submit" class="button primary" id="board-create-save">Create task</button>
           </div>
         </form>
       </dialog>
@@ -728,7 +731,8 @@
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
-    <script src="rules/festival-rules.js?v=march-2027-demo"></script>
+    <script src="rules/project-rules.js"></script>
+    <script src="rules/festival-rules.js?v=bug-fixes"></script>
     <script src="app.js?v=march-2027-demo"></script>
     <script src="rules/checklist-rules.js"></script>
     <script src="checkliste-festivalplanung/checklist-page.js?v=compact-pages"></script>
@@ -744,13 +748,17 @@
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js"></script>
     <script src="rules/site-map-rules.js"></script>
+    <script src="rules/map-draft-rules.js"></script>
+    <script src="rules/crowd-rules.js?v=stage-exit-summary"></script>
     <script src="site-map/map-drawing.js"></script>
-    <script src="site-map/site-map-page.js?v=map-tools-full-width"></script>
+    <script src="site-map/site-map-page.js?v=stage-exit-summary"></script>
     <script src="vendors/vendors-page.js?v=compact-pages"></script>
     <script src="rules/finance-rules.js"></script>
     <script src="finance/finance-page.js?v=compact-pages"></script>
     <script src="rules/demo-festival.js?v=march-2027-demo"></script>
     <script src="demo/demo-loader.js"></script>
-    <script src="overview.js?v=project-wide-stats"></script>
+    <script src="overview.js?v=bug-fixes"></script>
+    <script src="rules/readiness-rules.js"></script>
+    <script src="readiness.js"></script>
   </body>
 </html>

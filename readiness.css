@@ -1,0 +1,21 @@
+/* The score and its linked tasks share the compact page styles. */
+.readiness-card{margin:0 0 16px}
+.readiness-heading{display:flex;align-items:center;gap:18px}
+.readiness-score{font:600 38px/1 Fraunces,serif;min-width:92px;color:var(--ink)}
+.readiness-heading h2{font:600 20px/1.2 Fraunces,serif;margin:0 0 5px}
+.readiness-heading p{font-size:12px;color:var(--muted);margin:0}
+.readiness-heading>.button{margin-left:auto}
+.readiness-card>.field-help{margin:12px 0;font-size:11px;max-width:100ch}
+.readiness-breakdown summary,.readiness-tasks summary{cursor:pointer;font-weight:600;font-size:13px;padding:6px 0}
+.readiness-breakdown ul,.readiness-issue-list{list-style:none;padding:0;margin:8px 0 0}
+.readiness-breakdown li{border-top:1px solid var(--line);padding:9px 0;display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:12px}
+.readiness-breakdown small,.readiness-issue-list small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:4px;line-height:1.5}
+.readiness-breakdown .is-passed>span{color:#247565}
+.readiness-breakdown .is-open>span{color:#9d402c}
+.readiness-tasks{padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 14px;background:var(--white)}
+.readiness-tasks .field-help{margin:7px 0;font-size:11px}
+.readiness-issue-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:0 20px}
+.readiness-issue-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.readiness-issue-list strong{font-size:12px;font-weight:600}
+.readiness-issue-list .button{flex-shrink:0;font-size:11px;padding:7px 10px}
+@media(max-width:650px){.readiness-heading{flex-wrap:wrap;gap:12px}.readiness-heading>.button{margin-left:0}.readiness-issue-list{grid-template-columns:1fr}}

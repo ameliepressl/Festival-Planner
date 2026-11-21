@@ -379,3 +379,197 @@ Branch: `feature-project-task-improvement` (owner: Vicky). Related plan: `featur
 Default and demo festival dates are 20–21 March 2027. Existing Lisbon Sound Festival plans using 30–31 December 2026 shift their bookings and per-day hours forward by 80 days. The existing Gantt date-anchor logic moves the task schedule with the festival. With user approval, updated the minute-level booking regression test to use configured event dates, preserving its overlap, adjacent-booking and separate-day assertions.
 
 Validation: the first run passed 167 of 168 tests because the booking test still used December dates. After the authorised fixture update, all 168 tests passed. Chrome showed 20–21 March 2027 and shifted task dates, including the first preparation subtask beginning 26 December 2026.
+
+## Fresh projects, tasks, map drafts and readiness — 21 November 2026
+
+Owner: Kira. Branch: `codex/project-planning-readiness-and-map-safety`
+(initially `bug-fixes`), based on latest `main` (`5ab8315`).
+Plan: [feature-plans/project-planning-readiness-and-map-safety.md](feature-plans/project-planning-readiness-and-map-safety.md).
+Status: implemented; commit and branch publication approved by Kira on
+21 November 2026. **Team review and merge are pending.**
+
+### What changed and where
+
+- Fresh festivals open their native date picker at today's Lisbon calendar date.
+  Normal initial duration remains two days; saved/imported festival dates stay intact.
+  `rules/festival-rules.js`, `overview.js` and `rules/project-rules.js` implement this.
+- New task schedules use the existing suggested task order over a 100-day preparation
+  window before the selected opening date. Short planning windows compress the
+  suggestions into the time available. Wrap-up starts after the final festival day.
+  The planning start is persisted, so reloading does not slide deadlines forward.
+  Starting with an explicitly empty account clears old dates, progress and owners;
+  importing an existing festival preserves them.
+- Board and Timeline support named, confirmed deletion of suggested/custom tasks
+  and task groups; removing a group's last subtask removes the empty group. Cancel
+  retains the original. Counts and Overview update. The task-group field is retained:
+  choose a work area, then an existing group or Create a task group. Changes live in
+  `gantt-editor.js`, `work-board.js` and the project rules.
+- The map now has Save changes, Undo change and Discard changes. Pin moves, strokes,
+  visitor counts, settings and active-map selection remain drafts in memory until
+  explicitly saved. Pan/zoom/filtering are view-only. Navigation/reload protects
+  pending drafts. Failed multi-key saves restore prior values and retain the draft.
+  `site-map/site-map-page.js` uses `rules/map-draft-rules.js` for this behaviour.
+- A compact map section accepts usable audience areas, expected crowds and clear
+  exit widths. `rules/crowd-rules.js` calculates density and an evacuation estimate
+  using visible editable assumptions. Missing measurements, blocked routes and
+  unavailable exits fail the appropriate planning checks. Routes never become a
+  straight line when no walkable route exists. Both mapped emergency exits must be
+  available for the readiness availability check, even when testing a one-exit
+  scenario still gives an estimate.
+- `readiness.js` and `rules/readiness-rules.js` show one Overview percentage with an
+  explicit equal-weight check breakdown. Each failed source check appears once as a
+  linked task on the task board. Fixing the source resolves it. Project-task completion
+  does not falsely clear a planning issue. Readiness reads saved map data only; an
+  unsaved suggested map is unassessed. UI styling is in `readiness.css`.
+
+### Saved data and access
+
+Existing separate keys remain in use: `festival-architect-v2`,
+`festival-gantt-project-v1`, the Gantt date anchors,
+`festival-work-board-status-v1`, `festival-task-assignments-v1`,
+`festival-architect-site-maps`, `festival-architect-ground` and
+`festival-architect-site-map-selected`. New `festival-project-setup-v1` stores the
+planning start/template version. Optional crowd inputs belong to each map's
+`crowdSafety` object. All saved keys use the `festival-` prefix and therefore enter
+the existing account sync; unsaved map drafts do not. No database migration or live
+database changes were made.
+
+Viewers cannot edit. Editors can delete tasks but do not write the protected owner
+assignments section; Admins clean deleted owners. Existing database access rules
+remain in force. Account switching and sign-out check for pending map drafts first.
+
+### Verification
+
+No existing tests were changed or weakened. Added project, readiness, map-draft and
+crowd regression tests. Ran the full Node test runner:
+
+```text
+tests 197
+suites 0
+pass 197
+fail 0
+cancelled 0
+skipped 0
+todo 0
+```
+
+`git diff --check` and changed JavaScript syntax checks pass. Browser checks used a
+real local Python file server on port 8005 and separate Chromium contexts with
+account requests mocked: no real account/festival was changed. Verified April 2027
+initial dates, a year-ahead clean schedule, stable reloads, task-group creation,
+suggested/custom/group deletion and cancellation, Timeline Save/Cancel, setup save
+failure and retry, Admin/Editor/Viewer permissions, whole-drag Undo, saved-only
+readiness, crowd inputs, Save/reload, cancelled navigation, retained drafts on active
+map clicks, Discard, failed map saving and linked-task deduplication. No browser page
+errors. Inspected Overview and map screenshots. Opened the real account-enabled
+preview at `http://localhost:8005/?branch=bug-fixes` (sign-in required).
+
+### Limits for review and the demonstration
+
+The readiness percentage measures the displayed checks, not overall production
+completion or safety approval. Crowd/evacuation numbers are planning estimates for
+the map's existing two stage zones and two exits. Audiences use their nearest
+reachable exit; remaining visitors start at the food-court centre. Shared-route
+bottlenecks, crowd behaviour, accessibility needs and detailed simulation are not
+modelled. Assumptions and primary references are visible in the panel and feature
+plan. A real evacuation/risk assessment is still separate work.
+
+Live multi-account sync was not exercised in this local change; the unchanged
+Supabase policies and prefix-based sync remain responsible for cloud access/saving.
+Before a PR, one teammate should review the branch and try it with a disposable
+shared festival. Kira has approved committing and publishing this feature branch;
+merging into `main` still requires the team's review.
+
+## Task editing, map controls and button audit — 21 November 2026
+
+Owner: Kira. Same branch: `codex/project-planning-readiness-and-map-safety`.
+The original feature is published as commit `983c568` / draft PR #24. This
+follow-up is ready for publication, authorised by Kira on 21 November 2026.
+Its scope follows Kira's requests to continue, fix all six audited issues,
+centre the ring and keep the entrance lanes.
+
+- `work-board.js`, `gantt-editor.js`, `rules/project-rules.js` and the task dialog
+  in `index.html` now provide Edit task instead of a direct Delete shortcut. The
+  dialog retains existing area, group, name and dates; editing offers Save changes,
+  Cancel and Delete task. New task creation retains Create task and no Delete.
+  Renaming, rescheduling and regrouping preserve task identity, progress and
+  completion history. Admins preserve inherited ownership when moving groups;
+  Editors cannot silently change ownership through regrouping.
+- `site-map/site-map-page.js` and CSS put map zoom/reset controls in a positioned
+  viewport below the instruction bar, clear of Done/Cancel. Pending fences remain
+  visible/resumable across tools. Their corners join one-step Undo but are never
+  stored in the saved map. Done/Cancel remain available until the fence is resolved.
+  Invalid map widths restore the last valid value with an explanation. Cancelling
+  a map switch restores the actual selected map and avoids false success feedback.
+- The selected-pin pulse now uses its own bounds as the animation origin
+  (`transform-box: fill-box`), so it no longer travels across the map. The red
+  entrance lanes are intentional drawing details and were left unchanged.
+- Viewer vendor Confirm/Remove controls are disabled and mutation handlers enforce
+  the role, including automatic pitch fitting. Load demo requires full Admin
+  restore permissions before opening and applying. Sign out is ignored by the
+  generic section-navigation handler and no longer displays an undefined-page toast.
+
+Saved data continues to use the existing festival keys and database policies. No
+SQL migration, account changes or real festival data edits were made for testing.
+
+Validation: 17 additional regression scenarios (8 project editing, 3 map draft,
+6 behavioural button-permission tests); existing assertions were not weakened.
+Full output:
+
+```text
+tests 214
+suites 0
+pass 214
+fail 0
+cancelled 0
+skipped 0
+todo 0
+```
+
+`git diff --check` passes. Browser checks used a disposable local origin on port
+8006 with mocked accounts/cloud access. Verified prefilled fields, Cancel, Save,
+invalid date rejection, regrouping with a stable task id and In progress status,
+reload persistence, cancelled and confirmed deletion, and unchanged creation flow.
+Confirmed zero zoom/Done/Cancel intersection at 1440, 768 and 390px; fence drafts
+survive tool changes and Cancel clears them. Checked invalid map width feedback,
+cancelled map selection, correct pulse bounds, enabled Editor vendor actions,
+disabled Viewer edits, disabled non-Admin demo replacement and Sign out navigation.
+App confirmation choices were mocked in the disposable fixture because this
+browser-control backend could not handle its native confirmation popup; no product
+confirmation logic was bypassed in the real app. Viewer/Editor rights also have
+direct behavioural tests. Live multi-account cloud saving remains a separate team
+check. The real preview runs on port 8005; existing unsaved user drafts were not
+reloaded or discarded.
+
+## Evacuation stage-to-exit explanation — 21 November 2026
+
+Approved by Kira; included in the authorised follow-up publication on the same
+feature branch. The existing evacuation
+calculation now exposes its chosen origin-to-exit assignments as derived output.
+The map shows an 11px grey "Estimated routes" line under the existing exit/time
+breakdown. Each stage identifies the exit actually used; zero-audience stages say
+"no audience", and remaining visitors appear when applicable. Incomplete or
+unreachable estimates do not show partial/stale routing. No formula or saved data
+changed. Source: `rules/crowd-rules.js`, `site-map/site-map-page.js`; script versions
+in `index.html` ensure the matching calculation and display are loaded together.
+
+Four added regression tests cover stage assignments and exit totals, closed-exit
+rerouting, zero audience and invalid/unreachable cases. Full suite: **218 passed,
+0 failed, 0 skipped**; `git diff --check` passes. Browser verification on the real
+read-only preview confirmed the exact assignments, grey 11px styling and correct
+display after a reload. No saved festival inputs were edited during this check.
+The preview remains open at `http://localhost:8005/?preview=stage-exit-summary`.
+Kira approved committing and pushing all these follow-ups on 21 November 2026.
+The cancelled request to move the evacuation section below the map is not included.
+
+## Follow-up branch publication — 21 November 2026
+
+Kira requested a commit and push to the existing
+`codex/project-planning-readiness-and-map-safety` branch, explicitly excluding
+`main`. Publication includes task editing, the six approved button fixes, map
+control separation, the centred selection ring and the evacuation route labels.
+No section-position change is included. The GitHub branch was checked before
+publication and matches the original feature commit; draft PR #24 is open and
+unmerged. All 218 tests pass, none fail or are skipped, `git diff --check` passes,
+and the reviewed files contain no secret literals. The draft PR receives the new
+commit and updated validation notes; team review is still required before merging.

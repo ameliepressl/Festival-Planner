@@ -11,7 +11,12 @@
   let settings = parseFinance(read(FINANCE_STORAGE_KEY));
 
   function read(key) { try { return localStorage.getItem(key); } catch { return null; } }
-  function save() { try { localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(settings)); } catch { /* still works without saving */ } }
+  function save() {
+    try {
+      localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(settings));
+      window.dispatchEvent(new Event('festival-finance-saved'));
+    } catch { toast('Finance changes could not be saved in this browser.'); }
+  }
   const money = (n) => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
   const short = (n) => (Math.abs(n) >= 1000 ? `${n < 0 ? '−' : ''}€${(Math.abs(n) / 1000).toFixed(Math.abs(n) >= 100000 ? 0 : 1)}k` : money(n));
   const number = (n) => n.toLocaleString('en-GB');
@@ -19,20 +24,26 @@
   const dayName = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
   // Everything the model needs, collected fresh from the other pages each time the page is shown.
-  function collect() {
+  function collect(financeSettings = settings) {
     const lineup = typeof state !== 'undefined'
       ? { bookings: state.bookings, artists: state.artists, budget: state.settings.budget, stages: state.settings.stages, days: days().length }
       : { bookings: [], artists: [], budget: 0, stages: 2, days: 1 };
     const visitors = parseGround(read(GROUND_STORAGE_KEY)).visitors;
-    const vendors = parsePlacements(read(VENDOR_STORAGE_KEY));
+    // Only vendors on pitches that still exist for this festival size bring in pitch fees.
+    const vendors = fitPlacements(parsePlacements(read(VENDOR_STORAGE_KEY)), capacityNeeds(visitors).pitches).placements;
     const artists = artistSpending(lineup);
-    const input = { settings, visitors, days: lineup.days, stages: lineup.stages, needs: capacityNeeds(visitors), artistFees: artists.total, pitchIncome: pitchIncome(vendors) };
+    const input = { settings: financeSettings, visitors, days: lineup.days, stages: lineup.stages, needs: capacityNeeds(visitors), artistFees: artists.total, pitchIncome: pitchIncome(vendors) };
     return { input, artists, lineup, vendorCount: Object.keys(vendors).length, model: financeModel(input) };
   }
 
   window.getOverviewFinance = () => {
     const { totalRevenue, totalCosts, profit } = collect().model;
     return { totalRevenue, totalCosts, profit };
+  };
+
+  window.getReadinessFinance = () => {
+    const { model, input } = collect(parseFinance(read(FINANCE_STORAGE_KEY)));
+    return { profit: model.profit, cashNeeded: cashFlow(model, input.settings.ticketingFee).cashNeeded };
   };
 
   // ---------- charts (plain SVG) ----------
