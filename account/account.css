@@ -46,12 +46,16 @@ html:not(.account-locked):not(.account-checking) .account-screen { display: none
 .sidebar-account small[data-state="offline"] { color: #ffb3a3; }
 .sidebar-account .sidebar-item { width: 100%; }
 
-/* Festival switcher (only shown when the account may open more than one festival). */
-.festival-switch { display: block; margin: 0 0 14px; }
+/* Festival switcher and "＋ New festival" (always shown once signed in, see several-festivals.md). */
+.festival-switch { display: block; margin: 0 0 6px; }
 .festival-switch[hidden] { display: none; }
 .festival-switch .sidebar-label { display: block; margin: 0 9px 6px; }
 .festival-switch select { width: 100%; padding: 8px 6px; border: 1px solid #3a4d4f; border-radius: 4px; background: #22363a; color: #fff; font: 500 12px 'DM Sans', sans-serif; }
 .festival-switch select:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.sidebar-new-festival { display: block; width: 100%; margin: 0 0 14px; padding: 7px 9px; border: 1px dashed #5d6f70; border-radius: 4px; background: transparent; color: #bdccca; font: 500 12px 'DM Sans', sans-serif; text-align: left; cursor: pointer; }
+.sidebar-new-festival:hover:not(:disabled) { border-color: var(--coral); color: #fff; }
+.sidebar-new-festival:disabled { opacity: .5; cursor: not-allowed; }
+.sidebar-new-festival[hidden] { display: none; }
 .sidebar-account small[data-state="readonly"], .sidebar-account small[data-state="partly"] { color: #f9d77a; }
 
 /* Bar at the top: a teammate saved, the role changed, or a team change failed. */
@@ -64,6 +68,7 @@ html:not(.account-locked):not(.account-checking) .account-screen { display: none
 @media (max-width: 620px) {
   .sidebar-account { margin-top: 12px; padding-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
   .festival-switch { width: 100%; margin-bottom: 6px; }
+  .sidebar-new-festival { width: auto; margin: 0; }
   .festival-switch .sidebar-label { display: none; }
   .sidebar-account .sidebar-label { display: none; }
   .sidebar-account strong, .sidebar-account small { margin: 0; }

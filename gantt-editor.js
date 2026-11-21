@@ -84,6 +84,8 @@
   let savedProject;
 
   window.getSavedGanttPlan = () => cloneProject(editing ? savedProject : project);
+  // The tasks a brand-new festival starts with (ids and titles; used by the demo, demo/demo-loader.js).
+  window.getDefaultGanttPlan = () => cloneProject(defaults);
   const publishProject = () => window.dispatchEvent(new Event('gantt-project-changed'));
   window.refreshGanttFestivalDates = () => {
     const firstSetup = waitingForSetup && Boolean(state.event.name);

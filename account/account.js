@@ -355,7 +355,7 @@
     const previous = meta.userId === currentUser.id ? meta.festivalId : null;
     let target = festivals.find((row) => row.festival_id === previous) || own;
     if (previous && !festivals.some((row) => row.festival_id === previous)) {
-      sessionStorage.setItem('fa-account-notice', 'A festival that was shared with you is no longer available. This is your own festival.');
+      sessionStorage.setItem('fa-account-notice', 'The festival you had open is no longer available (it was deleted or is no longer shared with you). This is your own festival.');
     }
 
     try {
@@ -461,10 +461,13 @@
 
   // --- 5. Switching between festivals -----------------------------------------------------
 
+  // The FESTIVAL list in the sidebar is always there once signed in, so a second festival
+  // (new or demo) and the way back to the first one are easy to find.
   function buildSwitcher() {
     const select = $('#festival-switch');
     const label = $('#festival-switch-label');
-    if (!select || festivals.length < 2) { if (label) label.hidden = true; return; }
+    buildFestivalManagement();
+    if (!select || !festivals.length) { if (label) label.hidden = true; return; }
     select.innerHTML = '';
     for (const row of festivals) {
       const option = document.createElement('option');
@@ -478,19 +481,25 @@
     select.onchange = () => switchFestival(select.value);
   }
 
+  // Before another festival opens: an unsaved site map draft asks first, and changes of the
+  // open festival are saved. Returns '' when it is fine to leave, otherwise why not.
+  const NOT_SAVED_YET = 'Your latest changes are not saved yet (no connection). Try again in a moment.';
+  async function readyToLeave() {
+    if (window.confirmMapNavigation && !window.confirmMapNavigation()) return 'cancelled';
+    if (meta.dirty && !(await saveNow()) && access.role !== 'Viewer') return NOT_SAVED_YET;
+    return '';
+  }
+
   async function switchFestival(id) {
     const select = $('#festival-switch');
     const row = festivals.find((item) => item.festival_id === id);
     if (!row || id === meta.festivalId) return;
-    if (window.confirmMapNavigation && !window.confirmMapNavigation()) {
-      select.value = meta.festivalId;
-      return;
-    }
     select.disabled = true;
     try {
-      if (meta.dirty && !(await saveNow()) && access.role !== 'Viewer') {
+      const problem = await readyToLeave();
+      if (problem) {
         select.value = meta.festivalId;
-        showNotice('Your latest changes are not saved yet (no connection). Try switching again in a moment.', false);
+        if (problem !== 'cancelled') showNotice(problem, false);
         return;
       }
       const rowAccess = accessFor({ ownerId: row.owner_id, ownerUsername: row.owner_username, myRole: row.my_role }, currentUser.id);
@@ -500,6 +509,92 @@
       showNotice(accountErrorMessage(error), false);
     } finally {
       select.disabled = false;
+    }
+  }
+
+  // --- 5b. Several festivals: new, demo, delete (feature-plans/several-festivals.md) -------
+
+  // Creates a festival of this account with the given sections ({} = empty) and opens it.
+  // The festival that was open stays as it is. Used by "＋ New festival" and by the demo
+  // (demo/demo-loader.js). Rejects with an Error whose message can be shown as it is.
+  let creating = false;
+  window.openNewFestival = async function openNewFestival(sections = {}) {
+    if (!client || !currentUser || !ready) throw new Error('Wait until your festival has loaded, then try again.');
+    if (creating) throw new Error('A new festival is already being created.');
+    if (!canCreateFestival(festivals, currentUser.id)) {
+      throw new Error(accountErrorMessage({ code: '54000' }));
+    }
+    creating = true;
+    try {
+      const problem = await readyToLeave();
+      if (problem === 'cancelled') return false;
+      if (problem) throw new Error(problem);
+      const { data: row, error } = await client.from('festivals')
+        .insert({ data: cleanFestivalData(sections) }).select('id, owner_id, updated_at').single();
+      if (error) throw new Error(accountErrorMessage(error));
+      sessionStorage.setItem('fa-account-notice',
+        'This is a new festival. Your other festivals are saved — switch back with the FESTIVAL list in the sidebar.');
+      await openFestival(row, OWNER_ACCESS);
+      return true;
+    } catch (error) {
+      sessionStorage.removeItem('fa-account-notice');
+      throw error instanceof Error ? error : new Error(accountErrorMessage(error));
+    } finally {
+      creating = false;
+    }
+  };
+
+  function openFestivalRow() {
+    return festivals.find((row) => row.festival_id === meta.festivalId) || null;
+  }
+
+  // Sidebar "＋ New festival" and Settings → This festival.
+  function buildFestivalManagement() {
+    if (!currentUser) return;
+    const newButton = $('#new-festival');
+    if (newButton) {
+      newButton.hidden = false;
+      newButton.disabled = !canCreateFestival(festivals, currentUser.id);
+      newButton.title = newButton.disabled ? accountErrorMessage({ code: '54000' }) : 'Start another festival; this one stays saved';
+    }
+    const card = $('#festival-manage');
+    if (!card) return;
+    const row = openFestivalRow();
+    card.hidden = !row;
+    if (!row) return;
+    const own = row.owner_id === currentUser.id;
+    const deletable = canDeleteFestival(festivals, currentUser.id, row.festival_id);
+    $('#festival-manage-summary').textContent = `${festivalLabel(row, currentUser.id)}. You have access to ${festivals.length} festival${festivals.length === 1 ? '' : 's'}.`;
+    $('#delete-festival').hidden = !deletable;
+    $('#festival-manage-help').textContent = deletable ? ''
+      : own ? 'This is your only own festival, so it cannot be deleted. Create another festival first.'
+        : 'Only the festival creator can delete this festival.';
+  }
+
+  async function deleteOpenFestival() {
+    const row = openFestivalRow();
+    const button = $('#delete-festival');
+    if (!row || !canDeleteFestival(festivals, currentUser.id, row.festival_id)) return;
+    const next = festivalAfterDelete(festivals, currentUser.id, row.festival_id);
+    if (!next) return;
+    button.disabled = true;
+    try {
+      // No save may reach the festival while it is being deleted.
+      clearTimeout(saveTimer);
+      if (runningSave) await runningSave.catch(() => {});
+      const { data, error } = await client.from('festivals').delete().eq('id', row.festival_id).select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('Only the festival creator can delete this festival.');
+      meta.dirtyKeys = [];     // changes of the deleted festival have nowhere to go
+      writeMeta();
+      sessionStorage.setItem('fa-account-notice', `“${row.festival_name || 'Untitled festival'}” was deleted.`);
+      const nextAccess = accessFor({ ownerId: next.owner_id, ownerUsername: next.owner_username, myRole: next.my_role }, currentUser.id);
+      await openFestival({ id: next.festival_id }, nextAccess);
+    } catch (error) {
+      sessionStorage.removeItem('fa-account-notice');
+      showNotice(error instanceof Error && !error.code ? error.message : accountErrorMessage(error), false);
+      button.disabled = false;
+      if (meta.dirty) scheduleSave(SAVE_DELAY);   // not deleted: keep saving this festival
     }
   }
 
@@ -718,6 +813,26 @@
       if (meta.dirty && access.role !== 'Viewer') await saveNow();
       window.location.reload();
     };
+    // returnValue is reset on every opening, so closing with Escape never repeats an earlier choice.
+    $('#new-festival').onclick = () => { $('#new-festival-dialog').returnValue = ''; $('#new-festival-dialog').showModal(); };
+    $('#new-festival-dialog').addEventListener('close', () => {
+      if ($('#new-festival-dialog').returnValue !== 'create') return;
+      const button = $('#new-festival');
+      button.disabled = true;
+      window.openNewFestival({})
+        .catch((error) => showNotice(error.message, false))
+        .finally(() => { button.disabled = !canCreateFestival(festivals, currentUser.id); });
+    });
+    $('#delete-festival').onclick = () => {
+      const row = openFestivalRow();
+      if (!row) return;
+      $('#delete-festival-name').textContent = row.festival_name || 'Untitled festival';
+      $('#delete-festival-dialog').returnValue = '';
+      $('#delete-festival-dialog').showModal();
+    };
+    $('#delete-festival-dialog').addEventListener('close', () => {
+      if ($('#delete-festival-dialog').returnValue === 'delete') deleteOpenFestival();
+    });
     $('#account-notice-close').onclick = () => {
       $('#account-notice').hidden = true;
       dismissedVersion = lastSeenVersion;
