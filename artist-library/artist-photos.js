@@ -3,6 +3,7 @@
 // - One request asks for up to 50 artists at once, so Wikipedia is not flooded with requests.
 // - A photo is only used when the article describes a musician/band, so an ambiguous name never
 //   shows a wrong picture. Without a photo the element keeps its initials.
+//   Dish photos for the vendor stands (data-photo-kind="dish", fixed titles like "Taco") skip this check.
 // - Results are remembered in this browser (key "fa-artist-photos-v2"). The key does not start with
 //   "festival-", so it is never copied into the festival data of the account.
 // - Clicking a photo opens its Wikimedia Commons page (author and licence).
@@ -46,6 +47,7 @@
     const titles = [...waiting.keys()].slice(0, 50);
     if (!titles.length) return;
     const elements = titles.map((t) => [t, waiting.get(t)]);
+    const waitingFor = Object.fromEntries(elements);
     titles.forEach((t) => waiting.delete(t));
     const found = {};
     try {
@@ -63,8 +65,9 @@
         key = rename[key] || key;
         const page = pages[key];
         const src = page?.thumbnail?.source;
-        const musical = MUSIC_WORDS.test(page?.description || '');
-        found[title] = acceptableArtistPhoto(src) && musical ? { src, page: commonsFilePage(src) } : null;
+        const dish = (waitingFor[title] || []).some((el) => el.dataset.photoKind === 'dish');
+        const fits = dish || MUSIC_WORDS.test(page?.description || '');
+        found[title] = acceptableArtistPhoto(src) && fits ? { src, page: commonsFilePage(src) } : null;
       }
       titles.forEach((t) => { cache[t] = { photo: found[t], at: Date.now() }; });
       remember();
