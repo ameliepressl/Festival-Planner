@@ -319,7 +319,8 @@ $('#cancel-artist').onclick=() => $('#artist-dialog').close();
 $('#artist-form').onsubmit=event => {
   event.preventDefault();if(!writable())return;
   const old=artist(editingArtistId);
-  const a={id:editingArtistId||crypto.randomUUID(),name:$('#name-input').value.trim(),genre:$('#genre-input').value.trim(),
+  // Keep any other saved details of the artist (e.g. libraryId, which gives the photo from the artist library).
+  const a={...(old||{}),id:editingArtistId||crypto.randomUUID(),name:$('#name-input').value.trim(),genre:$('#genre-input').value.trim(),
     fee:Number($('#fee-input').value),duration:Number($('#duration-input').value),colour:old?.colour||'#d8c7ed'};
   if(!a.name||!a.genre||!Number.isFinite(a.fee)||a.fee<0||!Number.isInteger(a.duration)||a.duration<1||a.duration>1440){$('#artist-message').textContent='Enter a name, genre, non-negative price and valid duration.';return;}
   // Existing performances keep their agreed duration and fee when catalogue defaults change.
@@ -373,6 +374,8 @@ $('#edit-settings').onclick=() => {
   $('#settings-message').textContent='';$('#settings-dialog').showModal();
 };
 $('#cancel-settings').onclick=() => $('#settings-dialog').close();
+// An old error message disappears as soon as the user changes a field.
+$('#settings-form').addEventListener('input',() => { $('#settings-message').textContent=''; });
 $('#settings-form').onsubmit=event => {
   event.preventDefault();if(!writable())return;
   const budget=canFestival('budget') ? Number($('#budget-input').value) : state.settings.budget;

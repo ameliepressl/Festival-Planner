@@ -62,30 +62,32 @@
     }).join('')}</div>`;
   }
 
-  // Profit for every ticket price from €0 to €100: a line, the zero line, today's price and the break-even price.
+  // Profit for every ticket price from €0 up to at least €100: a line, the zero line, today's price and the
+  // break-even price. The axis grows (in €50 steps, at most €500) so a higher price or break-even stays visible.
   function priceChart(data) {
-    const curve = priceCurve(data.input, 0, 100, 1);
+    const be = data.model.breakEvenPrice;
+    const top = Math.min(500, Math.max(100, Math.ceil((Math.max(data.input.settings.ticketPrice, be || 0) * 1.2) / 50) * 50));
+    const curve = priceCurve(data.input, 0, top, 1);
     const W = 640; const H = 240; const L = 58; const R = 16; const T = 14; const B = 30;
     const profits = curve.map((p) => p.profit);
     const min = Math.min(0, ...profits); const max = Math.max(0, ...profits);
     const pad = (max - min) * 0.08 || 1000;
     const y = (v) => T + ((max + pad - v) / (max - min + 2 * pad)) * (H - T - B);
-    const x = (price) => L + (price / 100) * (W - L - R);
+    const x = (price) => L + (price / top) * (W - L - R);
     const ticks = niceTicks(min - pad, max + pad, 5);
     const line = curve.map((p, i) => `${i ? 'L' : 'M'}${x(p.price).toFixed(1)} ${y(p.profit).toFixed(1)}`).join(' ');
-    const current = Math.min(100, data.input.settings.ticketPrice);
-    const currentProfit = curve[Math.round(current)].profit; // prices above €100 are shown at the right edge
-    const be = data.model.breakEvenPrice;
+    const current = Math.min(top, data.input.settings.ticketPrice);
+    const currentProfit = curve[Math.round(current)].profit;
     return `<div class="fin-chart" id="fin-price-chart">
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit by ticket price from €0 to €100">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit by ticket price from €0 to €${top}">
         ${ticks.map((t) => `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" class="fin-grid ${t === 0 ? 'zero' : ''}" /><text x="${L - 8}" y="${y(t)}" dy="0.32em" class="fin-axis" text-anchor="end">${short(t)}</text>`).join('')}
-        ${[0, 20, 40, 60, 80, 100].map((p) => `<text x="${x(p)}" y="${H - 8}" class="fin-axis" text-anchor="middle">€${p}</text>`).join('')}
-        ${be !== null && be > 0 && be <= 100 ? `<line x1="${x(be)}" x2="${x(be)}" y1="${T}" y2="${H - B}" class="fin-be" /><text x="${x(be) + 5}" y="${T + 10}" class="fin-axis strong">break-even €${be}</text>` : ''}
+        ${[0, 1, 2, 3, 4, 5].map((i) => i * top / 5).map((p) => `<text x="${x(p)}" y="${H - 8}" class="fin-axis" text-anchor="middle">€${p}</text>`).join('')}
+        ${be !== null && be > 0 && be <= top ? `<line x1="${x(be)}" x2="${x(be)}" y1="${T}" y2="${H - B}" class="fin-be" /><text x="${x(be) + 5}" y="${T + 10}" class="fin-axis strong">break-even €${be}</text>` : ''}
         <path d="${line}" fill="none" stroke="${PROFIT}" stroke-width="2" stroke-linejoin="round" />
         <circle cx="${x(current)}" cy="${y(currentProfit)}" r="5" fill="${currentProfit >= 0 ? PROFIT : COST}" stroke="#fffefa" stroke-width="2" />
         <text x="${x(current)}" y="${y(currentProfit) - 12}" class="fin-axis strong" text-anchor="middle">your price</text>
         <g class="fin-cross hidden"><line class="fin-cross-line" y1="${T}" y2="${H - B}" /><circle r="4" fill="${PROFIT}" stroke="#fffefa" stroke-width="2" /></g>
-        <rect class="fin-hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" data-curve='${JSON.stringify(curve.map((p) => [p.price, p.profit]))}' data-geo="${[L, R, T, B, W, H, min - pad, max + pad].join(',')}" />
+        <rect class="fin-hit" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" data-curve='${JSON.stringify(curve.map((p) => [p.price, p.profit]))}' data-geo="${[L, R, T, B, W, H, min - pad, max + pad, top].join(',')}" />
       </svg></div>`;
   }
 
@@ -290,14 +292,14 @@
     const hit = event.target.closest('.fin-hit');
     const cross = view.querySelector('.fin-cross');
     if (hit) {
-      const [L, R, T, B, W, H, lo, hi] = hit.dataset.geo.split(',').map(Number);
+      const [L, R, T, B, W, H, lo, hi, top] = hit.dataset.geo.split(',').map(Number);
       const curve = JSON.parse(hit.dataset.curve);
       const svg = hit.ownerSVGElement;
       const point = svg.createSVGPoint(); point.x = event.clientX; point.y = event.clientY;
       const p = point.matrixTransform(svg.getScreenCTM().inverse());
-      const price = Math.max(0, Math.min(100, Math.round(((p.x - L) / (W - L - R)) * 100)));
+      const price = Math.max(0, Math.min(top, Math.round(((p.x - L) / (W - L - R)) * top)));
       const profit = curve[price][1];
-      const cx = L + (price / 100) * (W - L - R);
+      const cx = L + (price / top) * (W - L - R);
       const cy = T + ((hi - profit) / (hi - lo)) * (H - T - B);
       cross.classList.remove('hidden');
       cross.querySelector('line').setAttribute('x1', cx); cross.querySelector('line').setAttribute('x2', cx);
