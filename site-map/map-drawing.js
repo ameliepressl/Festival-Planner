@@ -135,7 +135,8 @@ const MapDrawing = (function () {
       for (let i = 1; i < points.length - 1; i++) d += ` L${mid(points[i - 1], points[i]).join(' ')} Q${points[i].join(' ')} ${mid(points[i], points[i + 1]).join(' ')}`;
       return `${d} L${points[points.length - 1].join(' ')}`;
     };
-    const routes = [curve(p.entrance, court), curve(court, p['stage-a']), curve(court, p['stage-b'])];
+    const stages = Object.keys(p).filter((id) => /^stage-[a-l]$/.test(id)).sort();
+    const routes = [curve(p.entrance, court), ...stages.map((id) => curve(court, p[id]))];
     if (p.backstage) routes.push(curve(p['stage-a'], p.backstage));
     const d = routes.join(' ');
     return `<path d="${d}" fill="none" stroke="#8a7a55" stroke-width="${width * 1.25}" stroke-linecap="round" opacity="0.55" />

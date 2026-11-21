@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="vendors/vendors.css?v=vendor-catalogue" />
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css" />
-    <link rel="stylesheet" href="compact.css?v=subtask-owners-only" />
+    <link rel="stylesheet" href="compact.css?v=stages-tasks" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
@@ -730,7 +730,7 @@
       <form method="dialog"><p class="eyebrow">READY TO LOCK IT IN?</p><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
     </dialog>
     <section id="print-plan-content" aria-label="Printable festival plan"></section>
-    <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DEMO FESTIVAL</p><h2>Load the demo festival?</h2><p>This replaces the lineup, festival size, vendors and finance assumptions in this browser with “Lisbon Sound Festival” (10 artists, 5,000 visitors, 11 vendors). Uploaded maps, the task board, the Gantt and the checklist stay as they are. Download a lineup backup first if you want to keep your plan.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep my plan</button><button class="button primary" value="load">Load demo</button></div></form></dialog>
+    <dialog id="demo-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DEMO FESTIVAL</p><h2>Load a demo festival?</h2><p>This replaces the lineup, festival size, vendors and finance assumptions in this browser. Choose <b>“Lisbon Sound Festival”</b> (small: 10 artists, 5,000 visitors, 11 vendors) or <b>“Munich Loud Weekend”</b> (big hip-hop weekend: 34 shows by real artists from the library, 3 stages, 20,000 visitors; the boring parts are done, artists, ticket price and food stands are left for you to plan). Uploaded maps, the Gantt plan and the checklist stay as they are. Munich also marks the project tasks as done, except artists, lineup, food stands and ticket sales. Download a lineup backup first if you want to keep your plan.</p><div class="dialog-actions demo-choices"><button class="button secondary" value="cancel">Keep my plan</button><button class="button secondary" value="load">Load Lisbon (small)</button><button class="button primary" value="load-munich">Load Munich (big)</button></div></form></dialog>
     <dialog id="budget-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">BUDGET WARNING</p><h2>Go over budget?</h2><p id="budget-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-budget" value="confirm">Confirm over budget</button></div></form></dialog>
     <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><p class="eyebrow">DOUBLE BOOKING</p><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
@@ -738,10 +738,10 @@
     <script src="rules/project-rules.js"></script>
     <script src="rules/festival-rules.js?v=review-followups"></script>
     <script src="rules/artist-library.js?v=artist-library-2"></script>
-    <script src="app.js?v=artist-library-merge"></script>
-    <script src="artist-library/artist-photos.js?v=vendor-catalogue"></script>
+    <script src="app.js?v=munich-merge"></script>
+    <script src="artist-library/artist-photos.js?v=munich-demo"></script>
     <script src="artist-library/artist-library.js?v=artist-library-2"></script>
-    <script src="rules/checklist-rules.js"></script>
+    <script src="rules/checklist-rules.js?v=stages-tasks"></script>
     <script src="checkliste-festivalplanung/checklist-page.js?v=compact-pages"></script>
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js"></script>
@@ -755,16 +755,16 @@
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js?v=vendor-catalogue"></script>
     <script src="rules/vendor-library.js?v=vendor-catalogue"></script>
-    <script src="rules/site-map-rules.js?v=review-followups"></script>
+    <script src="rules/site-map-rules.js?v=munich-merge"></script>
     <script src="rules/map-draft-rules.js"></script>
-    <script src="rules/crowd-rules.js?v=review-followups"></script>
-    <script src="site-map/map-drawing.js"></script>
-    <script src="site-map/site-map-page.js?v=stage-exit-summary"></script>
+    <script src="rules/crowd-rules.js?v=munich-merge"></script>
+    <script src="site-map/map-drawing.js?v=stages-tasks"></script>
+    <script src="site-map/site-map-page.js?v=stages-tasks"></script>
     <script src="vendors/vendors-page.js?v=vendor-catalogue"></script>
     <script src="rules/finance-rules.js"></script>
-    <script src="finance/finance-page.js?v=compact-pages"></script>
-    <script src="rules/demo-festival.js?v=march-2027-demo"></script>
-    <script src="demo/demo-loader.js"></script>
+    <script src="finance/finance-page.js?v=munich-demo"></script>
+    <script src="rules/demo-festival.js?v=fun-open"></script>
+    <script src="demo/demo-loader.js?v=fun-open"></script>
     <script src="overview.js?v=review-followups"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js"></script>
