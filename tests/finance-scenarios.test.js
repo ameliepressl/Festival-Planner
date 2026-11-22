@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   DEFAULT_FINANCE, parseFinance, financeProblem, ticketTiers, averagePriceFactor, financeModel, scenarios, cashFlow,
-  financeExtraProblem, parseFinanceExtras, extraTotal, MAX_FINANCE_EXTRAS
+  financeExtraProblem, parseFinanceExtras, extraTotal, MAX_FINANCE_EXTRAS, keepScenarioOrder
 } = require('../rules/finance-rules.js');
 const { capacityNeeds } = require('../rules/capacity-rules.js');
 
@@ -43,11 +43,29 @@ test('the organiser sets how many tickets sell in the bad and best case', () => 
 
 test('the bad case cannot sell more than the best case; broken saved values are repaired', () => {
   assert.match(financeProblem({ ...DEFAULT_FINANCE, badSellThrough: 95, goodSellThrough: 90 }), /bad case/);
-  assert.equal(financeProblem({ ...DEFAULT_FINANCE, badSellThrough: 90, goodSellThrough: 90 }), '');
+  assert.equal(financeProblem({ ...DEFAULT_FINANCE, sellThrough: 90, badSellThrough: 90, goodSellThrough: 90 }), '');
   const repaired = parseFinance(JSON.stringify({ badSellThrough: 95, goodSellThrough: 90, ticketPrice: 40 }));
   assert.deepEqual([repaired.badSellThrough, repaired.goodSellThrough, repaired.ticketPrice], [50, 100, 40]);
   assert.equal(parseFinance(JSON.stringify({ badSellThrough: 120 })).badSellThrough, 50);
   assert.equal(parseFinance(JSON.stringify({ goodSellThrough: -1 })).goodSellThrough, 100);
+});
+
+test('the order is always bad case <= your plan <= best case', () => {
+  // typed directly into the bad or best case: refused with a clear message
+  assert.match(financeProblem({ ...DEFAULT_FINANCE, sellThrough: 60, badSellThrough: 70 }), /bad case cannot sell more tickets than your plan \(60 %\)/);
+  assert.match(financeProblem({ ...DEFAULT_FINANCE, sellThrough: 60, goodSellThrough: 55 }), /best case cannot sell fewer tickets than your plan \(60 %\)/);
+  // moving your plan takes the case along instead of blocking
+  const lower = keepScenarioOrder({ ...DEFAULT_FINANCE, sellThrough: 40 });
+  assert.deepEqual([lower.badSellThrough, lower.sellThrough, lower.goodSellThrough], [40, 40, 100]);
+  const higher = keepScenarioOrder({ ...DEFAULT_FINANCE, sellThrough: 95, goodSellThrough: 90 });
+  assert.deepEqual([higher.badSellThrough, higher.sellThrough, higher.goodSellThrough], [50, 95, 95]);
+  assert.equal(financeProblem(lower), '');
+  assert.equal(financeProblem(higher), '');
+  // older saves: the plan is kept, the cases follow it, the ticket shares are not touched
+  const old = parseFinance(JSON.stringify({ sellThrough: 30, badSellThrough: 50, earlyBirdShare: 40 }));
+  assert.deepEqual([old.badSellThrough, old.sellThrough, old.goodSellThrough, old.earlyBirdShare], [30, 30, 100, 40]);
+  const [bad, plan] = scenarios({ ...input(), settings: { ...old, ...BASE } });
+  assert.ok(bad.ticketsSold <= plan.ticketsSold);
 });
 
 // ---------- more ticket assumptions ----------
