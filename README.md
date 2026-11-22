@@ -90,7 +90,10 @@ Saved sections sync to Supabase and can be loaded on another device. Different s
 are merged; simultaneous edits to the same section can still overwrite one another.
 Check the account saving status before leaving. If another tab changes the open festival,
 reload the older tab before editing it.
-Details: [login](feature-plans/login.md) · [shared festivals](feature-plans/shared-festivals.md).
+Forgot your password? Choose **Forgot your password?** on the sign-in screen: the app emails a
+link that opens **Choose a new password**.
+Details: [login](feature-plans/login.md) · [shared festivals](feature-plans/shared-festivals.md) ·
+[forgot password](feature-plans/forgot-password.md).
 
 Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
 
@@ -100,14 +103,15 @@ Accounts and saved festivals are stored in **Supabase**. One-time setup by the p
    SQL Editor. The database owner performs this step; the browser never runs SQL migrations.
 3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
    Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
-4. In *Authentication → URL Configuration*, add the deployed address and
-   `http://localhost:8000`.
+4. In *Authentication → URL Configuration*, set the Site URL to the deployed address and add
+   `https://ameliepressl.github.io/Festival-Planner/**` and `http://localhost:8000/**` as
+   Redirect URLs (the password reset link only opens addresses on this list).
+5. Email sending: Supabase's built-in email service only sends to members of the Supabase
+   organization, and only a few emails per hour. For password reset emails to everyone, set up
+   custom SMTP in *Authentication → Emails → SMTP settings*.
 
-Outstanding permission issue for Amelie: the database rules must also stop Editors
-from changing festival details and the overall artist budget through a direct request.
-The app already restricts these controls. Amelie will implement and test the database
-fix separately; no SQL fix is included in this audit branch and no live database
-changes were made.
+Editors cannot change the festival details or the overall artist budget, also not through a
+direct request (`migrations/006`, applied on 22 November 2026).
 
 ## ✨ Features
 

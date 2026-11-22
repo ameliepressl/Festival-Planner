@@ -1,0 +1,183 @@
+// Forgot password (feature-plans/forgot-password.md): the rules, and the real sign-in screen
+// (account/account.js) with a fake Supabase. No email is sent and Supabase is never contacted.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const { newPasswordProblem, passwordResetRedirect, recoveryFromUrl, accountErrorMessage } = require('../rules/account-rules.js');
+
+const ROOT = path.join(__dirname, '..');
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+// --- Rules ------------------------------------------------------------------------------
+
+test('the new password follows the account rules and must be typed the same twice', () => {
+  assert.equal(newPasswordProblem({ password: 'festival-2027', confirm: 'festival-2027' }), '');
+  assert.match(newPasswordProblem({ password: 'short', confirm: 'short' }), /at least 8/);
+  assert.match(newPasswordProblem({ password: 'a'.repeat(73), confirm: 'a'.repeat(73) }), /at most 72/);
+  assert.match(newPasswordProblem({ password: 'festival-2027', confirm: 'festival-2028' }), /do not match/);
+  assert.match(newPasswordProblem(), /at least 8/);
+});
+
+test('the reset link leads back to this page without its address extras', () => {
+  assert.equal(passwordResetRedirect({ origin: 'https://ameliepressl.github.io', pathname: '/Festival-Planner/' }),
+    'https://ameliepressl.github.io/Festival-Planner/');
+  assert.equal(passwordResetRedirect({ origin: 'http://localhost:8000', pathname: '/', hash: '#top', search: '?x=1' }),
+    'http://localhost:8000/');
+});
+
+test('a page opened from a reset email is recognised; normal addresses are not', () => {
+  assert.deepEqual(recoveryFromUrl('#access_token=abc&expires_in=3600&refresh_token=def&token_type=bearer&type=recovery'),
+    { kind: 'recovery', accessToken: 'abc', refreshToken: 'def' });
+  assert.deepEqual(recoveryFromUrl('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired'),
+    { kind: 'expired' });
+  assert.deepEqual(recoveryFromUrl('#type=recovery&access_token=abc'), { kind: 'expired' }, 'incomplete link');
+  for (const hash of ['', '#', '#top', '#access_token=abc&refresh_token=def&type=signup', undefined, null])
+    assert.equal(recoveryFromUrl(hash), null, String(hash));
+});
+
+test('clear messages for the email service limits and reusing the old password', () => {
+  assert.match(accountErrorMessage({ code: 'over_email_send_rate_limit', status: 429, message: 'email rate limit exceeded' }), /last hour/);
+  assert.match(accountErrorMessage({ code: 'email_address_not_authorized', status: 400 }), /cannot send emails to this address/);
+  assert.match(accountErrorMessage({ code: 'same_password', status: 422 }), /different from your old one/);
+  assert.match(accountErrorMessage({ status: 429, code: 'over_request_rate_limit' }), /Too many attempts/, 'other limits unchanged');
+});
+
+// --- The real sign-in screen --------------------------------------------------------------
+
+function signInScreen({ hash = '', session = null, auth = {} } = {}) {
+  const nodes = new Map(), calls = [];
+  let reloads = 0, ready = null;
+  function node(selector) {
+    if (!nodes.has(selector)) {
+      const handlers = new Map();
+      nodes.set(selector, { hidden: false, textContent: '', value: '', disabled: false, inert: false, dataset: {}, values: {},
+        classList: { add() {}, remove() {}, contains() { return false; } },
+        setAttribute(key, value) { this[key] = value; }, append() {},
+        addEventListener(type, fn) { handlers.set(type, fn); },
+        async submit() { handlers.get('submit')({ preventDefault() {}, currentTarget: this }); await settle(); },
+        querySelector: inner => node(`${selector} ${inner}`) });
+    }
+    return nodes.get(selector);
+  }
+  const location = { origin: 'https://ameliepressl.github.io', pathname: '/Festival-Planner/', search: '', hash,
+    reload() { reloads++; } };
+  const client = { auth: {
+    onAuthStateChange() {},
+    async getSession() { calls.push(['getSession']); return { data: { session } }; },
+    async resetPasswordForEmail(email, options) { calls.push(['resetPasswordForEmail', email, options]); return { error: null }; },
+    async setSession(tokens) { calls.push(['setSession', tokens]); return { data: {}, error: null }; },
+    async updateUser(changes) { calls.push(['updateUser', changes]); return { data: {}, error: null }; },
+    ...auth } };
+  const context = vm.createContext({
+    window: { localStorage: new Map(), location, supabase: { createClient: () => client }, addEventListener() {}, dispatchEvent() {},
+      FESTIVAL_SUPABASE: { url: 'https://isolated-test.invalid', publishableKey: 'public-placeholder-for-isolated-tests' } },
+    history: { replaceState(state, title, url) { calls.push(['replaceState', url]); location.hash = ''; } },
+    Storage: class { setItem() {} removeItem() {} },
+    document: { documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } },
+      querySelector: node, querySelectorAll() { return []; },
+      addEventListener(type, fn) { if (type === 'DOMContentLoaded') ready = fn; else if (type !== 'visibilitychange') throw new Error(type); } },
+    FormData: class { constructor(form) { this.form = form; } entries() { return Object.entries(this.form.values); } },
+    sessionStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+    setTimeout() { return 1; }, clearTimeout() {}, setInterval() { return 1; }, clearInterval() {}, TextEncoder, URLSearchParams, console });
+  context.window.localStorage = { getItem: () => null, setItem() {}, removeItem() {}, key: () => null, length: 0 };
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'rules/account-rules.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'account/account.js'), 'utf8'), context, { filename: 'account/account.js' });
+  ready();
+  const plain = value => JSON.parse(JSON.stringify(value));
+  return { node, get calls() { return plain(calls); }, location, reloads: () => reloads,
+    shown: () => ['sign-in', 'sign-up', 'forgot', 'new-password'].filter(name => !node(`#${name}-form`).hidden) };
+}
+
+test('"Forgot your password?" sends a reset link back to this page without saying whether the account exists', async () => {
+  const ui = signInScreen();
+  await settle();
+  assert.deepEqual(ui.shown(), ['sign-in']);
+  ui.node('#sign-in-form input[name="email"]').value = ' kira@novasbe.pt ';
+  ui.node('#forgot-password').onclick();
+  assert.deepEqual(ui.shown(), ['forgot']);
+  assert.equal(ui.node('#account-title').textContent, 'Reset your password');
+  assert.equal(ui.node('.account-tabs').hidden, true);
+  assert.equal(ui.node('#forgot-form input[name="email"]').value, 'kira@novasbe.pt', 'the typed email is carried over');
+
+  const form = ui.node('#forgot-form');
+  form.values = { email: 'not-an-email' };
+  await form.submit();
+  assert.match(ui.node('#forgot-form .form-message').textContent, /valid email/);
+  assert.equal(ui.calls.some(([name]) => name === 'resetPasswordForEmail'), false);
+
+  form.values = { email: ' kira@novasbe.pt ' };
+  await form.submit();
+  assert.deepEqual(ui.calls.find(([name]) => name === 'resetPasswordForEmail'),
+    ['resetPasswordForEmail', 'kira@novasbe.pt', { redirectTo: 'https://ameliepressl.github.io/Festival-Planner/' }]);
+  assert.match(ui.node('#forgot-form .form-message').textContent, /If an account exists for this email/);
+
+  ui.node('#back-to-sign-in').onclick();
+  assert.deepEqual(ui.shown(), ['sign-in']);
+  assert.equal(ui.node('.account-tabs').hidden, false);
+});
+
+test('the service limit is explained instead of pretending the email was sent', async () => {
+  const ui = signInScreen({ auth: { async resetPasswordForEmail() {
+    return { error: { code: 'over_email_send_rate_limit', status: 429, message: 'email rate limit exceeded' } }; } } });
+  await settle();
+  ui.node('#forgot-password').onclick();
+  ui.node('#forgot-form').values = { email: 'vicky@novasbe.pt' };
+  await ui.node('#forgot-form').submit();
+  assert.match(ui.node('#forgot-form .form-message').textContent, /Too many emails/);
+});
+
+test('the link from the email opens "Choose a new password", removes the tokens from the address and saves the password', async () => {
+  const ui = signInScreen({ hash: '#access_token=abc&expires_in=3600&refresh_token=def&token_type=bearer&type=recovery' });
+  await settle();
+  assert.deepEqual(ui.calls[0], ['replaceState', '/Festival-Planner/'], 'tokens are removed first');
+  assert.deepEqual(ui.calls[1], ['setSession', { access_token: 'abc', refresh_token: 'def' }]);
+  assert.equal(ui.calls.some(([name]) => name === 'getSession'), false, 'the festival is not opened yet');
+  assert.deepEqual(ui.shown(), ['new-password']);
+  assert.equal(ui.node('#account-title').textContent, 'Choose a new password');
+
+  const form = ui.node('#new-password-form');
+  form.values = { password: 'festival-2027', confirm: 'festival-2028' };
+  await form.submit();
+  assert.match(ui.node('#new-password-form .form-message').textContent, /do not match/);
+  assert.equal(ui.calls.some(([name]) => name === 'updateUser'), false);
+
+  form.values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await form.submit();
+  assert.deepEqual(ui.calls.at(-1), ['updateUser', { password: 'festival-2027' }]);
+  assert.equal(ui.reloads(), 1, 'the app then opens signed in');
+});
+
+test('reusing the old password is refused with a clear message and no reload', async () => {
+  const ui = signInScreen({ hash: '#access_token=abc&refresh_token=def&type=recovery',
+    auth: { async updateUser() { return { error: { code: 'same_password', status: 422 } }; } } });
+  await settle();
+  ui.node('#new-password-form').values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await ui.node('#new-password-form').submit();
+  assert.match(ui.node('#new-password-form .form-message').textContent, /different from your old one/);
+  assert.equal(ui.reloads(), 0);
+});
+
+test('an expired, used or rejected link offers to request a new one', async () => {
+  for (const setup of [
+    { hash: '#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired' },
+    { hash: '#access_token=old&refresh_token=used&type=recovery',
+      auth: { async setSession() { return { data: {}, error: { code: 'refresh_token_already_used', status: 400 } }; } } },
+    { hash: '#access_token=old&refresh_token=used&type=recovery', auth: { async setSession() { throw new Error('offline'); } } }
+  ]) {
+    const ui = signInScreen(setup);
+    await settle();
+    assert.deepEqual(ui.shown(), ['forgot'], setup.hash);
+    assert.match(ui.node('#forgot-form .form-message').textContent, /expired or was already used/);
+    assert.equal(ui.location.hash, '');
+    assert.equal(ui.calls.some(([name]) => name === 'getSession'), false);
+  }
+});
+
+test('a normal visit still checks the session as before', async () => {
+  const ui = signInScreen({ hash: '#top' });
+  await settle();
+  assert.deepEqual(ui.calls, [['getSession']]);
+  assert.deepEqual(ui.shown(), ['sign-in']);
+});
