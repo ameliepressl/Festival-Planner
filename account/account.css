@@ -26,6 +26,11 @@ html:not(.account-locked):not(.account-checking) .account-screen { display: none
 .account-form small { color: var(--muted); font-size: 11px; line-height: 1.4; margin-top: -6px; }
 .account-form .form-message { margin: 0; }
 .account-form .button { justify-self: start; padding: 11px 18px; }
+.account-link { justify-self: start; border: 0; background: transparent; padding: 2px 0; font: 12px var(--font-text); color: var(--muted); text-decoration: underline; cursor: pointer; }
+.account-link:hover { color: var(--ink); }
+.account-link:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.account-form .account-intro { margin: 0 0 4px; }
+.account-tabs[hidden] { display: none; }
 .account-form .button:disabled, .account-choice-actions .button:disabled { opacity: .55; cursor: wait; transform: none; }
 
 .account-choice-actions { display: grid; gap: 10px; }
