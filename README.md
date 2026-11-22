@@ -154,7 +154,8 @@ These are the active rules in the [current product brief](product-brief/festival
     planning estimates, not a legal capacity assessment or safety approval.
 - **Vendors** — the original catalogue plus a searchable vendor library, with fictional
   example stands, menus and prices. Confirm stands on food-court pitches, see pitch income
-  and check visitor needs such as vegan food and alcohol-free drinks.
+  and check visitor needs such as vegan food and alcohol-free drinks. **Add vendor** adds your
+  own stand with its fee, description and a menu with prices and diet labels (edit or delete it later).
 
 ### Know the numbers
 - **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
