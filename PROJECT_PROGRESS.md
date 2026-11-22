@@ -683,3 +683,9 @@ which run the real sign-in screen with a fake Supabase). Not yet tried in a brow
 Before it works for everyone (Amelie, in the Supabase dashboard): Redirect URLs and Site URL in
 Authentication → URL Configuration, and custom SMTP — the built-in email service only sends to
 members of the Supabase organization.
+
+**Update 22 November (forgot password):** custom SMTP with the team Gmail account
+(festivalarchitect.team@gmail.com) and the Redirect URLs are set up in Supabase; Amelie reset her
+password on the live app successfully. Fix on `fix-reset-wait-message`: asking for a second email
+within a minute showed "Too many emails were sent in the last hour" — Supabase uses the same code
+for its one-email-per-minute rule. It now says how many seconds to wait. 382/382 tests passed.

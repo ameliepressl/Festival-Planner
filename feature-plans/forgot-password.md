@@ -21,6 +21,9 @@ back, and teammates would have to add them to the team again.
       Request a new one below." with the reset form open.
 - [x] Clear messages for: passwords that do not match, the same password as before, too many
       emails in the last hour, and an address the email service may not send to yet.
+- [x] **Asking again within a minute** (Supabase allows one email per person per minute):
+      "An email was just sent. Please wait 25 seconds before requesting another one." Before,
+      this showed the hourly-limit message by mistake (found on the live app, 22 November).
 - [x] The rules (reading the link, checking the new password, messages) live in
       `rules/account-rules.js` with tests in `tests/forgot-password.test.js`.
 
