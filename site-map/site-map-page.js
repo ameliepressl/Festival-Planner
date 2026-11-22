@@ -38,6 +38,8 @@
   let box = null;     // the visible part of the map (zoom and pan)
   let pointer = null; // what the mouse is doing right now
   let busy = false;
+  let simulation = null;
+  function closeSimulation() { simulation?.close(); simulation = null; }
   const snapshot = () => ({ sites, ground, currentId, pendingFence: draftBorder?.length ? draftBorder : null });
   const draft = createMapDraft(snapshot());
   const lineupProblem = () => window.getLineupDataProblem?.() || '';
@@ -54,6 +56,7 @@
   }
   // Historical callers mark a completed action; only commitChanges writes storage now.
   function save() {
+    closeSimulation();
     changeMapDraft(draft, snapshot());
     renderDraftActions();
   }
@@ -139,6 +142,7 @@
 
   // ---------- the page frame (drawn once per visit or map change) ----------
   function renderPage() {
+    closeSimulation();
     const keepSettingsOpen = !!view.querySelector("#sm-settings-dialog")?.open;
     const s = site();
     view.innerHTML = `
@@ -166,12 +170,14 @@
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
           </div>
           <div class="sm-frame mode-${mode}">
+            <details class="sm-simulation" id="sm-simulation"><summary>Visitor simulation</summary><div class="sm-sim-body"></div></details>
             <div class="sm-hint" id="sm-hint"></div>
             <div class="sm-map-viewport">
               <svg id="sm-svg" viewBox="0 0 ${s.width} ${s.height}" role="img" aria-label="Map of ${escape(s.name)}">
                 ${MapDrawing.defs()}
                 <g id="sm-scene"></g><g id="sm-nogo"></g><g id="sm-paths"></g><g id="sm-objects"></g><g id="sm-edit"></g>
               </svg>
+              <canvas id="sm-visitors-canvas" hidden aria-hidden="true"></canvas>
               <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
               <div class="sm-scale" id="sm-scale"></div>
             </div>
@@ -203,6 +209,18 @@
     if (!editable()) {
       view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
     }
+    const playbackPanel = view.querySelector('#sm-simulation');
+    playbackPanel.ontoggle = () => {
+      if (!playbackPanel.isConnected) return;
+      if (!playbackPanel.open) { closeSimulation(); return; }
+      if (lineupProblem() || draftBorder?.length || busy) {
+        playbackPanel.querySelector('.sm-sim-body').textContent = lineupProblem() ? 'Recover the saved lineup to simulate this festival.' :
+          'Finish the current map change before starting a simulation.';
+        return;
+      }
+      if (mode !== 'explore') setMode('explore');
+      simulation = VisitorPlayback.mount(view, s, ground.visitors, activeStageIds(items), state, () => box);
+    };
     bindMap();
   }
 
@@ -218,6 +236,7 @@
   function applyBox() {
     const s = site();
     view.querySelector('#sm-svg').setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`);
+    simulation?.paint();
     // A scale bar of a round number of metres, about a fifth of the visible width.
     const metres = box.w * metresPerUnit(s) / 5;
     const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000].find((n) => n >= metres) || 5000;
@@ -448,6 +467,7 @@
   }
 
   function setMode(next) {
+    closeSimulation();
     mode = next;
     if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
@@ -733,6 +753,7 @@
   }, true);
   document.querySelectorAll('.sidebar-item').forEach((button) => button.addEventListener('click', () => {
     const onMap = button.dataset.section === 'Site map';
+    if (!onMap) closeSimulation();
     view.classList.toggle('hidden', !onMap);
     if (onMap) {
       if (!window.hasUnsavedMapChanges()) {

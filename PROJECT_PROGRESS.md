@@ -683,3 +683,13 @@ which run the real sign-in screen with a fake Supabase). Not yet tried in a brow
 Before it works for everyone (Amelie, in the Supabase dashboard): Redirect URLs and Site URL in
 Authentication → URL Configuration, and custom SMTP — the built-in email service only sends to
 members of the Supabase organization.
+
+## Animated visitor simulation — 22 November 2026
+
+Branch: `feature-animated-visitor-simulation` (owner: Vicky). Plan: [feature-plans/animated-visitor-simulation.md](feature-plans/animated-visitor-simulation.md).
+
+The Site map now has a read-only Visitor simulation for every festival role. Each dot represents one visitor. Visitors arrive in groups, follow the selected day's booked sets and move between stages and facilities. A switchable heatmap counts visitors in each map cell against the project's density limit. Organisers can choose a day, scrub the clock, pause, restart or play at 1×, 1.5× or 2×.
+
+Evacuation starts with the people currently on the map. Walking routes use the site's fence and no-go areas. Open exit widths, response delay, walking speed and flow rate govern the animation. Visitors without a reachable exit stay visible. An exit without a measured width holds its queue. The existing peak-scenario estimate appears beside playback when its measurements are complete. Both modes model group behaviour for planning discussions.
+
+Validation: all 389 tests passed, including nine new checks for individual dots, timetable changes, walkable ground, exit queues, overnight sets and read-only playback. In Chrome, reloaded the 20,000-visitor Munich demo, switched to Saturday at 1.5×, checked that all 20,000 exited, and returned to the original festival time.

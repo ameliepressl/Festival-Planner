@@ -53,6 +53,29 @@
 .sm-hint .button.secondary{color:#fff;border-color:#fff}
 .sm-hint .button:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
+/* Read-only crowd playback sits with the map and follows its pan and zoom. */
+.sm-simulation{background:var(--white);color:var(--ink);user-select:text;font:13px/1.4 var(--font-text)}
+.sm-simulation>summary{padding:9px 12px;cursor:pointer;font-weight:600}
+.sm-simulation[open]>summary{border-bottom:1px solid var(--line)}
+.sm-sim-body{padding:10px 12px}
+.sm-sim-controls,.sm-sim-key,.sm-sim-clock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sm-sim-controls label{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.sm-sim-controls select,.sm-sim-controls .button{width:auto;min-height:32px;padding:5px 9px;font:600 12px var(--font-text)}
+.sm-sim-controls input[type=checkbox]{width:auto;margin:0;accent-color:var(--coral)}
+.sm-sim-clock{margin-top:10px;font-variant-numeric:tabular-nums}
+.sm-sim-clock output{font-weight:700}
+.sm-sim-clock input[type=range]{width:auto;min-width:72px;min-height:0;flex:1;margin:0;padding:0;accent-color:var(--coral)}
+.sm-sim-clock span{font-size:12px}
+.sm-sim-key,.sm-sim-note{font-size:11px;color:var(--muted)}
+.sm-sim-key i{display:inline-block;width:38px;height:7px;border-radius:4px;background:linear-gradient(90deg,#38bdad,#fecb49,#f74d42)}
+.sm-sim-bill,.sm-sim-note{margin:5px 0}
+.sm-sim-bill{font-weight:600}
+#sm-visitors-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#sm-visitors-canvas[hidden]{display:none}
+.sm-simulating .fa-pin{opacity:.16}
+.sm-simulating [data-id^="stage-"] .fa-pin,.sm-simulating [data-id^="exit-"] .fa-pin,.sm-simulating [data-id="entrance"] .fa-pin{opacity:.9}
+.sm-simulating #sm-hint{display:none}
+
 /* Cards on the right */
 .sm-side{display:flex;flex-direction:column;gap:14px}
 .sm-card{background:var(--white);border:1px solid var(--line);padding:18px}
