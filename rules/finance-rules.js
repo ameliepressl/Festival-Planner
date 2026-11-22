@@ -31,10 +31,72 @@ const FINANCE_FIELDS = [
   { id: 'venue', label: 'Venue, permits & insurance', unit: '€ in total', group: 'Costs', min: 0, max: 1000000, step: 500, value: 12000 },
   { id: 'marketing', label: 'Marketing', unit: '€ in total', group: 'Costs', min: 0, max: 1000000, step: 500, value: 8000 },
   { id: 'ticketingFee', label: 'Ticketing fee', unit: '% of ticket sales', group: 'Costs', min: 0, max: 30, step: 0.5, value: 5 },
-  { id: 'contingency', label: 'Contingency reserve', unit: '% of fixed costs', group: 'Costs', min: 0, max: 50, step: 1, value: 10 }
+  { id: 'contingency', label: 'Contingency reserve', unit: '% of fixed costs', group: 'Costs', min: 0, max: 50, step: 1, value: 10 },
+  // Additional assumptions. They start at 0, so a plan without them calculates exactly as before.
+  { id: 'vipShare', label: 'VIP tickets', unit: '% of tickets sold', group: 'Additional', sub: 'Tickets', min: 0, max: 50, step: 1, value: 0 },
+  { id: 'vipSurcharge', label: 'VIP price', unit: '% above regular', group: 'Additional', sub: 'Tickets', min: 0, max: 500, step: 10, value: 100 },
+  { id: 'guestShare', label: 'Guest list (free tickets)', unit: '% of tickets: crew, press, winners', group: 'Additional', sub: 'Tickets', min: 0, max: 30, step: 1, value: 0 },
+  { id: 'ticketVat', label: 'VAT on tickets', unit: '% included in the ticket price', group: 'Additional', sub: 'Tickets', min: 0, max: 30, step: 1, value: 0 },
+  { id: 'musicLicence', label: 'Music licence (e.g. GEMA)', unit: '% of net ticket sales', group: 'Additional', sub: 'Tickets', min: 0, max: 20, step: 0.5, value: 0 },
+  { id: 'merchSpend', label: 'Merch spend', unit: '€ per visitor', group: 'Additional', sub: 'Income', min: 0, max: 200, step: 1, value: 0 },
+  { id: 'merchMargin', label: 'Merch margin', unit: '% kept after stock', group: 'Additional', sub: 'Income', min: 0, max: 100, step: 5, value: 40 },
+  { id: 'grants', label: 'Public funding & grants', unit: '€ in total', group: 'Additional', sub: 'Income', min: 0, max: 1000000, step: 500, value: 0 },
+  { id: 'powerPerDay', label: 'Power & generators', unit: '€ per day', group: 'Additional', sub: 'Costs', min: 0, max: 100000, step: 100, value: 0 },
+  { id: 'crewPerDay', label: 'Production crew & volunteers', unit: '€ per day', group: 'Additional', sub: 'Costs', min: 0, max: 200000, step: 100, value: 0 },
+  { id: 'cleaningPerVisitor', label: 'Cleaning & waste', unit: '€ per visitor per day', group: 'Additional', sub: 'Costs', min: 0, max: 50, step: 0.1, value: 0 },
+  { id: 'hospitality', label: 'Artist travel & hospitality', unit: '% of artist fees', group: 'Additional', sub: 'Costs', min: 0, max: 100, step: 1, value: 0 },
+  // Ticket sales in the two other scenarios (the plan uses "Tickets sold" above).
+  { id: 'badSellThrough', label: 'Bad case: tickets sold', unit: '% of expected visitors', group: 'Scenarios', min: 0, max: 100, step: 1, value: 50 },
+  { id: 'goodSellThrough', label: 'Best case: tickets sold', unit: '% of expected visitors', group: 'Scenarios', min: 0, max: 100, step: 1, value: 100 }
 ];
 
-const DEFAULT_FINANCE = Object.fromEntries(FINANCE_FIELDS.map((f) => [f.id, f.value]));
+// Your own cost and income lines ("Additional assumptions"). basis says what the amount is per;
+// timing says when it is paid (for the cash-flow plan).
+const EXTRA_KINDS = ['cost', 'revenue'];
+const EXTRA_BASES = [
+  { id: 'total', label: 'in total' }, { id: 'perDay', label: 'per day' },
+  { id: 'perVisitor', label: 'per visitor' }, { id: 'perVisitorDay', label: 'per visitor per day' }
+];
+const EXTRA_TIMINGS = [
+  { id: 'before', label: 'before the festival', months: [[-3, 1], [-2, 1], [-1, 1]] },
+  { id: 'festival', label: 'at the festival', months: [[0, 1]] },
+  { id: 'after', label: 'after the festival', months: [[1, 1]] }
+];
+const MAX_FINANCE_EXTRAS = 30;
+const MAX_EXTRA_AMOUNT = 5000000;
+
+// Check one own line. Returns '' or one sentence that says what to change.
+function financeExtraProblem(extra) {
+  const e = extra && typeof extra === 'object' ? extra : {};
+  const label = typeof e.label === 'string' ? e.label.trim() : '';
+  if (label.length < 2 || label.length > 60) return 'Give the line a name of 2–60 characters.';
+  if (!EXTRA_KINDS.includes(e.kind)) return 'Choose cost or income.';
+  const amount = e.amount === '' || e.amount === null || typeof e.amount === 'boolean' ? NaN : Number(e.amount);
+  if (!Number.isFinite(amount) || amount < 0 || amount > MAX_EXTRA_AMOUNT) return `${label}: enter an amount from €0 to €${MAX_EXTRA_AMOUNT.toLocaleString('en-GB')}.`;
+  if (Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-6) return `${label}: use at most two decimals.`;
+  if (!EXTRA_BASES.some((b) => b.id === e.basis)) return `${label}: choose what the amount is per.`;
+  if (!EXTRA_TIMINGS.some((t) => t.id === e.timing)) return `${label}: choose when it is paid.`;
+  return '';
+}
+
+// Read the saved own lines back; broken, doubled or extra lines are dropped.
+function parseFinanceExtras(list) {
+  if (!Array.isArray(list)) return [];
+  const result = [];
+  for (const e of list.slice(0, MAX_FINANCE_EXTRAS)) {
+    if (!e || typeof e.id !== 'string' || !/^x[a-z0-9]{1,20}$/.test(e.id) || result.some((r) => r.id === e.id) || financeExtraProblem(e)) continue;
+    result.push({ id: e.id, kind: e.kind, label: e.label.trim(), amount: Number(e.amount), basis: e.basis, timing: e.timing });
+  }
+  return result;
+}
+
+// The total of one own line for this festival (per day / per visitor multiply).
+function extraTotal(extra, days, visitors) {
+  const factor = { total: 1, perDay: days, perVisitor: visitors, perVisitorDay: visitors * days }[extra.basis] || 1;
+  return Math.round(extra.amount * factor);
+}
+
+const DEFAULT_FINANCE = { ...Object.fromEntries(FINANCE_FIELDS.map((f) => [f.id, f.value])), extras: [] };
 
 function validFinanceValue(fieldId, value) {
   const field = FINANCE_FIELDS.find((f) => f.id === fieldId);
@@ -44,16 +106,43 @@ function validFinanceValue(fieldId, value) {
 
 // Rules across several fields: early bird and box office together cannot be more than all tickets.
 function financeProblem(settings) {
-  if (settings.earlyBirdShare + settings.doorShare > 100) return 'Early bird and box office tickets together cannot be more than 100 % of the tickets sold.';
+  const shares = settings.earlyBirdShare + settings.doorShare + (settings.vipShare || 0) + (settings.guestShare || 0);
+  if (shares > 100) return 'Early bird, box office, VIP and guest-list tickets together cannot be more than 100 % of the tickets sold.';
+  const bad = settings.badSellThrough ?? 50;
+  const good = settings.goodSellThrough ?? 100;
+  if (bad > good) return 'The bad case cannot sell more tickets than the best case.';
+  if (bad > settings.sellThrough) return `The bad case cannot sell more tickets than your plan (${settings.sellThrough} %).`;
+  if (good < settings.sellThrough) return `The best case cannot sell fewer tickets than your plan (${settings.sellThrough} %).`;
   return '';
+}
+
+// When "your plan" moves past the bad or best case, that case moves with it, so the order
+// bad case <= your plan <= best case always holds without blocking the organiser.
+function keepScenarioOrder(settings) {
+  const next = { ...settings };
+  if ((next.badSellThrough ?? 50) > next.sellThrough) next.badSellThrough = next.sellThrough;
+  if ((next.goodSellThrough ?? 100) < next.sellThrough) next.goodSellThrough = next.sellThrough;
+  return next;
 }
 
 // Read the saved assumptions back; anything missing or out of range falls back to the default.
 function parseFinance(text) {
   let saved = {};
   try { saved = JSON.parse(text) || {}; } catch { saved = {}; }
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
   const settings = Object.fromEntries(FINANCE_FIELDS.map((f) => [f.id, validFinanceValue(f.id, saved[f.id]) ? Number(saved[f.id]) : f.value]));
-  if (financeProblem(settings)) { settings.earlyBirdShare = DEFAULT_FINANCE.earlyBirdShare; settings.doorShare = DEFAULT_FINANCE.doorShare; }
+  // Scenarios: a bad case above the best case falls back to the defaults; then the cases follow
+  // the plan (older saves), and the plan itself is never changed.
+  if (settings.badSellThrough > settings.goodSellThrough) {
+    settings.badSellThrough = DEFAULT_FINANCE.badSellThrough;
+    settings.goodSellThrough = DEFAULT_FINANCE.goodSellThrough;
+  }
+  Object.assign(settings, keepScenarioOrder(settings));
+  // Ticket shares that add up to more than 100 % fall back to the defaults.
+  if (financeProblem(settings)) {
+    ['earlyBirdShare', 'doorShare', 'vipShare', 'guestShare'].forEach((id) => { settings[id] = DEFAULT_FINANCE[id]; });
+  }
+  settings.extras = parseFinanceExtras(saved.extras);
   return settings;
 }
 
@@ -61,21 +150,29 @@ function parseFinance(text) {
 
 // How the sold tickets split into early bird, regular and box office, with price and revenue per tier.
 // Regular gets whatever is left, so the three always add up to exactly the tickets sold.
+// VIP and guest-list tiers only appear when they are used.
 function ticketTiers(settings, ticketsSold) {
-  const early = Math.round((ticketsSold * settings.earlyBirdShare) / 100);
-  const door = Math.min(ticketsSold - early, Math.round((ticketsSold * settings.doorShare) / 100));
+  const share = (value) => Math.round((ticketsSold * (value || 0)) / 100);
+  const early = share(settings.earlyBirdShare);
+  const door = Math.min(ticketsSold - early, share(settings.doorShare));
+  const vip = Math.min(ticketsSold - early - door, share(settings.vipShare));
+  const guest = Math.min(ticketsSold - early - door - vip, share(settings.guestShare));
   const tiers = [
     { id: 'early', label: 'Early bird', tickets: early, price: settings.ticketPrice * (1 - settings.earlyBirdDiscount / 100) },
-    { id: 'regular', label: 'Regular', tickets: ticketsSold - early - door, price: settings.ticketPrice },
+    { id: 'regular', label: 'Regular', tickets: ticketsSold - early - door - vip - guest, price: settings.ticketPrice },
     { id: 'door', label: 'Box office', tickets: door, price: settings.ticketPrice * (1 + settings.doorSurcharge / 100) }
   ];
+  if (settings.vipShare > 0) tiers.push({ id: 'vip', label: 'VIP', tickets: vip, price: settings.ticketPrice * (1 + (settings.vipSurcharge || 0) / 100) });
+  if (settings.guestShare > 0) tiers.push({ id: 'guest', label: 'Guest list (free)', tickets: guest, price: 0 });
   return tiers.map((t) => ({ ...t, price: Math.round(t.price * 100) / 100, revenue: Math.round(t.tickets * t.price) }));
 }
 
 // The average ticket price as a share of the regular price (e.g. 0.955 with the default tiers).
 function averagePriceFactor(s) {
-  const regularShare = Math.max(0, 100 - s.earlyBirdShare - s.doorShare);
-  return (s.earlyBirdShare * (1 - s.earlyBirdDiscount / 100) + regularShare + s.doorShare * (1 + s.doorSurcharge / 100)) / 100;
+  const vip = s.vipShare || 0; const guest = s.guestShare || 0;
+  const regularShare = Math.max(0, 100 - s.earlyBirdShare - s.doorShare - vip - guest);
+  return (s.earlyBirdShare * (1 - s.earlyBirdDiscount / 100) + regularShare + s.doorShare * (1 + s.doorSurcharge / 100)
+    + vip * (1 + (s.vipSurcharge || 0) / 100)) / 100;
 }
 
 // ---------- artist spending (from the lineup planner) ----------
@@ -117,46 +214,80 @@ function artistSpending(lineup) {
 // Fixed costs do not depend on how many tickets sell; ticketing fees and bar stock grow with every ticket.
 function financeModel(input) {
   const { settings: s, days, stages, needs } = input;
+  const extras = Array.isArray(s.extras) ? s.extras : [];
+  const num = (value) => (Number.isFinite(value) ? value : 0);
   const ticketsSold = Math.round((input.visitors * s.sellThrough) / 100);
   const tiers = ticketTiers(s, ticketsSold);
   const ticketSales = tiers.reduce((sum, t) => sum + t.revenue, 0);
   const barSales = ticketsSold * days * s.barSpend;
+  const merchSales = Math.round(ticketsSold * num(s.merchSpend));
+  const extraLines = (kind) => extras.filter((e) => e.kind === kind).map((e) => ({
+    id: `extra-${e.id}`, label: e.label, amount: extraTotal(e, days, ticketsSold), own: true,
+    fixed: e.basis === 'total' || e.basis === 'perDay', timing: (EXTRA_TIMINGS.find((t) => t.id === e.timing) || EXTRA_TIMINGS[1]).months
+  }));
+  const optional = (lines) => lines.filter((line) => line.amount > 0);
   const revenue = [
     { id: 'tickets', label: 'Ticket sales', amount: ticketSales },
     { id: 'bar', label: 'Festival bars', amount: barSales },
     { id: 'sponsorship', label: 'Sponsorship', amount: s.sponsorship },
-    { id: 'pitches', label: 'Vendor pitch fees', amount: input.pitchIncome }
+    { id: 'pitches', label: 'Vendor pitch fees', amount: input.pitchIncome },
+    ...optional([
+      { id: 'merch', label: 'Merchandise', amount: merchSales },
+      { id: 'grants', label: 'Public funding & grants', amount: num(s.grants) }
+    ]),
+    ...extraLines('revenue')
   ];
   const fixed = [
-    { id: 'artists', label: 'Artist fees', amount: input.artistFees },
-    { id: 'stages', label: 'Stage production', amount: stages * days * s.stagePerDay },
-    { id: 'venue', label: 'Venue, permits & insurance', amount: s.venue },
-    { id: 'security', label: 'Security staff', amount: needs.securityStaff * days * s.securityPerDay },
-    { id: 'toilets', label: 'Toilets', amount: needs.toiletCabins * days * s.toiletPerDay },
-    { id: 'marketing', label: 'Marketing', amount: s.marketing },
-    { id: 'firstAid', label: 'First aid', amount: needs.firstAiders * days * s.firstAidPerDay },
-    { id: 'water', label: 'Water points', amount: needs.waterPoints * days * s.waterPerDay }
+    { id: 'artists', label: 'Artist fees', amount: input.artistFees, fixed: true },
+    { id: 'stages', label: 'Stage production', amount: stages * days * s.stagePerDay, fixed: true },
+    { id: 'venue', label: 'Venue, permits & insurance', amount: s.venue, fixed: true },
+    { id: 'security', label: 'Security staff', amount: needs.securityStaff * days * s.securityPerDay, fixed: true },
+    { id: 'toilets', label: 'Toilets', amount: needs.toiletCabins * days * s.toiletPerDay, fixed: true },
+    { id: 'marketing', label: 'Marketing', amount: s.marketing, fixed: true },
+    { id: 'firstAid', label: 'First aid', amount: needs.firstAiders * days * s.firstAidPerDay, fixed: true },
+    { id: 'water', label: 'Water points', amount: needs.waterPoints * days * s.waterPerDay, fixed: true },
+    ...optional([
+      { id: 'hospitality', label: 'Artist travel & hospitality', amount: Math.round((input.artistFees * num(s.hospitality)) / 100), fixed: true },
+      { id: 'power', label: 'Power & generators', amount: days * num(s.powerPerDay), fixed: true },
+      { id: 'crew', label: 'Production crew & volunteers', amount: days * num(s.crewPerDay), fixed: true }
+    ]),
+    ...extraLines('cost').filter((line) => line.fixed)
   ];
   const fixedCosts = fixed.reduce((sum, c) => sum + c.amount, 0);
+  const vatShare = num(s.ticketVat) / 100;
+  const ticketVat = Math.round(ticketSales - ticketSales / (1 + vatShare));
   const costs = [
     ...fixed,
     { id: 'contingency', label: 'Contingency reserve', amount: Math.round((fixedCosts * s.contingency) / 100) },
     { id: 'ticketing', label: 'Ticketing fees', amount: Math.round((ticketSales * s.ticketingFee) / 100) },
-    { id: 'barStock', label: 'Bar stock & staff', amount: Math.round(barSales * (1 - s.barMargin / 100)) }
+    { id: 'barStock', label: 'Bar stock & staff', amount: Math.round(barSales * (1 - s.barMargin / 100)) },
+    ...optional([
+      { id: 'ticketVat', label: 'VAT on tickets', amount: ticketVat },
+      { id: 'licence', label: 'Music licence', amount: Math.round(((ticketSales - ticketVat) * num(s.musicLicence)) / 100) },
+      { id: 'merchStock', label: 'Merch stock', amount: Math.round(merchSales * (1 - num(s.merchMargin) / 100)) },
+      { id: 'cleaning', label: 'Cleaning & waste', amount: Math.round(ticketsSold * days * num(s.cleaningPerVisitor)) }
+    ]),
+    ...extraLines('cost').filter((line) => !line.fixed)
   ];
   const totalRevenue = revenue.reduce((sum, r) => sum + r.amount, 0);
   const totalCosts = costs.reduce((sum, c) => sum + c.amount, 0);
   const profit = totalRevenue - totalCosts;
 
-  // Break-even: everything that does not grow with tickets (fixed costs + reserve − sponsors − pitch fees)
-  // has to be covered by what each ticket brings in after fees: its average price plus the bar margin.
-  const gap = Math.max(0, fixedCosts + costs.find((c) => c.id === 'contingency').amount - s.sponsorship - input.pitchIncome);
+  // Break-even: everything that does not grow with tickets (fixed costs + reserve − fixed income)
+  // has to be covered by what each ticket brings in after fees, taxes and per-visitor costs.
+  const perVisitorExtra = (kind) => extras.filter((e) => e.kind === kind && (e.basis === 'perVisitor' || e.basis === 'perVisitorDay'))
+    .reduce((sum, e) => sum + e.amount * (e.basis === 'perVisitorDay' ? days : 1), 0);
+  const fixedIncome = s.sponsorship + input.pitchIncome + num(s.grants)
+    + extras.filter((e) => e.kind === 'revenue' && (e.basis === 'total' || e.basis === 'perDay')).reduce((sum, e) => sum + extraTotal(e, days, 0), 0);
+  const gap = Math.max(0, fixedCosts + costs.find((c) => c.id === 'contingency').amount - fixedIncome);
   const factor = averagePriceFactor(s);
-  const barPerTicket = days * s.barSpend * (s.barMargin / 100);
-  const keptPerTicket = s.ticketPrice * factor * (1 - s.ticketingFee / 100) + barPerTicket;
+  const keptShare = 1 - s.ticketingFee / 100 - (vatShare + num(s.musicLicence) / 100) / (1 + vatShare);
+  const barPerTicket = days * s.barSpend * (s.barMargin / 100) + num(s.merchSpend) * (num(s.merchMargin) / 100)
+    - days * num(s.cleaningPerVisitor) + perVisitorExtra('revenue') - perVisitorExtra('cost');
+  const keptPerTicket = s.ticketPrice * factor * keptShare + barPerTicket;
   const breakEvenTickets = gap === 0 ? 0 : keptPerTicket > 0 ? Math.ceil(gap / keptPerTicket) : null;
   const priceGap = gap - ticketsSold * barPerTicket;
-  const keptPerEuro = ticketsSold * factor * (1 - s.ticketingFee / 100);
+  const keptPerEuro = ticketsSold * factor * keptShare;
   const breakEvenPrice = gap === 0 || priceGap <= 0 ? 0 : keptPerEuro > 0 ? Math.ceil(priceGap / keptPerEuro) : null;
 
   return {
@@ -175,11 +306,14 @@ function financeModel(input) {
 }
 
 // What if fewer or more tickets sell? Three standard cases plus the organiser's own assumption.
+// The organiser sets the ticket sales of each case (badSellThrough / sellThrough / goodSellThrough).
 function scenarios(input) {
+  const bad = input.settings.badSellThrough ?? 50;
+  const good = input.settings.goodSellThrough ?? 100;
   const cases = [
-    { id: 'bad', label: 'Bad weather', sellThrough: 50 },
-    { id: 'plan', label: 'Your plan', sellThrough: input.settings.sellThrough },
-    { id: 'good', label: 'Sold out', sellThrough: 100 }
+    { id: 'bad', field: 'badSellThrough', label: 'Bad case', sellThrough: bad },
+    { id: 'plan', field: 'sellThrough', label: 'Your plan', sellThrough: input.settings.sellThrough },
+    { id: 'good', field: 'goodSellThrough', label: good === 100 ? 'Sold out' : 'Best case', sellThrough: good }
   ];
   return cases.map((c) => {
     const model = financeModel({ ...input, settings: { ...input.settings, sellThrough: c.sellThrough } });
@@ -241,7 +375,18 @@ const CASH_TIMING = {
   toilets: [[1, 1]],                        // rental invoices arrive after the festival
   water: [[1, 1]],
   contingency: [[0, 1]],                    // the reserve is counted as spent at the festival
-  barStock: [[0, 1]]
+  barStock: [[0, 1]],
+  vip: [[-4, 1], [-3, 1], [-2, 1]],         // VIP packages sell with the regular tickets, a bit earlier
+  guest: [[0, 1]],
+  merch: [[0, 1]],
+  grants: [[-4, 1]],                        // funding is usually paid out before the festival
+  hospitality: [[0, 1]],
+  power: [[-1, 1], [0, 1]],
+  crew: [[0, 1]],
+  ticketVat: [[0, 1]],                      // VAT is passed on to the tax office around the festival
+  licence: [[1, 1]],                        // licence invoices arrive afterwards
+  merchStock: [[-1, 1]],
+  cleaning: [[1, 1]]
 };
 
 // Split an amount over months by weight. Whole euros; the last month takes the rounding rest,
@@ -269,8 +414,8 @@ function cashFlow(model, ticketingFee) {
   };
   const rows = [];
   model.tiers.forEach((t) => rows.push({ id: `tickets-${t.id}`, label: `${t.label} tickets`, kind: 'in', amounts: spread(t.revenue, CASH_TIMING[t.id]) }));
-  model.revenue.filter((r) => r.id !== 'tickets').forEach((r) => rows.push({ id: r.id, label: r.label, kind: 'in', amounts: spread(r.amount, CASH_TIMING[r.id]) }));
-  model.costs.filter((c) => c.id !== 'ticketing').forEach((c) => rows.push({ id: c.id, label: c.label, kind: 'out', amounts: spread(c.amount, CASH_TIMING[c.id]) }));
+  model.revenue.filter((r) => r.id !== 'tickets').forEach((r) => rows.push({ id: r.id, label: r.label, kind: 'in', amounts: spread(r.amount, r.timing || CASH_TIMING[r.id]) }));
+  model.costs.filter((c) => c.id !== 'ticketing').forEach((c) => rows.push({ id: c.id, label: c.label, kind: 'out', amounts: spread(c.amount, c.timing || CASH_TIMING[c.id]) }));
 
   // The ticketing fee is paid in the same months as the ticket sales; the last sales month takes the
   // rounding rest, so the fees add up to exactly the model's ticketing cost.
@@ -311,6 +456,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     FINANCE_STORAGE_KEY, FINANCE_FIELDS, DEFAULT_FINANCE, validFinanceValue, parseFinance, financeProblem,
     ticketTiers, averagePriceFactor, profitMatrix, CASH_MONTHS, CASH_TIMING, splitByWeight, cashFlow,
-    artistSpending, financeModel, scenarios, priceCurve
+    artistSpending, financeModel, scenarios, priceCurve,
+    EXTRA_KINDS, EXTRA_BASES, EXTRA_TIMINGS, MAX_FINANCE_EXTRAS, financeExtraProblem, parseFinanceExtras, extraTotal, keepScenarioOrder
   };
 }

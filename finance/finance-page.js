@@ -123,6 +123,45 @@
     }).join('')}</div>`;
   }
 
+  // Under the scenario bars: one row per case with a slider (% of expected visitors) and the number of
+  // tickets, so the organiser can say directly how many tickets sell in each case.
+  function scenarioControls(rows, visitors, editable) {
+    const lock = editable ? '' : 'disabled title="Admins can change the scenarios."';
+    return `<div class="fin-scenario-controls">${rows.map((r) => `<div class="fin-scenario-control">
+        <span class="fin-scenario-name">${escape(r.label)}${r.id === 'plan' ? ' <small>(= Tickets sold)</small>' : ''}</span>
+        <input type="range" min="0" max="100" step="1" value="${r.sellThrough}" data-field="${r.field}" data-live="${r.field}" aria-label="${escape(r.label)}: share of expected visitors who buy a ticket" ${lock} />
+        <output data-live-out="${r.field}">${r.sellThrough}%</output>
+        <label class="fin-scenario-tickets"><input type="number" min="0" max="${visitors}" step="1" value="${Math.round((visitors * r.sellThrough) / 100)}" data-scenario-tickets="${r.field}" aria-label="${escape(r.label)}: tickets sold" ${lock} /> tickets</label>
+      </div>`).join('')}</div>
+      <p class="fin-note">Drag a slider or type the number of tickets. Of ${number(visitors)} expected visitors.</p>`;
+  }
+
+  // The "Additional assumptions": more ticket assumptions, other festival costs and income, and your own lines.
+  function additionalAssumptions(editable) {
+    const lock = editable ? '' : 'disabled';
+    const fields = (sub) => FINANCE_FIELDS.filter((f) => f.group === 'Additional' && f.sub === sub).map((f) => `
+          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${lock} /><small>${f.unit}</small></label>`).join('');
+    const option = (value, label, current) => `<option value="${value}" ${value === current ? 'selected' : ''}>${label}</option>`;
+    const extras = settings.extras || [];
+    const rows = extras.map((e) => `<div class="fin-extra" data-extra-row="${e.id}">
+        <label>Name<input data-extra="${e.id}" data-key="label" value="${escape(e.label)}" maxlength="60" ${lock} /></label>
+        <label>Type<select data-extra="${e.id}" data-key="kind" ${lock}>${option('cost', 'Cost', e.kind)}${option('revenue', 'Income', e.kind)}</select></label>
+        <label>Amount (€)<input type="number" min="0" max="5000000" step="0.01" data-extra="${e.id}" data-key="amount" value="${e.amount}" ${lock} /></label>
+        <label>Per<select data-extra="${e.id}" data-key="basis" ${lock}>${EXTRA_BASES.map((b) => option(b.id, b.label, e.basis)).join('')}</select></label>
+        <label>Paid<select data-extra="${e.id}" data-key="timing" ${lock}>${EXTRA_TIMINGS.map((t) => option(t.id, t.label, e.timing)).join('')}</select></label>
+        <button type="button" class="button quiet" data-extra-remove="${e.id}" aria-label="Remove ${escape(e.label)}" ${lock}>Remove</button>
+      </div>`).join('');
+    return `<details class="cleanup-disclosure"><summary>Additional assumptions</summary>
+        <h3 class="fin-sub">More ticket assumptions</h3><div class="fin-form">${fields('Tickets')}</div>
+        <h3 class="fin-sub">Other income</h3><div class="fin-form">${fields('Income')}</div>
+        <h3 class="fin-sub">Other costs</h3><div class="fin-form">${fields('Costs')}</div>
+        <h3 class="fin-sub">Your own costs and income</h3>
+        <p class="fin-note">Anything else your festival pays or earns, e.g. “Fencing €4,000 in total”, “Wristbands €0.40 per visitor” or “Camping €15 per visitor”. It is included in profit, break-even and the cash-flow plan.</p>
+        <div class="fin-extras">${rows || '<p class="fin-empty">No own lines yet.</p>'}</div>
+        <div class="fin-extra-actions"><button type="button" class="button secondary" data-extra-add="cost" ${lock} ${extras.length >= MAX_FINANCE_EXTRAS ? 'disabled' : ''}>+ Add cost</button><button type="button" class="button secondary" data-extra-add="revenue" ${lock} ${extras.length >= MAX_FINANCE_EXTRAS ? 'disabled' : ''}>+ Add income</button></div>
+      </details>`;
+  }
+
   // Profit for ticket price × share of tickets sold. Green = profit, red = loss; the stronger the colour,
   // the bigger the amount. The cell with your current plan is outlined.
   function matrixTable(data) {
@@ -198,7 +237,6 @@
     const safetyText = safety === null ? '—' : `${safety}%`;
     const safetyNote = safety === null ? 'no tickets planned' : safety >= 0 ? `${number(model.ticketsSold - be)} tickets may fall away before a loss` : `${number(be - model.ticketsSold)} more tickets needed to break even`;
     const tierRows = model.tiers.map((t) => ({ label: `${t.label} · ${number(t.tickets)} × €${Number.isInteger(t.price) ? t.price : t.price.toFixed(2)}`, amount: t.revenue }));
-    const fixedIds = ['artists', 'stages', 'venue', 'security', 'toilets', 'marketing', 'firstAid', 'water'];
     const stageRows = Object.entries(artists.byStage).sort().map(([stage, amount]) => ({ label: `Stage ${stage}`, amount }));
     const dayRows = Object.entries(artists.byDay).sort().map(([day, amount]) => ({ label: dayName(day), amount }));
     const cash = cashFlow(model, input.settings.ticketingFee);
@@ -224,8 +262,18 @@
       </section>
       <section class="fin-card fin-assumptions"><details class="cleanup-disclosure"><summary>Financial assumptions</summary><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
         <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<details class="cleanup-disclosure"><summary>${group}</summary><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
-          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></details>`).join('')}</div>
+          <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></details>`).join('')}${additionalAssumptions(canEditAssumptions)}</div>
         <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
+        <details class="cleanup-disclosure fin-limits"><summary>What this model leaves out</summary>
+          <p class="fin-note">A planning estimate for comparing options, not accounting or tax advice. It simplifies on purpose:</p>
+          <ul class="fin-note">
+            <li><b>Profit is before income tax.</b> Loans, interest and inflation are not included.</li>
+            <li><b>VAT is only taken out of tickets</b> (if you enter a rate). Enter bars, merch, pitch fees, sponsorship and your own lines without VAT.</li>
+            <li><b>Sponsorship, grants and pitch fees stay the same</b> in every scenario; bars, merch, cleaning and per-visitor lines grow with the tickets sold.</li>
+            <li><b>Security, toilets, first aid and water are planned for the expected visitors</b>, so they do not shrink when fewer tickets sell.</li>
+            <li><b>Weather, refunds and no-shows</b> are only covered through the bad case. The cash-flow plan uses typical months, not real payment dates.</li>
+          </ul>
+        </details>
       </details></section>
       <div class="fin-grid2">
         <section class="fin-card"><header><h2>Ticket tiers</h2><span>${number(model.ticketsSold)} tickets</span></header>${barChart(tierRows, PROFIT, model.revenue.find((r) => r.id === 'tickets').amount, 'Ticket sales')}
@@ -246,7 +294,7 @@
       <div class="fin-grid2 wide-left">
         <section class="fin-card"><header><h2>Profit by regular ticket price</h2><span>everything else unchanged</span></header>${priceChart(data)}
           <p class="fin-note">${model.breakEvenPrice === null ? 'With no tickets sold there is no break-even price.' : model.breakEvenPrice === 0 ? 'Bars, sponsors and vendors already cover the fixed costs, so any ticket price is profit.' : `Below a regular price of <b>€${model.breakEvenPrice}</b> the festival loses money. Every extra euro on the regular ticket adds about <b>${money(Math.round(model.ticketsSold * averagePriceFactor(input.settings) * (1 - input.settings.ticketingFee / 100)))}</b> profit.`}</p></section>
-        <section class="fin-card"><header><h2>Scenarios</h2><span>how many tickets sell?</span></header>${scenarioChart(scenarios(input))}</section>
+        <section class="fin-card"><header><h2>Scenarios</h2><span>how many tickets sell?</span></header>${scenarioChart(scenarios(input))}${scenarioControls(scenarios(input), input.visitors, canEditAssumptions)}</section>
       </div>
       <section class="fin-card"><header><h2>Profit matrix</h2><span>regular price × tickets sold</span></header>
         <div class="fin-matrix-wrap">${matrixTable(data)}</div>
@@ -283,11 +331,11 @@
       <div>
         <section class="fin-card"><header><h2>Profit &amp; loss statement</h2><span>all figures in euros</span></header>
           <table class="fin-table fin-pl"><tbody>
-            <tr class="head"><th colspan="2">Revenue</th></tr>${model.revenue.map((r) => `<tr><td>${r.label}</td><td>${money(r.amount)}</td></tr>`).join('')}
+            <tr class="head"><th colspan="2">Revenue</th></tr>${model.revenue.map((r) => `<tr><td>${escape(r.label)}${r.own ? ' <small>(own)</small>' : ''}</td><td>${money(r.amount)}</td></tr>`).join('')}
             <tr class="sum"><td>Total revenue</td><td>${money(model.totalRevenue)}</td></tr>
-            <tr class="head"><th colspan="2">Fixed costs</th></tr>${model.costs.filter((c) => fixedIds.includes(c.id)).map((c) => `<tr><td>${c.label}</td><td>${money(c.amount)}</td></tr>`).join('')}
+            <tr class="head"><th colspan="2">Fixed costs</th></tr>${model.costs.filter((c) => c.fixed).map((c) => `<tr><td>${escape(c.label)}${c.own ? ' <small>(own)</small>' : ''}</td><td>${money(c.amount)}</td></tr>`).join('')}
             <tr class="sum"><td>Total fixed costs</td><td>${money(model.fixedCosts)}</td></tr>
-            <tr class="head"><th colspan="2">Reserve &amp; costs that grow with sales</th></tr>${model.costs.filter((c) => !fixedIds.includes(c.id)).map((c) => `<tr><td>${c.label}</td><td>${money(c.amount)}</td></tr>`).join('')}
+            <tr class="head"><th colspan="2">Reserve &amp; costs that grow with sales</th></tr>${model.costs.filter((c) => !c.fixed).map((c) => `<tr><td>${escape(c.label)}${c.own ? ' <small>(own)</small>' : ''}</td><td>${money(c.amount)}</td></tr>`).join('')}
             <tr class="sum"><td>Total costs</td><td>${money(model.totalCosts)}</td></tr>
             <tr class="result ${model.profit >= 0 ? 'pos' : 'neg'}"><td>${model.profit >= 0 ? 'Profit' : 'Loss'}</td><td>${profitText}</td></tr>
           </tbody></table></section>
@@ -332,8 +380,57 @@
     tip.style.top = `${event.clientY - box.top + 14}px`;
   }
 
+  // Moving a scenario slider shows the new share right away; it is saved when the slider is let go.
+  view.addEventListener('input', (event) => {
+    const live = event.target.dataset && event.target.dataset.live;
+    if (!live) return;
+    const out = view.querySelector(`[data-live-out="${live}"]`);
+    if (out) out.textContent = `${event.target.value}%`;
+    const tickets = view.querySelector(`[data-scenario-tickets="${live}"]`);
+    if (tickets) tickets.value = Math.round((collect().input.visitors * Number(event.target.value)) / 100);
+  });
+
+  function saveAndRender(next, focusSelector) {
+    if (!save(next)) { render(); return; }
+    const scroll = window.scrollY;
+    render();
+    window.scrollTo(0, scroll);
+    if (focusSelector) view.querySelector(focusSelector)?.focus();
+  }
+
   view.addEventListener('change', (event) => {
-    const id = event.target.dataset.field;
+    const target = event.target;
+    // A number of tickets for a scenario becomes its share of the expected visitors.
+    if (target.dataset.scenarioTickets) {
+      const field = target.dataset.scenarioTickets;
+      if (!canFestival('budget')) { render(); return; }
+      const visitors = collect().input.visitors;
+      const tickets = Number(target.value);
+      if (target.value === '' || !Number.isInteger(tickets) || tickets < 0 || tickets > visitors) {
+        toast(`Please enter a whole number of tickets from 0 to ${number(visitors)}.`);
+        render();
+        return;
+      }
+      const share = Math.round((tickets / visitors) * 1000) / 10;
+      // Moving "your plan" takes the bad or best case along; the two cases themselves are checked.
+      const next = field === 'sellThrough' ? keepScenarioOrder({ ...settings, sellThrough: share }) : { ...settings, [field]: share };
+      const problem = financeProblem(next);
+      if (problem) { toast(problem); render(); return; }
+      saveAndRender(next, `[data-scenario-tickets="${field}"]`);
+      return;
+    }
+    // Your own cost and income lines.
+    if (target.dataset.extra) {
+      if (!canFestival('budget')) { render(); return; }
+      const extras = (settings.extras || []).map((e) => (e.id === target.dataset.extra
+        ? { ...e, [target.dataset.key]: target.dataset.key === 'amount' ? (target.value === '' ? '' : Number(target.value)) : target.value } : e));
+      const changed = extras.find((e) => e.id === target.dataset.extra);
+      const problem = changed ? financeExtraProblem(changed) : 'This line no longer exists.';
+      if (problem) { toast(problem); render(); return; }
+      saveAndRender({ ...settings, extras }, `[data-extra="${target.dataset.extra}"][data-key="${target.dataset.key}"]`);
+      return;
+    }
+    const id = target.dataset.field;
     if (!id) return;
     if (!canFestival('budget')) {
       event.target.value = settings[id];
@@ -345,21 +442,41 @@
       event.target.value = settings[id];
       return;
     }
-    const next = { ...settings, [id]: Number(event.target.value) };
+    const changed = { ...settings, [id]: Number(event.target.value) };
+    const next = id === 'sellThrough' ? keepScenarioOrder(changed) : changed;
     const problem = financeProblem(next);
     if (problem) {
       toast(problem);
       event.target.value = settings[id];
+      if (target.type === 'range') render(); // also puts the % and ticket numbers back
       return;
     }
     if (!save(next)) { event.target.value = settings[id]; return; }
     const scroll = window.scrollY;
     render();
     window.scrollTo(0, scroll);
-    view.querySelector(`[data-field="${id}"]`)?.focus();
+    view.querySelector(`[data-field="${id}"][type="${target.type === 'range' ? 'range' : 'number'}"]`)?.focus();
   });
 
   view.addEventListener('click', (event) => {
+    const add = event.target.closest('[data-extra-add]');
+    const remove = event.target.closest('[data-extra-remove]');
+    if ((add || remove) && !canFestival('budget')) { toast('Only Admins can change the finance assumptions.'); return; }
+    if (add) {
+      const extras = settings.extras || [];
+      if (extras.length >= MAX_FINANCE_EXTRAS) { toast(`At most ${MAX_FINANCE_EXTRAS} own lines.`); return; }
+      const kind = add.dataset.extraAdd === 'revenue' ? 'revenue' : 'cost';
+      const id = `x${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`.slice(0, 21);
+      const line = { id, kind, label: kind === 'cost' ? 'New cost' : 'New income', amount: 0, basis: 'total', timing: kind === 'cost' ? 'before' : 'festival' };
+      saveAndRender({ ...settings, extras: [...extras, line] }, `[data-extra="${id}"][data-key="label"]`);
+      return;
+    }
+    if (remove) {
+      const extras = (settings.extras || []).filter((e) => e.id !== remove.dataset.extraRemove);
+      saveAndRender({ ...settings, extras });
+      toast('Line removed.');
+      return;
+    }
     const go = event.target.closest('[data-go]');
     if (go) { event.preventDefault(); document.querySelector(`.sidebar-item[data-section="${go.dataset.go}"]`).click(); return; }
     if (event.target.closest('[data-reset]') && canFestival('budget')) {
