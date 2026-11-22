@@ -479,6 +479,7 @@
       setFormsDisabled(true);
       return;
     }
+    if (await handleRecoveryLink()) return;
     let session = null;
     try {
       const { data } = await client.auth.getSession();
@@ -866,6 +867,63 @@
     });
   }
 
+  // --- Forgot password (feature-plans/forgot-password.md) ---------------------------------
+
+  function openForgotForm() {
+    const email = $('#sign-in-form input[name="email"]').value.trim();
+    $('#forgot-form input[name="email"]').value = email;
+    $('#forgot-form .form-message').textContent = '';
+    showTab('forgot');
+  }
+
+  function requestPasswordReset(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const email = String(formValues(form).email || '').trim();
+    submitForm(form, emailProblem(email), async (message) => {
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: passwordResetRedirect(window.location)
+      });
+      if (error) { message.textContent = accountErrorMessage(error); return; }
+      // The same answer whether the account exists or not.
+      message.textContent = 'If an account exists for this email, we sent a link to choose a new password. Check your inbox (and spam folder).';
+    });
+  }
+
+  // Called by start() when the page was opened from a reset email. Returns true if it took over.
+  async function handleRecoveryLink() {
+    const recovery = recoveryFromUrl(window.location.hash);
+    if (!recovery) return false;
+    // Remove the login tokens from the address bar and the browser history straight away.
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    showSignIn();
+    const expired = () => {
+      showTab('forgot');
+      $('#forgot-form .form-message').textContent = 'This reset link has expired or was already used. Request a new one below.';
+    };
+    if (recovery.kind !== 'recovery') { expired(); return true; }
+    try {
+      const { error } = await client.auth.setSession({
+        access_token: recovery.accessToken, refresh_token: recovery.refreshToken
+      });
+      if (error) { expired(); return true; }
+    } catch { expired(); return true; }
+    showTab('new-password');
+    return true;
+  }
+
+  function saveNewPassword(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const { password = '', confirm = '' } = formValues(form);
+    submitForm(form, newPasswordProblem({ password, confirm }), async (message) => {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) { message.textContent = accountErrorMessage(error); return; }
+      message.textContent = 'Password changed. Opening your festival…';
+      window.location.reload();
+    });
+  }
+
   let signingOut = false;
   let leaveUnsaved = false;
   async function signOut() {
@@ -980,13 +1038,20 @@
     });
   }
 
+  // The sign-in screen shows one form at a time. "forgot" and "new-password" have no tabs.
+  const FORM_TITLES = {
+    'sign-in': 'Sign in', 'sign-up': 'Create your account',
+    forgot: 'Reset your password', 'new-password': 'Choose a new password'
+  };
   function showTab(name) {
+    Object.keys(FORM_TITLES).forEach((form) => { $(`#${form}-form`).hidden = form !== name; });
     ['sign-in', 'sign-up'].forEach((tab) => {
-      const selected = tab === name;
-      $(`#tab-${tab}`).setAttribute('aria-selected', String(selected));
-      $(`#${tab}-form`).hidden = !selected;
+      $(`#tab-${tab}`).setAttribute('aria-selected', String(tab === name));
     });
-    $('#account-title').textContent = name === 'sign-in' ? 'Sign in' : 'Create your account';
+    const tabbed = name === 'sign-in' || name === 'sign-up';
+    $('.account-tabs').hidden = !tabbed;
+    $('#account-forms > .account-intro').hidden = !tabbed;
+    $('#account-title').textContent = FORM_TITLES[name];
   }
 
   function showSignIn() {
@@ -1029,6 +1094,10 @@
     $('#tab-sign-up').onclick = () => showTab('sign-up');
     $('#sign-in-form').addEventListener('submit', signIn);
     $('#sign-up-form').addEventListener('submit', signUp);
+    $('#forgot-password').onclick = openForgotForm;
+    $('#back-to-sign-in').onclick = () => showTab('sign-in');
+    $('#forgot-form').addEventListener('submit', requestPasswordReset);
+    $('#new-password-form').addEventListener('submit', saveNewPassword);
     $('#sign-out').onclick = signOut;
     $('#account-retry').onclick = () => {
       const marker = pendingTransition();

@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="site-map/site-map.css" />
     <link rel="stylesheet" href="vendors/vendors.css?v=custom-vendors" />
     <link rel="stylesheet" href="finance/finance.css?v=finance-scenarios" />
-    <link rel="stylesheet" href="account/account.css?v=several-festivals" />
+    <link rel="stylesheet" href="account/account.css?v=forgot-password" />
     <link rel="stylesheet" href="compact.css?v=stages-tasks" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
@@ -23,8 +23,8 @@
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
     <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
     <script src="supabase-config.js"></script>
-    <script src="rules/account-rules.js?v=technical-audit-1"></script>
-    <script src="account/account.js?v=technical-audit-1"></script>
+    <script src="rules/account-rules.js?v=forgot-password"></script>
+    <script src="account/account.js?v=forgot-password"></script>
   </head>
   <body>
     <!-- Icons for the sidebar (24×24, drawn with a 1.75 stroke in the text colour). -->
@@ -59,6 +59,21 @@
             <label>Password<input type="password" name="password" autocomplete="current-password" required /></label>
             <p class="form-message" role="alert"></p>
             <button type="submit" class="button primary">Sign in</button>
+            <button type="button" class="account-link" id="forgot-password">Forgot your password?</button>
+          </form>
+          <form id="forgot-form" class="account-form" novalidate hidden>
+            <p class="account-intro">Enter the email of your account. We will send you a link to choose a new password.</p>
+            <label>Email<input type="email" name="email" autocomplete="email" required /></label>
+            <p class="form-message" role="alert"></p>
+            <button type="submit" class="button primary">Send reset link</button>
+            <button type="button" class="account-link" id="back-to-sign-in">Back to sign in</button>
+          </form>
+          <form id="new-password-form" class="account-form" novalidate hidden>
+            <label>New password<input type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="72" aria-describedby="new-password-hint" /></label>
+            <small id="new-password-hint">At least 8 characters.</small>
+            <label>Repeat new password<input type="password" name="confirm" autocomplete="new-password" required minlength="8" maxlength="72" /></label>
+            <p class="form-message" role="alert"></p>
+            <button type="submit" class="button primary">Save new password</button>
           </form>
           <form id="sign-up-form" class="account-form" novalidate hidden>
             <label>Username<input name="username" autocomplete="username" required minlength="3" maxlength="32" aria-describedby="username-hint" /></label>

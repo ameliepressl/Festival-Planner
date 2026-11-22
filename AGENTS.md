@@ -42,13 +42,12 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - Several accounts can plan one festival (`feature-plans/shared-festivals.md`). Admins add
   teammates in Settings → Team; the database table `festival_members` is the real team, the
   roster key `festival-architect-team-v1` is only a copy of it and is never saved in the plan.
-- Access control is enforced in the database with Row Level Security (`migrations/001` and
-  `003`, `004`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
+- Access control is enforced in the database with Row Level Security (`migrations/001`,
+  `003`, `004`, `006`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
   Editors cannot change the finances or the task assignments (`festival-task-assignments-v1`);
-  only Owner and Admin can change the team. Outstanding for Amelie: also enforce the
-  Admin-only festival details and overall artist budget stored inside the lineup section.
-  The audit identified this gap; its database fix is deferred to Amelie and is not included
-  in this branch. The pages use
+  only Owner and Admin can change the team; Editors cannot change the festival details
+  (`event`) or the overall artist budget (`settings.budget`) inside the lineup section
+  (`migrations/006`). The pages use
   the same roles through `canFestival()` in `rules/access-rules.js`. Never rely on hiding
   buttons alone.
 - Saving sends only the sections (keys) that changed, which reduces interference between teammates.
