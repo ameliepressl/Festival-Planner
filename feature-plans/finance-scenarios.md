@@ -20,6 +20,11 @@ licence, VIP tickets, merch, power, crew, cleaning, ...) plus lines nobody can f
 - [x] **Your own costs and income**: "+ Add cost" / "+ Add income" rows with name, amount, basis
       (in total, per day, per visitor, per visitor per day) and when it is paid (before, at, after the
       festival). Up to 30 lines. They appear in P&L ("(own)"), break-even, scenarios and the cash-flow plan.
+- [x] **Order of the cases** (review follow-up): bad case <= your plan <= best case. Typing a bad or best case
+      past the plan is refused with a clear message; moving "your plan" takes the case along instead of
+      blocking (`keepScenarioOrder`). Older saves keep their plan, the cases follow it.
+- [x] **"What this model leaves out"** under the assumptions: profit before income tax, VAT only on tickets,
+      fixed sponsorship/pitch fees, safety and sanitation sized for expected visitors, typical cash-flow months.
 - [x] Only admins (budget permission) can change them; they are saved inside the admin-only finance key,
       so the database rules from migrations 003/004 protect them too. Broken or tampered saved lines are dropped.
 
@@ -29,7 +34,8 @@ licence, VIP tickets, merch, power, crew, cleaning, ...) plus lines nobody can f
 rejected and repaired, VIP/guest tiers, the 100 % rule, VAT and licence, merch/grants/power/crew/cleaning/
 hospitality, reserve on new fixed costs, own lines per basis, break-even with everything, cash flow ends at
 the profit with lines in the right months, validation of own lines, parsing of broken saved data.
-No existing test was changed.
+No test from `main` was changed. One test of this PR ("bad 90 / best 90 is fine") was updated to the
+new order rule by also setting the plan to 90; it is as strict as before. A new test covers the order rule.
 
 Checked in the browser: slider and ticket box save, bad > best shows the error and resets, own lines
 change the profit by the expected amount, survive a reload, and remove works. Medium-width windows no

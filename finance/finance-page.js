@@ -264,6 +264,16 @@
         <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<details class="cleanup-disclosure"><summary>${group}</summary><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
           <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></details>`).join('')}${additionalAssumptions(canEditAssumptions)}</div>
         <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
+        <details class="cleanup-disclosure fin-limits"><summary>What this model leaves out</summary>
+          <p class="fin-note">A planning estimate for comparing options, not accounting or tax advice. It simplifies on purpose:</p>
+          <ul class="fin-note">
+            <li><b>Profit is before income tax.</b> Loans, interest and inflation are not included.</li>
+            <li><b>VAT is only taken out of tickets</b> (if you enter a rate). Enter bars, merch, pitch fees, sponsorship and your own lines without VAT.</li>
+            <li><b>Sponsorship, grants and pitch fees stay the same</b> in every scenario; bars, merch, cleaning and per-visitor lines grow with the tickets sold.</li>
+            <li><b>Security, toilets, first aid and water are planned for the expected visitors</b>, so they do not shrink when fewer tickets sell.</li>
+            <li><b>Weather, refunds and no-shows</b> are only covered through the bad case. The cash-flow plan uses typical months, not real payment dates.</li>
+          </ul>
+        </details>
       </details></section>
       <div class="fin-grid2">
         <section class="fin-card"><header><h2>Ticket tiers</h2><span>${number(model.ticketsSold)} tickets</span></header>${barChart(tierRows, PROFIT, model.revenue.find((r) => r.id === 'tickets').amount, 'Ticket sales')}
@@ -401,7 +411,9 @@
         render();
         return;
       }
-      const next = { ...settings, [field]: Math.round((tickets / visitors) * 1000) / 10 };
+      const share = Math.round((tickets / visitors) * 1000) / 10;
+      // Moving "your plan" takes the bad or best case along; the two cases themselves are checked.
+      const next = field === 'sellThrough' ? keepScenarioOrder({ ...settings, sellThrough: share }) : { ...settings, [field]: share };
       const problem = financeProblem(next);
       if (problem) { toast(problem); render(); return; }
       saveAndRender(next, `[data-scenario-tickets="${field}"]`);
@@ -430,7 +442,8 @@
       event.target.value = settings[id];
       return;
     }
-    const next = { ...settings, [id]: Number(event.target.value) };
+    const changed = { ...settings, [id]: Number(event.target.value) };
+    const next = id === 'sellThrough' ? keepScenarioOrder(changed) : changed;
     const problem = financeProblem(next);
     if (problem) {
       toast(problem);

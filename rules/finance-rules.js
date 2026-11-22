@@ -108,8 +108,21 @@ function validFinanceValue(fieldId, value) {
 function financeProblem(settings) {
   const shares = settings.earlyBirdShare + settings.doorShare + (settings.vipShare || 0) + (settings.guestShare || 0);
   if (shares > 100) return 'Early bird, box office, VIP and guest-list tickets together cannot be more than 100 % of the tickets sold.';
-  if ((settings.badSellThrough ?? 50) > (settings.goodSellThrough ?? 100)) return 'The bad case cannot sell more tickets than the best case.';
+  const bad = settings.badSellThrough ?? 50;
+  const good = settings.goodSellThrough ?? 100;
+  if (bad > good) return 'The bad case cannot sell more tickets than the best case.';
+  if (bad > settings.sellThrough) return `The bad case cannot sell more tickets than your plan (${settings.sellThrough} %).`;
+  if (good < settings.sellThrough) return `The best case cannot sell fewer tickets than your plan (${settings.sellThrough} %).`;
   return '';
+}
+
+// When "your plan" moves past the bad or best case, that case moves with it, so the order
+// bad case <= your plan <= best case always holds without blocking the organiser.
+function keepScenarioOrder(settings) {
+  const next = { ...settings };
+  if ((next.badSellThrough ?? 50) > next.sellThrough) next.badSellThrough = next.sellThrough;
+  if ((next.goodSellThrough ?? 100) < next.sellThrough) next.goodSellThrough = next.sellThrough;
+  return next;
 }
 
 // Read the saved assumptions back; anything missing or out of range falls back to the default.
@@ -118,9 +131,16 @@ function parseFinance(text) {
   try { saved = JSON.parse(text) || {}; } catch { saved = {}; }
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
   const settings = Object.fromEntries(FINANCE_FIELDS.map((f) => [f.id, validFinanceValue(f.id, saved[f.id]) ? Number(saved[f.id]) : f.value]));
+  // Scenarios: a bad case above the best case falls back to the defaults; then the cases follow
+  // the plan (older saves), and the plan itself is never changed.
+  if (settings.badSellThrough > settings.goodSellThrough) {
+    settings.badSellThrough = DEFAULT_FINANCE.badSellThrough;
+    settings.goodSellThrough = DEFAULT_FINANCE.goodSellThrough;
+  }
+  Object.assign(settings, keepScenarioOrder(settings));
+  // Ticket shares that add up to more than 100 % fall back to the defaults.
   if (financeProblem(settings)) {
     ['earlyBirdShare', 'doorShare', 'vipShare', 'guestShare'].forEach((id) => { settings[id] = DEFAULT_FINANCE[id]; });
-    if (financeProblem(settings)) { settings.badSellThrough = DEFAULT_FINANCE.badSellThrough; settings.goodSellThrough = DEFAULT_FINANCE.goodSellThrough; }
   }
   settings.extras = parseFinanceExtras(saved.extras);
   return settings;
@@ -437,6 +457,6 @@ if (typeof module !== 'undefined') {
     FINANCE_STORAGE_KEY, FINANCE_FIELDS, DEFAULT_FINANCE, validFinanceValue, parseFinance, financeProblem,
     ticketTiers, averagePriceFactor, profitMatrix, CASH_MONTHS, CASH_TIMING, splitByWeight, cashFlow,
     artistSpending, financeModel, scenarios, priceCurve,
-    EXTRA_KINDS, EXTRA_BASES, EXTRA_TIMINGS, MAX_FINANCE_EXTRAS, financeExtraProblem, parseFinanceExtras, extraTotal
+    EXTRA_KINDS, EXTRA_BASES, EXTRA_TIMINGS, MAX_FINANCE_EXTRAS, financeExtraProblem, parseFinanceExtras, extraTotal, keepScenarioOrder
   };
 }

@@ -182,3 +182,5 @@
   .fin-extra { grid-template-columns: 1fr 1fr; }
   .fin-extra label:first-child { grid-column: 1 / -1; }
 }
+.fin-limits{margin-top:12px}
+.fin-limits ul{margin:6px 0 0;padding-left:18px;display:grid;gap:4px}
