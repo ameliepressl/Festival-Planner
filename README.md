@@ -32,8 +32,8 @@ Kira · Amelie · Frederik · Vicky
 | **Lineup** | Multi-day timetable for 1–12 stages, artist library with real artists, budget warnings, PDF export |
 | **Tasks** | Task board and Gantt timeline with suggested dates, assignments and deadlines |
 | **Site map** | Aerial map with facility pins, own map upload, automatic layout with 10 rules, crowd and evacuation estimates |
-| **Vendors** | Food-court pitches, vendor library, visitor needs (vegan, alcohol-free) |
-| **Finances** | Profit and loss, break-even, profit by ticket price, scenarios, cash-flow plan |
+| **Vendors** | Food-court pitches, vendor library, **add your own stands** with menu, prices and diet labels, visitor needs (vegan, alcohol-free) |
+| **Finances** | Profit and loss, break-even, profit by ticket price, **scenarios with your own ticket numbers**, VIP / VAT / merch and other assumptions, **your own cost and income lines**, cash-flow plan |
 | **Final checklist** | Event-day checks for 12 teams |
 | **Accounts & teams** | Sign-up, up to 20 festivals per account, shared festivals with Admin / Editor / Viewer roles enforced by the database |
 | **Demos** | Two ready-made festivals (Lisbon, small; Munich, large) to try everything at once |
@@ -171,8 +171,12 @@ These are the active rules in the [current product brief](product-brief/festival
 
 ### Know the numbers
 - **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
-  and comes from, **profit by ticket price**, **scenarios** (bad weather · plan · sold out)
-  and an analysis of the artist spending. Every assumption can be changed.
+  and comes from, **profit by ticket price**, **scenarios** (bad case · your plan · best case;
+  drag a slider or type how many tickets sell in each), a cash-flow plan and an analysis of the artist
+  spending. Every assumption can be changed, including **additional assumptions** (VIP and guest-list
+  tickets, VAT, music licence, merch, grants, power, crew, cleaning, artist hospitality). **+ Add cost** /
+  **+ Add income** adds your own lines (in total, per day, per visitor or per visitor per day), which
+  flow into profit, break-even and the cash-flow plan.
 
 ### Get ready for the day
 - **Final checklist** — event-day checks for 12 teams, from security to radios, with a
