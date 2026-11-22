@@ -177,6 +177,10 @@ These are the active rules in the [current product brief](product-brief/festival
   tickets, VAT, music licence, merch, grants, power, crew, cleaning, artist hospitality). **+ Add cost** /
   **+ Add income** adds your own lines (in total, per day, per visitor or per visitor per day), which
   flow into profit, break-even and the cash-flow plan.
+  The model is a **simplified planning estimate**, not accounting or tax advice: profit is before income
+  tax, VAT is only taken out of tickets (enter other amounts without VAT), sponsorship and pitch fees stay
+  the same in every scenario, and security, toilets, first aid and water are sized for the expected
+  visitors. The page lists these limits under *What this model leaves out*.
 
 ### Get ready for the day
 - **Final checklist** — event-day checks for 12 teams, from security to radios, with a
@@ -288,6 +292,11 @@ database reads and writes.
 `supabase-config.js` contains the public project URL and **publishable** key, intended for
 browser use. Secret/service-role keys, database passwords and access tokens must never be
 committed. New saved plan sections use a `festival-` key so account sync includes them.
+
+**Text from users is always shown as text.** Names, notes, task titles, stage names, own stands and own
+finance lines are escaped before they go into the page, and saved data is checked again when it is
+loaded, so a teammate cannot inject code into a shared festival. We audited every place that builds HTML
+(`innerHTML`); see [the audit](feature-plans/html-safety-audit.md).
 
 ## 🤝 How we work
 

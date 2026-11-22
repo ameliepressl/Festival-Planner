@@ -17,6 +17,10 @@ within a few seconds, without reading the whole README.
       (as configured in `.github/workflows/tests.yml`).
 - [x] Vendors and Finances rows and the Features section name the new parts: own stands, ticket
       numbers per scenario, additional assumptions and own cost/income lines.
+- [x] Finances: a short note that the model is a simplified planning estimate (matches the new
+      "What this model leaves out" box on the page).
+- [x] Data & privacy: user text is always shown as text, with a link to the `innerHTML` audit
+      (`feature-plans/html-safety-audit.md`).
 
 ## Tests
 
