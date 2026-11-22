@@ -1,21 +1,16 @@
 // Proposed schedule, relative to the festival dates; no completion tracking.
 window.initialiseGanttTimeline = function () {
-  const boundaries = window.ganttDefaultBoundaries;
   const DAY = 86400000;
   const parseDate = value => new Date(value + 'T12:00:00Z');
   const opening = parseDate(state.event.startDate);
   const ending = parseDate(state.event.endDate);
   const afterEvent = Math.round((ending - opening) / DAY) + 1;
-  let firstOffset = -84;
-  let lastOffset = Math.max(13, afterEvent + 11);
-  let weekCount;
-  const formatDate = offset => new Date(opening.getTime() + offset * DAY).toLocaleDateString('en-GB', {day:'numeric',month:'short',timeZone:'UTC'});
+  const formatDate = (offset, withYear = false) => new Date(opening.getTime() + offset * DAY).toLocaleDateString('en-GB', {day:'numeric',month:'short',...(withYear ? {year:'numeric'} : {}),timeZone:'UTC'});
   const chart = document.querySelector('#gantt-view');
   const rows = Array.from(chart.querySelectorAll('tbody tr'));
   const numberOf = row => row.querySelector('.gantt-outline-number, .gantt-category-number').textContent.trim().replace(/\.$/, '');
   const ranges = new Map();
   rows.filter(row => row.classList.contains('gantt-subtask')).forEach(row => {
-    const number = numberOf(row);
     const start=Math.round((parseDate(row.dataset.startDate)-opening)/DAY);
     const end=Math.round((parseDate(row.dataset.endDate)-opening)/DAY);
     if(!Number.isFinite(start)||!Number.isFinite(end)||start>end)return;
@@ -28,12 +23,53 @@ window.initialiseGanttTimeline = function () {
     const descendants = rows.filter(child => numberOf(child).startsWith(prefix) && ranges.has(child)).map(child => ranges.get(child));
     if(descendants.length)ranges.set(row, {start:Math.min(...descendants.map(r=>r.start)),end:Math.max(...descendants.map(r=>r.end))});
   });
-  const scheduled=Array.from(ranges.values());
-  firstOffset=Math.floor(Math.min(-84,...scheduled.map(r=>r.start))/7)*7;
-  lastOffset=Math.max(lastOffset,...scheduled.map(r=>r.end));
-  weekCount=Math.ceil((lastOffset-firstOffset+1)/7);
-  chart.querySelector('.gantt-caption').textContent = `${formatDate(firstOffset)} – ${formatDate(lastOffset)} ${opening.getUTCFullYear()} · Festival ${formatDate(0)} – ${formatDate(afterEvent-1)} · Proposed daily schedule`;
-  chart.querySelector('.gantt-empty').textContent = 'Change tasks and dates with Edit plan; changes save automatically. Admins choose an owner per task in the Owner column.';
+  const subtaskRows = rows.filter(row => row.classList.contains('gantt-subtask'));
+  const scheduled = subtaskRows.map(row => ranges.get(row)).filter(Boolean);
+  let bounds;
+  try {
+    bounds = projectTimelineWindow({ openingDate: state.event.startDate, closingDate: state.event.endDate,
+      ranges: scheduled, requestedStart: window.ganttTimelineWindowStart });
+  } catch (error) {
+    chart.querySelector('.gantt-caption').textContent = 'Project timeline unavailable';
+    chart.querySelector('.gantt-empty').textContent = error.message;
+    return;
+  }
+  const firstOffset = bounds.start, lastOffset = bounds.end;
+  const weekCount = Math.ceil((lastOffset - firstOffset + 1) / 7);
+  chart.querySelector('.gantt-caption').textContent = `${formatDate(firstOffset, true)} – ${formatDate(lastOffset, true)} · Festival ${formatDate(0, true)} – ${formatDate(afterEvent-1, true)} · Proposed schedule`;
+  const saveHelp = 'Edit plan creates a draft. Choose Save changes to keep it, or Cancel to discard it. Admins choose owners in the Owner column.';
+  const invalidDates = subtaskRows.length - scheduled.length;
+  const windowHelp = bounds.limited ? ` The timeline shows at most 26 weeks at once. ${bounds.outside} task date ranges extend outside this window; their dates are kept. Use Previous dates, Next dates or Go to date to see them.` : '';
+  chart.querySelector('.gantt-empty').textContent = window.getProjectDataProblem?.() || saveHelp + windowHelp + (invalidDates ? ` ${invalidDates} task date ranges are invalid; correct their dates in Edit plan.` : '');
+  let windowControls = chart.querySelector('#gantt-window-controls');
+  if (!windowControls) {
+    windowControls = document.createElement('div');
+    windowControls.id = 'gantt-window-controls';
+    windowControls.className = 'gantt-control-group';
+    windowControls.innerHTML = '<button type="button" class="button secondary" data-window="previous">Previous dates</button><button type="button" class="button secondary" data-window="festival">Festival dates</button><button type="button" class="button secondary" data-window="next">Next dates</button><label>Go to date <input type="date" min="0001-01-01" max="9999-12-31" aria-label="Go to timeline date"></label>';
+    chart.querySelector('.gantt-controls').append(windowControls);
+  }
+  windowControls.hidden = !bounds.limited;
+  windowControls.classList.toggle('hidden', !bounds.limited);
+  const previous = windowControls.querySelector('[data-window="previous"]');
+  const next = windowControls.querySelector('[data-window="next"]');
+  previous.disabled = bounds.previous === null;
+  next.disabled = bounds.next === null;
+  function changeWindow(offset) {
+    window.ganttTimelineWindowStart = offset;
+    window.ganttExpandedWeeks = undefined;
+    window.initialiseGanttTimeline();
+  }
+  previous.onclick = () => { if (bounds.previous !== null) changeWindow(bounds.previous); };
+  next.onclick = () => { if (bounds.next !== null) changeWindow(bounds.next); };
+  windowControls.querySelector('[data-window="festival"]').onclick = () => changeWindow(undefined);
+  const jump = windowControls.querySelector('input');
+  jump.value = new Date(opening.getTime() + firstOffset * DAY).toISOString().slice(0, 10);
+  jump.onchange = () => {
+    if (!validProjectDate(jump.value)) { jump.setCustomValidity('Choose a valid timeline date.'); jump.reportValidity(); return; }
+    jump.setCustomValidity('');
+    changeWindow(Math.round((parseDate(jump.value) - opening) / DAY));
+  };
   const header = chart.querySelector('thead tr');
   const table = chart.querySelector('table');
   const expanded = new Set(window.ganttExpandedWeeks ?? Array.from({length:weekCount},(_,i)=>i+1));
@@ -48,14 +84,14 @@ window.initialiseGanttTimeline = function () {
       const datesHeader=document.createElement('th');datesHeader.scope='col';datesHeader.className='gantt-dates-header';datesHeader.textContent='Subtask dates';header.append(datesHeader);
       rows.forEach(row=>{const cell=dateCells.get(row)||document.createElement('td');cell.className='gantt-date-cell';row.append(cell);});
     }
-    let columnCount=0, timelineWidth=0;
+    let timelineWidth=0;
     for(let week=1;week<=weekCount;week++) {
       const start=firstOffset+(week-1)*7;
       const end=Math.min(start+6,lastOffset);
       const daily=expanded.has(week);
       const spans=daily?Array.from({length:end-start+1},(_,i)=>({start:start+i,end:start+i})):[{start,end}];
       spans.forEach((span,index)=>{
-        columnCount++; timelineWidth += daily ? 58 : 122;
+        timelineWidth += daily ? 58 : 122;
         const th=document.createElement('th');th.scope='col';
         th.className=daily?'gantt-day-header':'gantt-week-header';
         th.style.width=daily?'58px':'122px';
@@ -139,26 +175,6 @@ window.initialiseGanttTimeline = function () {
     if(button.dataset.timeline==='days')for(let week=1;week<=weekCount;week++)expanded.add(week);
     draw();restoreAnchor(anchor);
   });
-  const preview=document.querySelector('#gantt-preview-chart');
-  if(preview){
-    preview.replaceChildren();const duration=lastOffset-firstOffset+1;
-    const headerLine=document.createElement('span');headerLine.className='gantt-preview-row gantt-preview-weeks';
-    const label=document.createElement('span');label.textContent='Project weeks';
-    const scale=document.createElement('span');scale.className='gantt-preview-scale';
-    for(let week=1;week<=weekCount;week++){
-      const tick=document.createElement('span');tick.textContent=week;
-      tick.style.flexGrow=Math.min(7,duration-(week-1)*7);
-      scale.append(tick);
-    }
-    headerLine.append(label,scale);preview.append(headerLine);
-    rows.filter(row=>row.classList.contains('gantt-category')).forEach(row=>{
-      const line=document.createElement('span');line.className='gantt-preview-row';line.setAttribute('style',row.getAttribute('style'));
-      const name=document.createElement('span');name.className='gantt-preview-name';name.textContent=(row.querySelector('th').title||row.querySelector('th').textContent).trim().replace(/^›\s*/,'');
-      const track=document.createElement('span');track.className='gantt-preview-track';const range=ranges.get(row);
-      if(range){const bar=document.createElement('span');bar.className='gantt-preview-bar';bar.style.left=((range.start-firstOffset)/duration*100)+'%';bar.style.width=((range.end-range.start+1)/duration*100)+'%';track.append(bar);}
-      line.append(name,track);preview.append(line);
-    });
-  }
   const todayFormat=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'});
   let lastToday;
   function updateToday(force=false){
@@ -179,10 +195,6 @@ window.initialiseGanttTimeline = function () {
         }
         const badge=document.createElement('span');badge.className='gantt-today-label';badge.textContent='Today';column.append(badge);
       }
-    }
-    if(preview){
-      preview.classList.toggle('gantt-preview-has-today',today>=firstOffset&&today<=lastOffset);
-      preview.style.setProperty('--today-position',(today-firstOffset+.5)/(lastOffset-firstOffset+1)*100+'%');
     }
   }
   draw();

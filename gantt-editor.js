@@ -34,7 +34,20 @@
     }
   });
   function validDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&iso(new Date(value+'T12:00:00Z'))===value;}
-  function validPlan(plan){return Array.isArray(plan)&&plan.length===13&&plan.every(a=>typeof a.title==='string'&&Array.isArray(a.tasks)&&a.tasks.every(t=>typeof t.title==='string'&&Array.isArray(t.subtasks)&&t.subtasks.every(s=>typeof s.title==='string'&&s.title.trim()&&validDate(s.start)&&validDate(s.end)&&s.start<=s.end)));}
+  function validPlan(plan) {
+    const areas = new Set(), groups = new Set(), steps = new Set();
+    function uniqueId(value, seen) {
+      if (!(typeof value === 'string' || Number.isSafeInteger(value))) return false;
+      const id = String(value);
+      if (!/^[A-Za-z0-9._-]{1,100}$/.test(id) || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    }
+    return Array.isArray(plan) && plan.length === 13 && plan.every(a => a && uniqueId(a.id, areas)
+      && typeof a.title === 'string' && Array.isArray(a.tasks) && a.tasks.every(t => t && uniqueId(t.id, groups)
+        && typeof t.title === 'string' && Array.isArray(t.subtasks) && t.subtasks.every(s => s && uniqueId(s.id, steps)
+          && typeof s.title === 'string' && s.title.trim() && validDate(s.start) && validDate(s.end) && s.start <= s.end)));
+  }
   function defaultProject() {
     if (usesSuggestedTemplate) return suggestedProject(defaults, state.event, planningStart);
     const current = cloneProject(defaults);
@@ -65,31 +78,58 @@
 
   const anchorKey = 'festival-gantt-date-anchor';
   const endAnchorKey = 'festival-gantt-end-date-anchor';
-  let project = defaultProject();
+  let awaitingLineupRecovery = Boolean(window.getLineupDataProblem?.());
+  let project = window.getLineupDataProblem?.() ? [] : defaultProject();
   let customPlan = false;
+  let projectLoadProblem = '';
   let eventStart = state.event.startDate;
   let eventEnd = state.event.endDate;
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY));
+    const savedText = localStorage.getItem(KEY);
+    const saved = savedText === null ? null : JSON.parse(savedText);
     if (validPlan(saved)) {
       const storedStart = localStorage.getItem(anchorKey);
       const storedEnd = localStorage.getItem(endAnchorKey);
-      project = shiftProject(saved, validDate(storedStart) ? storedStart : '2026-10-15', validDate(storedEnd) ? storedEnd : null);
+      if (window.getLineupDataProblem?.()) {
+        project = cloneProject(saved);
+        eventStart = validDate(storedStart) ? storedStart : '2026-10-15';
+        eventEnd = validDate(storedEnd) ? storedEnd : null;
+      } else project = shiftProject(saved, validDate(storedStart) ? storedStart : '2026-10-15', validDate(storedEnd) ? storedEnd : null);
       customPlan = true;
       waitingForSetup = false;
+    } else if (savedText !== null) {
+      throw new Error('Invalid saved project');
     }
-  } catch {}
+  } catch {
+    projectLoadProblem = 'Your saved project tasks could not be read safely. They have been kept unchanged. Reload to retry; restore a valid copy of the project data if the problem continues.';
+    project = [];
+    waitingForSetup = false;
+  }
   let editing = false;
   const chart = document.querySelector('#gantt-view');
   let savedProject;
 
-  window.getSavedGanttPlan = () => cloneProject(editing ? savedProject : project);
+  const projectProblem = () => window.getLineupDataProblem?.() || projectLoadProblem;
+  window.getSavedGanttPlan = () => projectProblem() ? [] : cloneProject(editing ? savedProject : project);
+  window.getProjectDataProblem = projectProblem;
   // The tasks a brand-new festival starts with (ids and titles; used by the demo, demo/demo-loader.js).
   window.getDefaultGanttPlan = () => cloneProject(defaults);
   const publishProject = () => window.dispatchEvent(new Event('gantt-project-changed'));
   window.refreshGanttFestivalDates = () => {
+    if (window.getLineupDataProblem?.()) { awaitingLineupRecovery = true; refresh(); return false; }
+    if (projectLoadProblem) {
+      eventStart = state.event.startDate;
+      eventEnd = state.event.endDate;
+      refresh();
+      return true;
+    }
+    const recovered = awaitingLineupRecovery;
+    if (recovered && !customPlan) project = defaultProject();
     const firstSetup = waitingForSetup && Boolean(state.event.name);
-    if (eventStart === state.event.startDate && eventEnd === state.event.endDate && !firstSetup) return;
+    if (eventStart === state.event.startDate && eventEnd === state.event.endDate && !firstSetup) {
+      if (recovered) { awaitingLineupRecovery = false; refresh(); publishProject(); return true; }
+      return;
+    }
     const committed = editing ? savedProject : project;
     const next = customPlan ? shiftProject(committed, eventStart, eventEnd) : defaultProject();
     if (customPlan || firstSetup) {
@@ -108,6 +148,7 @@
     eventStart = state.event.startDate;
     eventEnd = state.event.endDate;
     waitingForSetup = false;
+    awaitingLineupRecovery = false;
     refresh();
     publishProject();
     return true;
@@ -122,7 +163,14 @@
 
   // Remove tracking only for tasks that disappeared. Editors may delete tasks,
   // but must never write the protected assignments section.
+  function checkProjectSource() {
+    if (projectProblem()) throw new Error(projectProblem());
+    if (typeof window.isFestivalContextCurrent === 'function' && !window.isFestivalContextCurrent()) {
+      throw new Error('A different festival is open in another tab. Reload before saving project changes.');
+    }
+  }
   function commitProject(plan, owners = null) {
+    checkProjectSource();
     const previous = new Map();
     const wasCustomPlan = customPlan;
     const keys = [KEY, anchorKey, endAnchorKey, PROJECT_SETUP_KEY, PROJECT_STATUS_KEY, TASK_ASSIGNMENTS_KEY];
@@ -151,6 +199,7 @@
 
   window.deleteBoardSubtask = stepId => {
     if (!canFestival('lineup')) throw new Error('Your role cannot delete tasks.');
+    checkProjectSource();
     if (editing) throw new Error('Save or cancel your timeline edits before deleting a task here.');
     const next = removeProjectEntry(project, { stepId });
     commitProject(next);
@@ -161,6 +210,7 @@
 
   window.addBoardSubtask = ({areaId, taskId, parentName, title, start, end}) => {
     if (!canFestival('lineup')) throw new Error('Your role cannot add tasks.');
+    checkProjectSource();
     if (editing) throw new Error('Save or cancel your timeline edits before adding a task here.');
     if (!title.trim() || !validDate(start) || !validDate(end) || start > end) {
       throw new Error('Enter a task name and valid dates. The end date must be on or after the start date.');
@@ -189,6 +239,7 @@
 
   window.updateBoardSubtask = ({stepId, areaId, taskId, parentName, title, start, end}) => {
     if (!canFestival('lineup')) throw new Error('Your role cannot edit tasks.');
+    checkProjectSource();
     if (editing) throw new Error('Save or cancel your timeline edits before editing a task here.');
     const updated = editProjectEntry(project, {
       stepId, areaId, taskId, parentName, title, start, end,
@@ -209,7 +260,7 @@
   };
   function renderProject(){
     tbody.replaceChildren();let count=0,steps=0;
-    project.forEach((a,ai)=>{
+    (window.getLineupDataProblem?.() ? [] : project).forEach((a,ai)=>{
       function row(type,number,title,subtask,key){
         const tr=document.createElement('tr');tr.className=type;tr.dataset.key=key;tr.setAttribute('style',defaults[ai].style);
         const th=document.createElement('th');th.scope='row';if(type==='gantt-category')th.className='gantt-category-name';
@@ -224,7 +275,7 @@
         t.subtasks.forEach((s,si)=>{steps++;row('gantt-subtask',`${ai+1}.${ti+1}.${si+1}`,s.title,s,'step-'+s.id);});
       });
     });
-    document.querySelector('.gantt-heading .gantt-count').textContent=`13 areas, ${count} tasks, ${steps} subtasks`;
+    document.querySelector('.gantt-heading .gantt-count').textContent = projectProblem() ? 'Saved project unavailable' : `13 areas, ${count} tasks, ${steps} subtasks`;
     renderOwners();
   }
 
@@ -264,7 +315,7 @@
   window.addEventListener('task-assignments-changed',renderOwners);
   renderProject();
 
-  const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';editButton.hidden=!canFestival('lineup');document.querySelector('.gantt-controls').append(editButton);
+  const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';editButton.hidden=!canFestival('lineup') || Boolean(projectProblem());document.querySelector('.gantt-controls').append(editButton);
   const toolbar=document.createElement('div');toolbar.className='gantt-inline-toolbar';toolbar.hidden=true;
   toolbar.innerHTML='<span id="inline-dirty" role="status">No unsaved changes</span><button type="button" class="button secondary" id="inline-cancel">Cancel</button><button type="button" class="button primary" id="inline-save">Save changes</button><p id="inline-error" role="alert"></p>';
   document.querySelector('.gantt-controls').append(toolbar);
@@ -291,6 +342,7 @@
     updateEditState();
   });
   function refresh(){
+    editButton.hidden = editing || !canFestival('lineup') || Boolean(projectProblem());
     const scroller=chart.querySelector('.gantt-scroll');
     const top=scroller.scrollTop,left=scroller.scrollLeft;
     renderProject();window.initialiseGanttOutline();window.initialiseGanttTimeline();
@@ -468,9 +520,9 @@
     chart.addEventListener('pointerup',up);
     chart.addEventListener('pointercancel',cancel);
   });
-  function invalid(){return Array.from(chart.querySelectorAll('input')).some(input=>!input.checkValidity())||!validPlan(project)||project.some(a=>a.tasks.some(t=>!t.title.trim()||!t.subtasks.length));}
+  function invalid(){return Array.from(chart.querySelectorAll('input.gantt-inline-name, .gantt-inline-dates input')).some(input=>!input.checkValidity())||!validPlan(project)||project.some(a=>a.tasks.some(t=>!t.title.trim()||!t.subtasks.length));}
   editButton.onclick=()=>{
-    if (editing || !canFestival('lineup')) return;
+    if (editing || !canFestival('lineup') || projectProblem()) return;
     selectedRowKey=null;savedProject=cloneProject(project);
     draftAssignments=JSON.parse(JSON.stringify(window.taskAssignments.read()));
     // Preserve effective owners from older group assignments as explicit subtask owners.
@@ -481,14 +533,30 @@
   };
   toolbar.querySelector('#inline-cancel').onclick=()=>{
     if (!editing) return;
-    project=savedProject;editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
+    discardProjectDraft();
   };
   toolbar.querySelector('#inline-save').onclick=()=>{
     if (!editing || !canFestival('lineup')) return;
     if(invalid()){message('Each task needs at least one subtask. Enter all names and both dates, with the end on or after the start.');return;}
-    try{commitProject(project, window.taskAssignments.canAssign() ? draftAssignments : null);}catch{message('Could not save: browser storage is unavailable or full.');return;}
+    try{commitProject(project, window.taskAssignments.canAssign() ? draftAssignments : null);}catch(error){message(typeof window.isFestivalContextCurrent === 'function' && !window.isFestivalContextCurrent() ? error.message : 'Could not save: browser storage is unavailable or full.');return;}
     editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
     publishProject();
   };
-  window.addEventListener('beforeunload',event=>{if(editing&&(JSON.stringify(project)!==JSON.stringify(savedProject)||JSON.stringify(draftAssignments)!==JSON.stringify(originalAssignments))){event.preventDefault();event.returnValue='';}});
+  function discardProjectDraft() {
+    project = savedProject;
+    editing = false;
+    chart.classList.remove('gantt-editing');
+    toolbar.hidden = true;
+    editButton.hidden = false;
+    refresh();
+  }
+  window.hasUnsavedProjectChanges = () => editing && (
+    JSON.stringify(project) !== JSON.stringify(savedProject)
+    || JSON.stringify(draftAssignments) !== JSON.stringify(originalAssignments));
+  window.confirmProjectNavigation = () => {
+    if (window.hasUnsavedProjectChanges() && !window.confirm('Leave without saving your project timeline changes? Cancel to return and choose Save changes.')) return false;
+    if (editing) discardProjectDraft();
+    return true;
+  };
+  window.addEventListener('beforeunload',event=>{if(window.hasUnsavedProjectChanges()){event.preventDefault();event.returnValue='';}});
 })();

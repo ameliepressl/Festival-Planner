@@ -11,12 +11,28 @@ const sectionViews = {
 };
 
 function renderProjectSettings() {
+    if (window.getLineupDataProblem?.()) {
+      $('#project-settings-summary').textContent = 'Saved festival details unavailable';
+      $('#settings-edit-festival').hidden = true;
+      $('#project-settings-help').textContent = 'Recover the saved lineup using the notice above before editing festival details.';
+      return;
+    }
     $('#project-settings-summary').textContent = [state.event.name, state.event.venue, $('#overview-dates').textContent, $('#overview-hours').textContent].filter(Boolean).join(' · ');
     $('#settings-edit-festival').hidden = !canFestival('overview') || state.final;
     $('#project-settings-help').textContent = !canFestival('overview') ? 'The festival creator and Admins can edit festival details.' : state.final ? 'The plan is finalised. Reopen it before changing festival details.' : '';
 }
 
 function renderOverview() {
+  if (window.getLineupDataProblem?.()) {
+    $('#overview-title').textContent = 'Saved festival details unavailable';
+    for (const id of ['overview-venue', 'overview-dates', 'overview-hours', 'overview-performances', 'overview-booking-status', 'overview-budget', 'overview-budget-total', 'overview-revenue', 'overview-costs', 'overview-profit', 'overview-tasks-done', 'overview-tasks-count', 'lineup-venue', 'lineup-dates', 'lineup-hours']) $('#' + id).textContent = '—';
+    $('#overview-setup').hidden = true; $('#overview-final').hidden = true;
+    $('#overview-task-list').innerHTML = '';
+    $('#overview-task-empty').hidden = false;
+    $('#overview-task-empty').textContent = 'Recover the saved festival data before reviewing tasks and totals.';
+    renderProjectSettings();
+    return;
+  }
   const event = state.event;
   $('#overview-title').textContent = event.name || 'Untitled festival';
   $('#overview-venue').textContent = event.venue || '';
@@ -46,7 +62,10 @@ function renderOverview() {
 
 function renderOverviewFinance() {
   const finance = window.getOverviewFinance?.();
-  if (!finance) return;
+  if (!finance) {
+    for (const id of ['overview-revenue', 'overview-costs', 'overview-profit']) $('#' + id).textContent = '—';
+    return;
+  }
   $('#overview-revenue').textContent = euros(finance.totalRevenue);
   $('#overview-costs').textContent = euros(finance.totalCosts);
   const loss = finance.profit < 0;
@@ -63,6 +82,8 @@ function renderOverviewTaskProgress() {
 }
 
 function renderOverviewTasks() {
+  if (window.getLineupDataProblem?.()) return;
+  $('#overview-task-empty').textContent = 'Nothing is overdue or due in the next 7 days.';
   renderOverviewTaskProgress();
   const tasks = window.getOverviewUrgentTasks?.();
   if (!tasks) return;
@@ -353,6 +374,7 @@ $('#overview-task-list').addEventListener('click', ({ target }) => {
   if (button) window.openOverviewTask?.(button.dataset.overviewTask);
 });
 window.addEventListener('work-board-updated', renderOverviewTasks);
+window.addEventListener('festival-plan-updated', renderOverview);
 
 renderTeam();
 renderOverview();

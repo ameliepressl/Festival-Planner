@@ -9,7 +9,10 @@ const FESTIVAL_KEY_PREFIX = 'festival-';
 const SESSION_STORAGE_KEY = 'sb-festival-architect-auth';
 // Which account the plan in this browser belongs to, and whether it still has to be saved.
 const ACCOUNT_META_KEY = 'fa-account-sync';
-// The team roster (Overview → Team). It is not part of the saved plan: the database's
+// A short-lived marker prevents another tab reading/writing a half-replaced plan.
+// Contains context identifiers only, never plan data or an authentication session.
+const ACCOUNT_TRANSITION_KEY = 'fa-account-transition';
+// The team roster (Settings → Team). It is not part of the saved plan: the database's
 // list of members is the truth, and the roster is filled from it (feature-plans/shared-festivals.md).
 const ACCOUNT_TEAM_KEY = 'festival-architect-team-v1';
 // The finance assumptions. Only Admins may change them (Kira's "budget" right).
@@ -158,11 +161,58 @@ function clearFestivalData(storage) {
 }
 
 // Replaces the plan in this browser with the given plan.
-function applyFestivalData(storage, data) {
-  clearFestivalData(storage);
+function applyFestivalData(storage, data, { roster = [], accountMeta, recoverTransition } = {}) {
   const clean = cleanFestivalData(data);
-  for (const [key, value] of Object.entries(clean)) storage.setItem(key, value);
-  return Object.keys(clean).length;
+  const previousTransition = storage.getItem(ACCOUNT_TRANSITION_KEY);
+  if (previousTransition !== null && previousTransition !== recoverTransition) {
+    throw new Error('Another festival change is unfinished. Reload and recover the saved festival before continuing.');
+  }
+  const previous = new Map(festivalKeys(storage).map(key => [key, storage.getItem(key)]));
+  if (accountMeta !== undefined) previous.set(ACCOUNT_META_KEY, storage.getItem(ACCOUNT_META_KEY));
+  const next = { ...clean };
+  if (roster.length) next[ACCOUNT_TEAM_KEY] = JSON.stringify(roster);
+  if (accountMeta !== undefined) next[ACCOUNT_META_KEY] = JSON.stringify(accountMeta);
+  const before = parseAccountMeta(storage.getItem(ACCOUNT_META_KEY));
+  storage.setItem(ACCOUNT_TRANSITION_KEY, JSON.stringify({
+    version: 1, startedAt: Date.now(), nonce: Math.random().toString(36).slice(2),
+    before: { userId: before?.userId || null, festivalId: before?.festivalId || null },
+    after: { userId: (accountMeta === undefined ? before?.userId : accountMeta.userId) ?? null,
+      festivalId: (accountMeta === undefined ? before?.festivalId : accountMeta.festivalId) ?? null }
+  }));
+  try {
+    clearFestivalData(storage);
+    for (const [key, value] of Object.entries(next)) storage.setItem(key, value);
+    storage.removeItem(ACCOUNT_TRANSITION_KEY);
+    return Object.keys(clean).length;
+  } catch (cause) {
+    let restored = true;
+    try {
+      for (const key of festivalKeys(storage)) if (!previous.has(key)) storage.removeItem(key);
+      for (const [key, value] of previous) {
+        if (key === ACCOUNT_META_KEY) continue;
+        if (storage.getItem(key) !== value) {
+          if (value === null) storage.removeItem(key);
+          else storage.setItem(key, value);
+        }
+      }
+      // Publish the old association only after all its sections are restored.
+      if (previous.has(ACCOUNT_META_KEY)) {
+        const value = previous.get(ACCOUNT_META_KEY);
+        if (storage.getItem(ACCOUNT_META_KEY) !== value) {
+          if (value === null) storage.removeItem(ACCOUNT_META_KEY);
+          else storage.setItem(ACCOUNT_META_KEY, value);
+        }
+      }
+      if (previousTransition === null) storage.removeItem(ACCOUNT_TRANSITION_KEY);
+      else storage.setItem(ACCOUNT_TRANSITION_KEY, previousTransition);
+    } catch { restored = false; }
+    const error = new Error(restored
+      ? 'Could not load the festival in browser storage. Your previous browser data was restored.'
+      : 'Could not load or restore the festival in browser storage. Keep this page open and try again.');
+    error.cause = cause;
+    error.restored = restored;
+    throw error;
+  }
 }
 
 // --- Keeping browser and account in step ---------------------------------------------
@@ -189,7 +239,13 @@ function parseAccountMeta(text) {
       dirtyKeys,
       dirty: dirtyKeys.length > 0,
       legacy: meta.legacy === true,
-      access: parseAccess(meta.access)
+      access: parseAccess(meta.access),
+      ...(meta.teamDirty === true ? {
+        teamDirty: true,
+        teamBase: rosterFromTeam((Array.isArray(meta.teamBase) ? meta.teamBase : []).map(member => ({
+          user_id: member?.userId, username: member?.username, role: member?.role
+        })))
+      } : {})
     };
   } catch {
     return null;
@@ -223,7 +279,7 @@ function syncAction({ meta, userId, cloud, localData }) {
     return ownOldPlan || !meta?.userId ? 'create' : 'create-empty';
   }
   if (!ownedByThisUser) return 'download';
-  if (meta.dirty) return 'upload';
+  if (meta.dirty || meta.teamDirty) return 'upload';
   if (cloud.updatedAt !== meta.syncedAt) return 'download';
   return 'keep';
 }
@@ -261,6 +317,38 @@ function sectionsToSave({ storage, dirtyKeys, role }) {
     else result.removed.push(key);
   }
   return result;
+}
+
+// Capture the revision of each section, not just one revision for the whole page.
+// An edit to the checklist during a lineup save must not resend the old lineup.
+function captureSaveBatch({ storage, dirtyKeys, role, revisions = {}, userId, festivalId }) {
+  const sections = sectionsToSave({ storage, dirtyKeys, role });
+  const keys = [...new Set([...Object.keys(sections.changes), ...sections.removed, ...sections.skipped])];
+  return { ...sections, userId, festivalId, keys,
+    revisions: Object.fromEntries(keys.map(key => [key, revisions[key] || 0])) };
+}
+
+function sameFestivalContext(a, b) {
+  return Boolean(a && b && a.userId === b.userId && a.festivalId === b.festivalId);
+}
+
+function acknowledgeSaveBatch({ batch, userId, festivalId, dirtyKeys, revisions = {}, currentKeys = [] }) {
+  if (!sameFestivalContext(batch, { userId, festivalId })) return [...dirtyKeys];
+  const pending = new Set(dirtyKeys.includes('*') ? [...currentKeys, ...batch.keys, ...Object.keys(revisions)] : dirtyKeys);
+  for (const key of batch.keys) if ((revisions[key] || 0) === batch.revisions[key]) pending.delete(key);
+  return [...pending];
+}
+
+// Apply only the intended team edits to a newer roster, keeping unrelated invitations.
+function mergeTeamRoster(base, desired, latest) {
+  const changes = teamChanges(base, desired);
+  const result = new Map(latest.map(member => [member.userId, { ...member }]));
+  const names = new Map(desired.map(member => [member.userId, member]));
+  for (const id of changes.remove) result.delete(id);
+  for (const change of [...changes.add, ...changes.change]) {
+    result.set(change.userId, { ...(result.get(change.userId) || names.get(change.userId)), ...change });
+  }
+  return [...result.values()];
 }
 
 // The team from the database as Kira's roster: [{ userId, username, role }].
@@ -354,9 +442,10 @@ function teammateFromRows(rows) {
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    FESTIVAL_KEY_PREFIX, SESSION_STORAGE_KEY, ACCOUNT_META_KEY, ACCOUNT_TEAM_KEY, ACCOUNT_FINANCE_KEY,
+    FESTIVAL_KEY_PREFIX, SESSION_STORAGE_KEY, ACCOUNT_META_KEY, ACCOUNT_TRANSITION_KEY, ACCOUNT_TEAM_KEY, ACCOUNT_FINANCE_KEY,
     ACCOUNT_ASSIGNMENTS_KEY, ACCOUNT_ADMIN_ONLY_KEYS,
     ACCOUNT_ROLES, PASSWORD_MIN, PASSWORD_MAX, isSyncedKey, accessFor, sameAccess, sectionsToSave,
+    captureSaveBatch, acknowledgeSaveBatch, sameFestivalContext, mergeTeamRoster,
     rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
     MAX_OWN_FESTIVALS, ownFestivals, canCreateFestival, canDeleteFestival, festivalAfterDelete,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,

@@ -5,7 +5,12 @@
   const view = document.querySelector('#checklist-view');
   let checked = parseChecked(localStorage.getItem(CHECKLIST_STORAGE_KEY));
 
-  function save() { localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checked)); }
+  function save(next) {
+    try { localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(next)); }
+    catch { toast('Checklist changes could not be saved in this browser. The previous checks are kept.'); return false; }
+    checked = next;
+    return true;
+  }
 
   function render() {
     const canEditChecklist = canFestival('checklist');
@@ -58,8 +63,7 @@
       event.target.checked = checked.includes(taskId);
       return;
     }
-    checked = toggleTask(checked, taskId);
-    save();
+    if (!save(toggleTask(checked, taskId))) { event.target.checked = checked.includes(taskId); return; }
     updateProgress();
   });
 

@@ -53,7 +53,6 @@
   });
 
   let statusFilter = 'all';
-  const attention = document.querySelector('#needs-attention-list');
   function daysUntil(end, date) {
     return (Date.parse(end) - Date.parse(date)) / 86400000;
   }
@@ -109,51 +108,9 @@
     }));
   };
 
-  function renderAttention(steps, date) {
-    const urgent = urgentSteps(steps, date);
-    const previous = document.activeElement.closest('.work-board-urgent')?.dataset.cardId;
-    const groups = [
-      ['Overdue', urgent.filter(step => step.end < date)],
-      ['Due today', urgent.filter(step => step.end === date)],
-      ['Next 7 days', urgent.filter(step => step.end > date)]
-    ];
-    attention.replaceChildren();
-    groups.forEach(([label, entries]) => {
-      if (!entries.length) return;
-      const group = element('section', 'work-board-urgent-group');
-      const list = element('ul', 'work-board-urgent-list');
-      entries.forEach(step => {
-        const overdue = step.end < date;
-        const button = element('button', 'work-board-urgent');
-        button.type = 'button';
-        button.dataset.cardId = step.id;
-        button.style.cssText = step.areaStyle || '';
-        const title = element('span', 'work-board-urgent-title', step.title);
-        title.append(element('small', null, step.area));
-        const deadline = element('time', overdue ? 'work-board-urgent-overdue' : null,
-          deadlineText(step.end, date));
-        deadline.dateTime = step.end;
-        if (overdue) {
-          const icon = element('span', 'work-board-urgent-icon', '⚠');
-          icon.setAttribute('aria-hidden', 'true');
-          deadline.prepend(icon);
-        }
-        button.append(title, deadline);
-        const item = element('li');
-        item.append(button);
-        list.append(item);
-      });
-      group.append(element('h3', null, label), list);
-      attention.append(group);
-    });
-    if (!urgent.length) attention.append(element('p', 'work-board-empty', 'No overdue subtasks or subtasks due in the next seven days.'));
-    if (previous) Array.from(attention.querySelectorAll('button')).find(button => button.dataset.cardId === previous)?.focus();
-  }
-
   function renderStats() {
     const date = today();
     const steps = projectSteps();
-    renderAttention(steps, date);
     document.querySelector('#task-overview-total').textContent = steps.length + (steps.length === 1 ? ' subtask total' : ' subtasks total');
     document.querySelector('#board-all-count').textContent = steps.length;
     const counts = {planned:0, progress:0, overdue:0, done:0};
@@ -169,7 +126,8 @@
     document.querySelector('#board-my-tasks').setAttribute('aria-pressed', String(assigneeSelect.value === 'me'));
     const query = search.value.trim().toLowerCase();
     const plan = window.getSavedGanttPlan();
-    const canEditTasks = canFestival('lineup');
+    const projectProblem = window.getProjectDataProblem?.() || '';
+    const canEditTasks = canFestival('lineup') && !projectProblem;
     const team = assignments.people();
     const assigned = assignments.read();
     const canAssign = assignments.canAssign();
@@ -225,7 +183,7 @@
       return true;
     }
 
-    summary.textContent = visible.length === cards.length ? cards.length + ' subtasks' : visible.length + ' of ' + cards.length + ' subtasks';
+    summary.textContent = projectProblem || (visible.length === cards.length ? cards.length + ' subtasks' : visible.length + ' of ' + cards.length + ' subtasks');
     renderStats();
     columns.replaceChildren();
     statuses.forEach(([id, label]) => {
@@ -319,7 +277,7 @@
     openBoard(overview.querySelector('.work-board-open'), assignee);
   };
   overview.addEventListener('click', event => {
-    const trigger = event.target.closest('.work-board-stat, .work-board-open, .work-board-urgent');
+    const trigger = event.target.closest('.work-board-stat, .work-board-open');
     if (!trigger) return;
     if (trigger.classList.contains('work-board-stat')) {
       statusFilter = trigger.dataset.status;
@@ -329,12 +287,6 @@
       return;
     }
     openBoard(trigger);
-    if (trigger.dataset.cardId) {
-      const card = Array.from(columns.querySelectorAll('.work-board-card'))
-        .find(item => item.dataset.cardId === trigger.dataset.cardId);
-      card?.focus();
-      card?.scrollIntoView({block:'center', inline:'nearest'});
-    }
   });
 
   window.openOverviewTask = id => {
@@ -347,11 +299,7 @@
   projectTasksButton.addEventListener('click', renderStats);
   document.querySelector('#back-board-overview').addEventListener('click', () => {
     projectTasksButton.click();
-    const trigger = boardTrigger?.dataset.cardId
-      ? Array.from(attention.querySelectorAll('.work-board-urgent'))
-        .find(button => button.dataset.cardId === boardTrigger.dataset.cardId)
-      : boardTrigger;
-    (trigger ?? overview.querySelector('.work-board-open')).focus();
+    (boardTrigger ?? overview.querySelector('.work-board-open'))?.focus();
   });
   document.querySelector('#back-task-board').addEventListener('click', renderStats);
   window.addEventListener('gantt-project-changed', () => {
@@ -402,6 +350,8 @@
   const deleteTaskButton = document.querySelector('#board-edit-delete');
   let editingStepId = null;
   addTaskButton.hidden = !canFestival('lineup');
+  addTaskButton.disabled = Boolean(window.getProjectDataProblem?.());
+  if (addTaskButton.disabled) addTaskButton.title = window.getProjectDataProblem();
   form.querySelector('.hero-copy').textContent = 'Choose a work area, then select one of its task groups or create a new group. Your task appears on both the board and timeline.';
   const groupHelp = element('p', 'field-help', 'Task groups belong to the selected work area. Choose an existing group or “Create a task group”.');
   groupHelp.id = 'board-group-help';
@@ -427,6 +377,7 @@
   }
   function openTaskDialog(stepId = null) {
     if (!canFestival('lineup')) return;
+    if (window.getProjectDataProblem?.()) { summary.textContent = window.getProjectDataProblem(); return; }
     const card = stepId === null ? null : projectSteps().find(item => String(item.id) === String(stepId));
     if (stepId !== null && !card) {
       summary.textContent = 'This task no longer exists. Reload the project and try again.';

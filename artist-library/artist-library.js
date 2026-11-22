@@ -84,8 +84,7 @@
     const entry = ARTIST_LIBRARY.find((a) => a.id === id);
     if (!entry) return null;
     if (!inFestival(id)) {
-      state.artists = [...state.artists, libraryArtistToCatalogue(entry)];
-      try { save(); } catch { toast('The artist could not be saved in this browser.'); return null; }
+      if (!save({ ...state, artists: [...state.artists, libraryArtistToCatalogue(entry)] })) return null;
       render();
       toast(`${entry.name} added to this festival's artists.`);
     }

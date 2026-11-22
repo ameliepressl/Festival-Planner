@@ -606,3 +606,58 @@ Branch: `fix-festival-settings` (owner: Vicky). Plan: `feature-plans/fix-festiva
 Saving festival details immediately refreshes the festival name in the sidebar selector. Festival settings, artist bookings and calendar blocks use 24-hour HH:MM inputs. Overnight closing times (e.g. 18:00–03:00) and after-midnight bookings stay within the selected festival day, including timetable display, conflict checks and backups. Festival view gives each day enough width for all stages, preventing overlap with the next day. The Delete this festival button aligns to the right like Edit festival details. Newly opened demos include “(demo)” in their saved name to distinguish them from personal festivals.
 
 Validation: all 275 tests pass (0 failed or skipped), including new overnight booking, conflict and backup checks. Chrome checks confirmed name display, overnight saving and reopening, the three-day/three-stage timetable spacing, settings button alignment and a newly opened demo's label. Original festival hours were restored after testing. Existing tests were not changed.
+## 22 November 2026 — Technical audit fixes (Kira)
+
+Branch: `codex/technical-audit-fixes`, based on main `92c6bd3`.
+Approved reliability/security cleanup. Kira authorised committing and pushing this
+branch for team review; no merge or database change.
+
+Fixed per-section cloud save acknowledgements; queued team-save/retry handling;
+project-draft checks before account/festival changes; cross-tab transition markers
+and recovery; plan/roster/metadata rollback; and screen save-failure consistency.
+Hardened shared markup and map input validation. Aligned single/active stages across
+map, crowd and readiness, retaining inactive measurements. Bounded extreme task dates,
+validated task identifiers, removed duplicate navigation bindings and unused preview
+rendering. Damaged saved lineups/tasks remain unchanged behind explicit recovery
+messages, with dependent figures unavailable until recovery.
+
+Updated active brief, README and baseline/agent notes to the approved flexible rules.
+Kept existing assertions intact; isolated the old Node-only regression contract from
+browser code. Legacy saved-data compatibility remains intentionally supported.
+Identified missing database protection for Admin-only festival details and the overall
+artist budget. At Kira's request, removed the prepared SQL file; Amelie will implement
+and test that fix separately. No live database changes were made.
+
+Validation: **335/335 tests passed, 0 skipped** (273 existing + 62 new); syntax checks
+passed for 28 changed/new JavaScript files and `git diff --check` was clean. Disposable
+browser checks included precise-time booking, settings, map/task edits, permissions,
+reload, extreme dates, failed writes, damaged data and confirmed backup restoration.
+The actual async account script was tested with mock services. Live authentication,
+multi-account devices and applied database permissions remain separate checks.
+Public app URL responded HTTP 200; this only confirms reachability.
+
+Teacher approval of the HTML/CSS/JavaScript stack is still unconfirmed. The team
+must recheck these flows after the separate interface, finance and empty-new-festival
+changes. Full Part 1 findings, storage review and verification limits:
+[feature-plans/technical-audit-fixes.md](feature-plans/technical-audit-fixes.md).
+Part 2 presentation notes/Word document remain deferred until Kira asks to start.
+
+## Admin-only festival details and artist budget in the database
+
+Branch: `feature-admin-only-lineup-details` (owner: Amelie). Plan:
+[feature-plans/admin-only-lineup-details.md](feature-plans/admin-only-lineup-details.md).
+
+Closes the gap found in the technical audit: an Editor could change the festival details
+(`event`) and the overall artist budget (`settings.budget`) inside the lineup section by
+sending a request directly. `migrations/006_admin_only_lineup_details.sql` makes the
+database refuse that, while Editors keep booking artists, setting fees, moving performances,
+changing stages and finalising. `app.js` no longer runs the one-time opening-hours
+migrations for Editors and stops an Editor from creating the lineup before the details exist,
+so the planner never sends a save the database would refuse.
+
+Validation: **339/339 tests passed** (335 existing + 4 new in
+`tests/admin-only-lineup-details.test.js`). Migrations 001 and 003–006 were also run against a
+local Postgres (PGlite) with Owner, Admin, Editor and Viewer: 24/24 role cases behaved as
+planned, including a direct table update and running 006 twice.
+
+Supabase: **not applied yet.** Amelie runs 006 in the SQL Editor after review.

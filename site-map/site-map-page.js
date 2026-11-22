@@ -18,11 +18,12 @@
   };
 
   // Festival size: the expected visitors decide how many toilets, water points and pitches the map needs.
-  // The lineup decides how many stages the map has (Stage A, B, C, ...; at least two).
+  // A saved lineup decides how many stages the map has (Stage A, B, C, ...).
   function lineupStages() {
     try { return JSON.parse(read(typeof STORAGE_KEY === 'string' ? STORAGE_KEY : 'festival-architect-v2'))?.settings?.stages; } catch { return undefined; }
   }
-  const sizeFor = (visitors) => ({ ...capacityNeeds(visitors), stages: mapStageCount(lineupStages()) });
+  const sizeFor = (visitors) => ({ ...capacityNeeds(visitors), stages: mapStageCount(lineupStages(), { allowSingle: true }) });
+  const activeStageIds = values => values.filter(item => item.kind === 'stage').map(item => item.id);
   let ground = parseGround(read(GROUND_STORAGE_KEY));
   let needs = sizeFor(ground.visitors);
   let items = layoutItems(needs);
@@ -39,7 +40,8 @@
   let busy = false;
   const snapshot = () => ({ sites, ground, currentId, pendingFence: draftBorder?.length ? draftBorder : null });
   const draft = createMapDraft(snapshot());
-  const editable = () => canFestival('checklist');
+  const lineupProblem = () => window.getLineupDataProblem?.() || '';
+  const editable = () => canFestival('checklist') && !lineupProblem();
   let savedReadinessCache = null;
   let committedMapIds = new Set(parseSiteMaps(read(SITE_MAPS_STORAGE_KEY)).map(map => map.id));
 
@@ -105,15 +107,18 @@
   });
   // The Overview always reads the committed map, never an experiment in this draft.
   window.getSavedMapReadiness = () => {
+    if (lineupProblem()) return [{ id: 'map:stage-context', label: 'Map stage configuration', ok: false, unknown: true,
+      detail: 'The saved lineup needs recovery, so its active stages are unknown. Recover the lineup before editing or assessing this map.', section: 'Lineup planner' }];
     const saved = draft.saved;
-    if (savedReadinessCache?.snapshot === saved) return savedReadinessCache.rules.map(rule => ({ ...rule }));
+    const stageCount = mapStageCount(lineupStages(), { allowSingle: true });
+    if (savedReadinessCache?.snapshot === saved && savedReadinessCache.stageCount === stageCount) return savedReadinessCache.rules.map(rule => ({ ...rule }));
     const map = saved.sites.find(value => value.id === saved.currentId) || saved.sites[0];
     if (!map || !committedMapIds.has(map.id)) return [{ id: `map:${map?.id || 'missing'}:saved`, label: 'Save and assess festival map', ok: false,
       unknown: true, detail: 'The suggested map has not been saved yet. Review the layout and measurements, then choose Save changes on Site map.', section: 'Site map' }];
     const savedItems = layoutItems(sizeFor(saved.ground.visitors));
-    const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors).checks]
+    const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors, activeStageIds(savedItems)).checks]
       .map(rule => ({ id: `map:${map.id}:${rule.id}`, label: rule.label, ok: rule.ok, unknown: !!rule.unknown, detail: rule.detail, section: 'Site map' }));
-    savedReadinessCache = { snapshot: saved, rules };
+    savedReadinessCache = { snapshot: saved, stageCount, rules };
     return rules.map(rule => ({ ...rule }));
   };
   const site = () => sites.find((s) => s.id === currentId);
@@ -179,7 +184,7 @@
       </div>
       <dialog id="sm-settings-dialog" aria-labelledby="sm-settings-title">
         <header class="sm-dialog-heading"><h2 id="sm-settings-title">Map settings</h2><button type="button" class="button secondary" id="sm-close-settings" aria-label="Close map settings">×</button></header>
-        <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${m.id}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
+        <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${escape(m.id)}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
         <div id="sm-settings"></div>
         <p class="field-help">Changes remain a draft until you choose Save changes above the map.</p><p id="sm-settings-message" role="status" aria-live="polite"></p>
       </dialog>`;
@@ -315,6 +320,10 @@
 
   function renderScore() {
     const s = site();
+    if (lineupProblem()) {
+      view.querySelector('#sm-score').innerHTML = '<h2>Map checks paused</h2><p class="sm-note">Recover the saved lineup before assessing the map. Its active stages are currently unknown.</p>';
+      return;
+    }
     const rules = checkLayout(s, s.placements, items);
     const score = layoutScore(rules);
     const passed = rules.filter((r) => r.ok).length;
@@ -359,8 +368,12 @@
   function renderCrowd() {
     const panel = view.querySelector('#sm-crowd');
     if (!panel) return;
+    if (lineupProblem()) {
+      panel.innerHTML = '<p class="sm-note">Crowd and evacuation estimates are unavailable until the saved lineup is recovered.</p>';
+      return;
+    }
     const assumptionsOpen = !!panel.querySelector('.sm-assumptions')?.open;
-    const { safety, checks, evacuation } = crowdSafetyChecks(site(), ground.visitors);
+    const { safety, checks, evacuation } = crowdSafetyChecks(site(), ground.visitors, activeStageIds(items));
     const crowdStages = Object.keys(safety.stages);
     const routeLabels = evacuation.valid ? crowdStages.map(id => {
       const route = evacuation.originAssignments.find(value => value.originId === id);
@@ -465,6 +478,11 @@
       const scale = Math.min(1, 1600 / Math.max(original.width, original.height));
       const width = Math.round(original.width * scale);
       const height = Math.round(original.height * scale);
+      const rows = Math.max(1, Math.round(GRID_COLS * height / width));
+      if (width < 1 || height < 1 || !Number.isFinite(rows) || rows * GRID_COLS > MAX_MAP_GRID_CELLS) {
+        mapMessage('This image is too narrow for a usable map grid. Crop it to a wider ground plan and upload it again.');
+        return;
+      }
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(original, 0, 0, width, height);
@@ -667,16 +685,24 @@
     else if (event.target.id === 'sm-show-nogo') { showNogo = event.target.checked; drawNogo(); }
     else if (!editable() || busy) return;
     else if (event.target.matches('[data-crowd-field]')) {
-      const safety = normalizeCrowdSafety(s.crowdSafety, crowdStageIds(s.crowdSafety?.stages, s.placements));
+      const retained = normalizeCrowdSafety(s.crowdSafety);
+      const safety = normalizeCrowdSafety(retained, activeStageIds(items));
       const path = event.target.dataset.crowdField.split('.');
       let target = safety;
       path.slice(0, -1).forEach(key => { target = target[key]; });
       target[path.at(-1)] = event.target.type === 'checkbox' ? event.target.checked : event.target.value === '' ? null : Number(event.target.value);
-      s.crowdSafety = safety; save(); renderCrowd();
+      // A retired stage is excluded from calculations, but its measurements remain
+      // available if that stage is brought back later. Editing A must not delete C.
+      s.crowdSafety = { ...safety, stages: { ...retained.stages, ...safety.stages } };
+      save(); renderCrowd();
     }
     else if (event.target.id === 'sm-upload') upload(event.target.files[0]);
     else if (event.target.id === 'sm-visitors') changeVisitors(event.target.value);
-    else if (event.target.id === 'sm-name') { s.name = event.target.value.trim() || 'My map'; save(); view.querySelector(`#sm-select option[value="${s.id}"]`).textContent = s.name; }
+    else if (event.target.id === 'sm-name') {
+      s.name = event.target.value.trim() || 'My map'; save();
+      const option = Array.from(view.querySelector('#sm-select').options).find(value => value.value === s.id);
+      if (option) option.textContent = s.name;
+    }
     else if (event.target.id === 'sm-width') {
       const metres = Number(event.target.value);
       if (validMapWidth(event.target.value)) { s.widthMetres = metres; save(); drawAll(); }

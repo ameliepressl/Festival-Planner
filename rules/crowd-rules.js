@@ -15,6 +15,13 @@ function crowdStageIds(...sources) {
   return [...CROWD_STAGE_IDS, ...[...new Set(extra)].sort()];
 }
 
+// Legacy imports infer stages from their saved data. The app supplies the actual
+// active lineup ids, so retired measurements never create an audience by themselves.
+function activeCrowdStageIds(explicitIds, ...sources) {
+  return explicitIds === undefined ? crowdStageIds(...sources)
+    : [...new Set((Array.isArray(explicitIds) ? explicitIds : []).filter(id => /^stage-[a-l]$/.test(id)))].sort();
+}
+
 function normalizeCrowdSafety(value, stageIds) {
   const source = value && typeof value === 'object' ? value : {};
   const number = value => value !== '' && value !== null && Number.isFinite(Number(value)) ? Number(value) : null;
@@ -38,8 +45,10 @@ const validCrowdCount = value => Number.isInteger(value) && value >= 0;
 // Diagonals cannot cut between two blocked corners.
 function strictEvacuationRoute(site, from, to) {
   const fail = { reachable: false, points: [], metres: null };
-  if (!site?.grid || !Array.isArray(from) || !Array.isArray(to)) return fail;
+  if (!site?.grid || ![from, to].every(point => Array.isArray(point) && point.length === 2 && point.every(Number.isFinite))) return fail;
   const geometry = typeof module !== 'undefined' ? require('./site-map-rules.js') : null;
+  const validGrid = geometry ? geometry.validMapGrid : validMapGrid;
+  if (!validGrid(site.grid) || ![site.width, site.height, site.widthMetres].every(value => Number.isFinite(value) && value > 0)) return fail;
   const usable = geometry ? geometry.isUsable : isUsable;
   const blocked = geometry ? geometry.isBlocked : isBlocked;
   const onFence = geometry ? geometry.isOnFence : isOnFence;
@@ -54,10 +63,11 @@ function strictEvacuationRoute(site, from, to) {
   return { reachable: true, points, metres };
 }
 
-function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
-  const stageIds = crowdStageIds(input?.stages, site?.placements);
+function estimateEvacuation(site, visitors, input = site?.crowdSafety, activeStageIds) {
+  const stageIds = activeCrowdStageIds(activeStageIds, input?.stages, site?.placements);
   const safety = normalizeCrowdSafety(input, stageIds);
   const invalid = detail => ({ valid: false, minutes: null, detail, exits: [], originAssignments: [] });
+  if (!stageIds.length) return invalid('Choose at least one active stage.');
   if (!validCrowdCount(visitors) || visitors === 0) return invalid('Enter the expected visitor count.');
   if (!stageIds.every(id => validCrowdCount(safety.stages[id].audience))) return invalid('Enter the audience at each stage for the same evacuation scenario.');
   const stageTotal = stageIds.reduce((sum, id) => sum + safety.stages[id].audience, 0);
@@ -106,8 +116,8 @@ function estimateEvacuation(site, visitors, input = site?.crowdSafety) {
     detail: 'Response delay + the longest exit travel/queue estimate. Each audience zone uses its nearest reachable open exit; other visitors start at the food court. No shared-route bottleneck or behavioural simulation.' };
 }
 
-function crowdSafetyChecks(site, visitors) {
-  const stageIds = crowdStageIds(site?.crowdSafety?.stages, site?.placements);
+function crowdSafetyChecks(site, visitors, activeStageIds) {
+  const stageIds = activeCrowdStageIds(activeStageIds, site?.crowdSafety?.stages, site?.placements);
   const safety = normalizeCrowdSafety(site?.crowdSafety, stageIds);
   const checks = stageIds.map(id => {
     const { area, audience } = safety.stages[id];
@@ -126,7 +136,7 @@ function crowdSafetyChecks(site, visitors) {
     ok: bothOpen && bothMeasured && bothPlaced, unknown: bothOpen && (!bothMeasured || !bothPlaced),
     detail: bothOpen && bothMeasured && bothPlaced ? 'Project requirement: both exits are mapped, open and have a measured clear width.'
       : 'Project requirement: keep both emergency exits available. Map each exit, enter its clear width and mark it available. Closed-exit scenarios can still be estimated below.' });
-  const evacuation = estimateEvacuation(site, visitors, safety);
+  const evacuation = estimateEvacuation(site, visitors, safety, stageIds);
   checks.push({ id: 'evacuation', label: 'Evacuation planning estimate', ok: evacuation.valid && evacuation.minutes <= safety.targetMinutes,
     unknown: !site?.crowdSafety,
     detail: evacuation.valid ? `${evacuation.minutes.toFixed(1)} min · project target ${safety.targetMinutes} min` : evacuation.detail });
