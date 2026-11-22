@@ -661,3 +661,25 @@ local Postgres (PGlite) with Owner, Admin, Editor and Viewer: 24/24 role cases b
 planned, including a direct table update and running 006 twice.
 
 Supabase: **not applied yet.** Amelie runs 006 in the SQL Editor after review.
+
+**Update 22 November:** PR #32 merged; Amelie applied 006 in the Supabase SQL Editor. Checked
+through the connector: the save rule uses the new check, signed-in accounts can run it,
+signed-out visitors cannot, and the security advisor reports nothing new. Still to try: the
+flow with two real accounts.
+
+## Forgot password
+
+Branch: `feature-forgot-password` (owner: Amelie). Plan:
+[feature-plans/forgot-password.md](feature-plans/forgot-password.md).
+
+"Forgot your password?" on the sign-in screen sends a reset link (Supabase
+`resetPasswordForEmail`); the link opens "Choose a new password" (`updateUser`), then the app
+opens signed in. Expired or used links offer a new one. The rules are in
+`rules/account-rules.js`; `account/account.js` and `index.html` show the two new forms.
+
+Validation: **349/349 tests passed** (339 existing + 10 new in `tests/forgot-password.test.js`,
+which run the real sign-in screen with a fake Supabase). Not yet tried in a browser.
+
+Before it works for everyone (Amelie, in the Supabase dashboard): Redirect URLs and Site URL in
+Authentication → URL Configuration, and custom SMTP — the built-in email service only sends to
+members of the Supabase organization.

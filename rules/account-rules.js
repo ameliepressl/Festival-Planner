@@ -69,6 +69,38 @@ function signInProblem({ email, password } = {}) {
   return '';
 }
 
+// --- Forgot password (feature-plans/forgot-password.md) ----------------------------------
+
+// The new password on "Choose a new password": same rules as for a new account, typed twice.
+function newPasswordProblem({ password, confirm } = {}) {
+  const problem = passwordProblem(password);
+  if (problem) return problem;
+  if (password !== confirm) return 'The two passwords do not match.';
+  return '';
+}
+
+// Where the reset link in the email leads back to: this page, without anything after it.
+function passwordResetRedirect(location) {
+  return `${location.origin}${location.pathname}`;
+}
+
+// What the address of a page opened from a reset email says. Supabase puts it after "#":
+//   #access_token=…&refresh_token=…&type=recovery   → { kind: 'recovery', accessToken, refreshToken }
+//   #error=access_denied&error_code=otp_expired&…   → { kind: 'expired' }
+// Anything else (no "#", a normal "#top" link, a sign-up confirmation) → null.
+function recoveryFromUrl(hash) {
+  if (typeof hash !== 'string' || !hash.startsWith('#') || !hash.includes('=')) return null;
+  const params = new URLSearchParams(hash.slice(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (params.get('type') === 'recovery') {
+    if (accessToken && refreshToken) return { kind: 'recovery', accessToken, refreshToken };
+    return { kind: 'expired' };
+  }
+  if (params.get('error') || params.get('error_code')) return { kind: 'expired' };
+  return null;
+}
+
 // "Vicky", " vicky " and "VICKY" are the same username.
 function usernameKey(username) {
   return typeof username === 'string' ? username.trim().toLowerCase() : '';
@@ -93,6 +125,16 @@ function accountErrorMessage(error) {
   }
   if (code === 'email_not_confirmed') {
     return 'Confirm your email first (check your inbox), then sign in.';
+  }
+  // Forgot password (feature-plans/forgot-password.md)
+  if (code === 'over_email_send_rate_limit' || message.includes('email rate limit exceeded')) {
+    return 'Too many emails were sent in the last hour. Try again later.';
+  }
+  if (code === 'email_address_not_authorized') {
+    return 'The app cannot send emails to this address yet. Ask the database owner (Amelie) to set up email sending in Supabase.';
+  }
+  if (code === 'same_password') {
+    return 'Choose a password that is different from your old one.';
   }
   if (status === 429 || code.includes('rate_limit')) {
     return 'Too many attempts. Wait a minute and try again.';
@@ -449,6 +491,7 @@ if (typeof module !== 'undefined') {
     rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
     MAX_OWN_FESTIVALS, ownFestivals, canCreateFestival, canDeleteFestival, festivalAfterDelete,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,
+    newPasswordProblem, passwordResetRedirect, recoveryFromUrl,
     accountErrorMessage, isFestivalDataKey, collectFestivalData, cleanFestivalData, hasFestivalData,
     clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows
   };
