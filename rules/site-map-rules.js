@@ -15,6 +15,20 @@
 const SITE_MAPS_STORAGE_KEY = 'festival-architect-site-maps';
 const GRID_COLS = 60;
 const WALKING_METRES_PER_MINUTE = 80; // a relaxed walk through a crowd
+const MAX_MAP_GRID_CELLS = 250000;
+const MAX_MAP_IMAGE_CHARACTERS = 8 * 1024 * 1024;
+const safeMapId = id => typeof id === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(id);
+const safeMapImage = image => image === null || (typeof image === 'string'
+  && image.length <= MAX_MAP_IMAGE_CHARACTERS
+  && /^data:image\/(?:png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(image));
+
+function validMapGrid(grid) {
+  return !!grid && Number.isInteger(grid.cols) && grid.cols > 0
+    && Number.isInteger(grid.rows) && grid.rows > 0
+    && grid.cols * grid.rows <= MAX_MAP_GRID_CELLS
+    && typeof grid.cells === 'string' && grid.cells.length === grid.cols * grid.rows
+    && /^[01]+$/.test(grid.cells);
+}
 
 const MAP_CATEGORIES = [
   { id: 'stages', title: 'Stages', colour: '#ff684c' },
@@ -52,24 +66,29 @@ const BASE_ITEMS = [
 ];
 
 // How many toilet rows, water points and food pitches go on the map depends on the festival size
-// (see rules/capacity-rules.js). The map has one stage per lineup stage (needs.stages, 2 to 12, default 2):
+// (see rules/capacity-rules.js). The map has one stage per lineup stage (needs.stages, 1 to 12, default 2):
 // stage-a, stage-b, stage-c, ... Every stage gets its own first aid tent, and the first toilet rows and
 // water points belong to the stages (toilets-a, toilets-b, toilets-c, ...).
 const STAGE_SUFFIX = 'abcdefghijkl'.split('');
 const MAX_MAP_STAGES = STAGE_SUFFIX.length;
-function mapStageCount(stages) {
+function mapStageCount(stages, { allowSingle = false } = {}) {
   const n = Number(stages);
-  return Number.isInteger(n) ? Math.min(MAX_MAP_STAGES, Math.max(2, n)) : 2;
+  // Existing callers retain the historical two-stage minimum. A known lineup uses
+  // allowSingle explicitly; absent/invalid settings still get the two-stage template.
+  if (allowSingle && (stages == null || typeof stages === 'boolean' || !Number.isInteger(n) || n < 1)) return 2;
+  return Number.isInteger(n) ? Math.min(MAX_MAP_STAGES, Math.max(allowSingle ? 1 : 2, n)) : 2;
 }
 function layoutItems(needs = { toiletBlocks: 2, waterPoints: 2, pitches: 6 }) {
-  const stageCount = mapStageCount(needs.stages);
+  const stageCount = mapStageCount(needs.stages, { allowSingle: true });
   const extraStages = STAGE_SUFFIX.slice(2, stageCount).flatMap((s) => [
     { id: `stage-${s}`, kind: 'stage', name: `Stage ${s.toUpperCase()}`, category: 'stages', symbol: s.toUpperCase(), team: 'Stage building', hours: 'During the programme',
       text: 'Another stage, placed away from the other stages so the sound systems do not mix.' },
     { id: `first-aid-${s}`, kind: 'first-aid', name: `First aid · Stage ${s.toUpperCase()}`, category: 'safety', symbol: '✚', team: 'First aid & safety', hours: 'Whole event',
       text: 'Medical tent with defibrillator, close to this stage crowd.' }
   ]);
-  const numbered = (count, kind, makeItem) => Array.from({ length: Math.max(stageCount, count) }, (_, i) => makeItem(i < stageCount ? `${kind}-${STAGE_SUFFIX[i]}` : `${kind}-${i + 1}`, i));
+  // Keep the old A/B facility ids even for one stage; the second toilet/water
+  // location still exists, simply without a Stage B label. This preserves saved pins.
+  const numbered = (count, kind, makeItem) => Array.from({ length: Math.max(stageCount, count) }, (_, i) => makeItem(i < Math.max(2, stageCount) ? `${kind}-${STAGE_SUFFIX[i]}` : `${kind}-${i + 1}`, i));
   const toilets = numbered(needs.toiletBlocks, 'toilets', (id, i) => ({
     id, kind: 'toilets', name: i < stageCount ? `Toilets · Stage ${STAGE_SUFFIX[i].toUpperCase()}` : `Toilets ${i + 1}`, category: 'facilities', symbol: 'WC',
     team: 'Toilets, water & waste', hours: 'From gates open', text: 'A row of 8 toilet cabins including an accessible unit.'
@@ -82,7 +101,8 @@ function layoutItems(needs = { toiletBlocks: 2, waterPoints: 2, pitches: 6 }) {
     id: `P${i + 1}`, kind: 'pitch', name: `Food court · Pitch P${i + 1}`, category: 'food', symbol: `P${i + 1}`, team: 'Backstage & catering', hours: 'From gates open',
     text: 'Vendor pitch in the food court. Which vendor stands here is chosen on the Vendors page.'
   }));
-  return [...BASE_ITEMS, ...extraStages, ...toilets, ...water, ...pitches];
+  const base = stageCount === 1 ? BASE_ITEMS.filter(item => !['stage-b', 'first-aid-b'].includes(item.id)) : BASE_ITEMS;
+  return [...base, ...extraStages, ...toilets, ...water, ...pitches];
 }
 
 // The stage ids of a layout, in order (stage-a, stage-b, ...).
@@ -189,8 +209,11 @@ function isOnFence(site, p) { return distanceToBoundary(site, p) * metresPerUnit
 // Every usable spot on a regular raster: the places the planner can choose from.
 function candidatePoints(site) {
   const step = site.width / 80;
+  // A very narrow uploaded/saved map must not produce millions of candidates.
+  // Ordinary grounds retain the same square raster as before.
+  const verticalStep = Math.max(step, site.height / 160);
   const points = [];
-  for (let y = step / 2; y < site.height; y += step) {
+  for (let y = verticalStep / 2; y < site.height; y += verticalStep) {
     for (let x = step / 2; x < site.width; x += step) {
       const p = [Math.round(x), Math.round(y)];
       if (isUsable(site, p)) points.push(p);
@@ -239,11 +262,12 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
   const stagePool = roomy.length ? roomy : candidates;
   const stageA = bestBy(stagePool, (p) => distance(p, entrance));
   placed['stage-a'] = stageA;
-  const stageBPool = stagePool.filter((p) => isFree(p, 40));
-  const stageB = bestBy(stageBPool.length ? stageBPool : stagePool, (p) => distance(p, stageA) + 0.6 * distance(p, entrance));
-  placed['stage-b'] = stageB;
-  // Any further stage goes as far as possible from the stages already placed (sound), a bit away from the gate.
   const stageIds = stageIdsOf(items);
+  if (stageIds.includes('stage-b')) {
+    const stageBPool = stagePool.filter((p) => isFree(p, 40));
+    placed['stage-b'] = bestBy(stageBPool.length ? stageBPool : stagePool, (p) => distance(p, stageA) + 0.6 * distance(p, entrance));
+  }
+  // Any further stage goes as far as possible from the stages already placed (sound), a bit away from the gate.
   stageIds.slice(2).forEach((id) => {
     const others = Object.keys(placed).filter((k) => k.startsWith('stage-')).map((k) => placed[k]);
     const pool = stagePool.filter((p) => isFree(p, 40));
@@ -316,6 +340,7 @@ function suggestLayout(site, items = LAYOUT_ITEMS) {
 // The open list is a binary heap; ties are broken by insertion order, which gives exactly the
 // same paths as sorting the whole list every step, only much faster.
 function gridSearch(site, from, to, passable, strictCorners = false) {
+  if (!validMapGrid(site?.grid)) return null;
   const { cols, rows } = site.grid;
   const cw = site.width / cols;
   const ch = site.height / rows;
@@ -428,6 +453,7 @@ function checkLayout(site, placements, items = LAYOUT_ITEMS) {
         detail: wrong.length ? `Move: ${wrong.map((i) => i.name).join(', ')}` : 'Everything is on usable ground; gate and exits are on the fence' };
     }),
     rule('stage-distance', 'The stages are far enough apart for the sound', stages, () => {
+      if (stages.length < 2) return { ok: true, detail: 'Only one stage; separation between stages is not needed.' };
       // The closest pair of stages decides (with two stages that is simply their distance).
       const pairs = stages.flatMap((a, i) => stages.slice(i + 1).map((b) => ({ a, b, d: metres(a, b) })));
       const close = pairs.reduce((best, p) => (p.d < best.d ? p : best));
@@ -493,13 +519,15 @@ function parseSiteMaps(text) {
   let saved;
   try { saved = JSON.parse(text); } catch { return []; }
   if (!Array.isArray(saved)) return [];
-  return saved.filter((s) => s && typeof s.id === 'string' && typeof s.name === 'string'
-    && s.width > 0 && s.height > 0 && s.widthMetres > 0
-    && (s.image === null || (typeof s.image === 'string' && s.image.startsWith('data:image/')))
+  return saved.filter((s) => s && safeMapId(s.id) && typeof s.name === 'string'
+    && Number.isInteger(s.width) && s.width > 0 && s.width <= 16384
+    && Number.isInteger(s.height) && s.height > 0 && s.height <= 16384
+    && Number.isFinite(s.widthMetres) && s.widthMetres >= 20 && s.widthMetres <= 20000
+    && safeMapImage(s.image)
     && Array.isArray(s.boundary) && s.boundary.length >= 3 && s.boundary.every(isPoint)
     && (s.entrance === null || isPoint(s.entrance))
-    && s.grid && typeof s.grid.cells === 'string' && s.grid.cells.length === s.grid.cols * s.grid.rows
-    && s.placements && typeof s.placements === 'object')
+    && validMapGrid(s.grid)
+    && s.placements && typeof s.placements === 'object' && !Array.isArray(s.placements))
     .map((s) => {
       const cleaned = { ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => isKnownItemId(id) && isPoint(p))) };
       // Older maps have no measurements. Preserve that absence rather than inventing safe values.
@@ -515,6 +543,7 @@ function parseSiteMaps(text) {
 if (typeof module !== 'undefined') {
   module.exports = {
     SITE_MAPS_STORAGE_KEY, MAP_CATEGORIES, LAYOUT_ITEMS, LAYOUT_RULE_COUNT, DEMO_SCENE, layoutItems, isKnownItemId, mapStageCount, MAX_MAP_STAGES,
+    safeMapId, safeMapImage, validMapGrid, MAX_MAP_GRID_CELLS,
     findItem, distance, metresPerUnit, gridSearch, cellCentre, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
     suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps

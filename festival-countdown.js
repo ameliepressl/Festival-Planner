@@ -2,6 +2,14 @@
   const root=document.querySelector('#festival-countdown');
   const formatter=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Lisbon',year:'numeric',month:'2-digit',day:'2-digit'});
   window.updateFestivalCountdown=function () {
+    if (window.getLineupDataProblem?.()) {
+      root.querySelector('.countdown-label').textContent = 'Saved dates unavailable';
+      root.querySelector('#countdown-days').textContent = '—';
+      root.querySelector('#countdown-day-unit').textContent = '';
+      root.querySelector('#countdown-workdays').textContent = '—';
+      root.setAttribute('aria-label', 'Saved festival dates unavailable; recover the lineup.');
+      return;
+    }
     const parts=Object.fromEntries(formatter.formatToParts(new Date()).map(part=>[part.type,part.value]));
     const today=`${parts.year}-${parts.month}-${parts.day}`;
     const result=festivalCountdown(today,state.event.startDate,state.event.endDate);

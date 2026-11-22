@@ -20,6 +20,11 @@
   }
 
   function collect() {
+    const problem = window.getLineupDataProblem?.() || (window.isFestivalContextCurrent?.() === false ? 'The festival is changing in this browser or another tab. Reload before reviewing planning checks.' : '');
+    if (problem) {
+      const issue = { id: 'lineup-recovery', label: 'Recover saved festival data', detail: problem, section: 'Lineup planner', ok: false, unknown: true };
+      return { score: null, passed: 0, total: 1, checks: [issue], issues: [issue] };
+    }
     const shows = performances();
     return buildReadiness({
       event: state.event,
@@ -61,6 +66,10 @@
   window.getFestivalReadiness = () => collect();
 
   function renderOverview(result) {
+    if (result.score === null) {
+      overview.replaceChildren(node('h2', 'Festival readiness unavailable'), node('p', 'Recover the saved festival data using the notice above before reviewing planning checks.'));
+      return;
+    }
     const expanded = overview.querySelector('details')?.open || false;
     overview.replaceChildren();
     const heading = node('div', undefined, 'readiness-heading');

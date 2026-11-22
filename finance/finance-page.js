@@ -11,11 +11,17 @@
   let settings = parseFinance(read(FINANCE_STORAGE_KEY));
 
   function read(key) { try { return localStorage.getItem(key); } catch { return null; } }
-  function save() {
+  function save(next) {
+    if (window.getLineupDataProblem?.()) { toast('Recover the saved lineup before changing finance assumptions.'); return false; }
     try {
-      localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(settings));
-      window.dispatchEvent(new Event('festival-finance-saved'));
-    } catch { toast('Finance changes could not be saved in this browser.'); }
+      localStorage.setItem(FINANCE_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      toast('Finance changes could not be saved in this browser. The previous values are kept.');
+      return false;
+    }
+    settings = next;
+    window.dispatchEvent(new Event('festival-finance-saved'));
+    return true;
   }
   const money = (n) => new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
   const short = (n) => (Math.abs(n) >= 1000 ? `${n < 0 ? '−' : ''}€${(Math.abs(n) / 1000).toFixed(Math.abs(n) >= 100000 ? 0 : 1)}k` : money(n));
@@ -37,11 +43,13 @@
   }
 
   window.getOverviewFinance = () => {
+    if (window.getLineupDataProblem?.()) return null;
     const { totalRevenue, totalCosts, profit } = collect().model;
     return { totalRevenue, totalCosts, profit };
   };
 
   window.getReadinessFinance = () => {
+    if (window.getLineupDataProblem?.()) return null;
     const { model, input } = collect(parseFinance(read(FINANCE_STORAGE_KEY)));
     return { profit: model.profit, cashNeeded: cashFlow(model, input.settings.ticketingFee).cashNeeded };
   };
@@ -173,6 +181,10 @@
 
   // ---------- the page ----------
   function render() {
+    if (window.getLineupDataProblem?.()) {
+      view.innerHTML = '<section class="checklist-hero"><h1>Finances</h1><p>Financial totals are unavailable because the saved lineup could not be read. Recover the lineup using the notice above; your finance assumptions have been kept unchanged.</p></section>';
+      return;
+    }
     const openSections = [...view.querySelectorAll(".cleanup-disclosure[open]")].map(node => node.querySelector("summary").textContent);
     const data = collect();
     const { model, artists, input } = data;
@@ -340,8 +352,7 @@
       event.target.value = settings[id];
       return;
     }
-    settings = next;
-    save();
+    if (!save(next)) { event.target.value = settings[id]; return; }
     const scroll = window.scrollY;
     render();
     window.scrollTo(0, scroll);
@@ -352,8 +363,7 @@
     const go = event.target.closest('[data-go]');
     if (go) { event.preventDefault(); document.querySelector(`.sidebar-item[data-section="${go.dataset.go}"]`).click(); return; }
     if (event.target.closest('[data-reset]') && canFestival('budget')) {
-      settings = { ...DEFAULT_FINANCE };
-      save();
+      if (!save({ ...DEFAULT_FINANCE })) return;
       render();
       toast('Assumptions reset to the example values.');
     }

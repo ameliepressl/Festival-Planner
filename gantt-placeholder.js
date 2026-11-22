@@ -84,9 +84,11 @@ window.initialiseGanttOutline = function () {
   }
   document.querySelector('#open-gantt').onclick=openChart;
   document.querySelector('#back-task-board').onclick=closeChart;
-  document.querySelectorAll('.sidebar-item').forEach(button => button.addEventListener('click', () => {
-    if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors', 'Finances'].includes(button.dataset.section)) chart.classList.add('hidden');
-  }));
-  window.ganttNavBound=true;
+  if (!window.ganttNavBound) {
+    document.querySelectorAll('.sidebar-item').forEach(button => button.addEventListener('click', () => {
+      if (['Lineup planner', 'Final checklist', 'Task board', 'Site map', 'Vendors', 'Finances'].includes(button.dataset.section)) chart.classList.add('hidden');
+    }));
+    window.ganttNavBound = true;
+  }
 };
 window.initialiseGanttOutline();

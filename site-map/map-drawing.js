@@ -10,6 +10,9 @@ const MapDrawing = (function () {
     return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
   }
   const pts = (polygon) => polygon.map((p) => p.join(',')).join(' ');
+  const attribute = value => String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[character]));
   const centreOf = (polygon) => [0, 1].map((k) => polygon.reduce((sum, p) => sum + p[k], 0) / polygon.length);
   // A smooth closed outline through the corners (curves instead of straight edges), e.g. for the lake.
   function smooth(polygon) {
@@ -98,7 +101,7 @@ const MapDrawing = (function () {
 
   // An uploaded map: the photo itself, the area outside the fence slightly darkened.
   function photoScene(site) {
-    return `<image href="${site.image}" x="0" y="0" width="${site.width}" height="${site.height}" preserveAspectRatio="none" />
+    return `<image href="${attribute(site.image)}" x="0" y="0" width="${attribute(site.width)}" height="${attribute(site.height)}" preserveAspectRatio="none" />
       <path d="M0 0 H${site.width} V${site.height} H0 Z M${pts(site.boundary).split(' ').join(' L')} Z" fill="#0d1a1d" opacity="0.38" fill-rule="evenodd" />`;
   }
 
@@ -124,7 +127,7 @@ const MapDrawing = (function () {
   function walkways(site, placements) {
     const p = placements;
     const pitches = Object.keys(p).filter((id) => /^P\d+$/.test(id));
-    if (!p.entrance || !p['stage-a'] || !p['stage-b'] || !pitches.length) return '';
+    if (!p.entrance || !p['stage-a'] || !pitches.length) return '';
     const court = centreOf(pitches.map((id) => p[id]));
     const width = 7 / metresPerUnit(site);
     // Each walkway follows the route that goes around water, forest and no-go areas, drawn with soft corners.

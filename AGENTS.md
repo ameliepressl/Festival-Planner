@@ -26,7 +26,8 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - `migrations/` = every change to the Supabase database, as SQL, in order.
 - `vendor/` = the only third-party library (supabase-js), pinned; see `vendor/README.md`.
 - `rules/festival-rules.js` = the rules (budget, times, stages, finalising). No screen code here.
-- `tests/` = automatic checks of the rules, one per scenario in the brief.
+- `tests/` = business-rule scenarios and selected integration checks. Original regression
+  assertions remain in a Node-only compatibility module; the current brief describes active behaviour.
 - `product-brief/festival-architect-brief.html` = the product brief. It wins over anything else.
 - `feature-plans/` = one plan per feature: Why, What, Out of scope, Done when.
 - `PROJECT_PROGRESS.md` = who owns which branch and its status.
@@ -39,21 +40,26 @@ Several of us are beginners. Explain what you change and why, in plain language.
   every key that starts with `festival-` to the account. **New saved data must use a key
   that starts with `festival-`**, otherwise it is not saved to the account.
 - Several accounts can plan one festival (`feature-plans/shared-festivals.md`). Admins add
-  teammates in Overview → Team; the database table `festival_members` is the real team, the
+  teammates in Settings → Team; the database table `festival_members` is the real team, the
   roster key `festival-architect-team-v1` is only a copy of it and is never saved in the plan.
 - Access control is enforced in the database with Row Level Security (`migrations/001` and
   `003`, `004`): only the owner and members can read a festival; Owner, Admin and Editor can save it;
   Editors cannot change the finances or the task assignments (`festival-task-assignments-v1`);
-  only Owner and Admin can change the team. The pages use
+  only Owner and Admin can change the team. Outstanding for Amelie: also enforce the
+  Admin-only festival details and overall artist budget stored inside the lineup section.
+  The audit identified this gap; its database fix is deferred to Amelie and is not included
+  in this branch. The pages use
   the same roles through `canFestival()` in `rules/access-rules.js`. Never rely on hiding
   buttons alone.
-- Saving sends only the sections (keys) that changed, so teammates working at the same time do
-  not undo each other. Do not write one big key for everything.
+- Saving sends only the sections (keys) that changed, which reduces interference between teammates.
+  Concurrent edits to the same section still use the last saved value; this is not live
+  collaborative editing. Do not write one big key for everything.
 - Changes to tables or rules are written as a new numbered SQL file in `migrations/` and run
   in the Supabase SQL Editor by the database owner (Amelie). Never change or delete tables or
   rows in Supabase unless the task says so.
-- To start your own plan from scratch: delete your row in Supabase → Table Editor → festivals,
-  then sign out and sign in again. Signing out only removes the plan from that browser.
+- To start another plan, use New festival in the festival chooser. Do not delete database
+  rows manually to create a fresh plan. Signing out only removes the local festival copy
+  from that browser; it does not delete the saved festival in Supabase.
 
 ## Secrets
 
