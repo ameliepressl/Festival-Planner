@@ -699,3 +699,20 @@ Validation: all 403 tests pass (0 failed or skipped), with 23 new scheduling/int
 password on the live app successfully. Fix on `fix-reset-wait-message`: asking for a second email
 within a minute showed "Too many emails were sent in the last hour" — Supabase uses the same code
 for its one-email-per-minute rule. It now says how many seconds to wait. 405/405 tests passed after merging main (with #38).
+
+## Lineup suggestions: budget as in manual booking — 22 November 2026
+
+Branch: `fix-lineup-suggestion-budget` (owner: Amelie). Plan: `feature-plans/automatic-lineup-fillup.md` (updated).
+
+"Suggest lineup" treated the artist budget as a hard limit: it left artists out ("Not enough remaining
+budget") and refused to plan when the lineup was already over budget. Manual booking and the brief
+("Flexible budget") allow going over after confirmation. Now the suggestion plans every artist that fits
+the hours; the preview shows the remaining amount or "€X over the €Y artist budget", and applying asks
+with the same "Go over budget?" dialog when the overrun is created or increased. The rule is
+`budgetOverrunGrows` in `rules/festival-rules.js`.
+
+**Test changed with Amelie's approval (22 November):** in `tests/automatic-lineup.test.js`, "budget is
+respected and missing artists are reported" checked the old hard limit. It is replaced by "budget is not
+a hard limit and missing artists are reported" (all artists planned at €250 and €0 budget; artists left
+out only for lack of time). Vicky, please review. New: `tests/lineup-suggestion-budget.test.js` (8 tests).
+Validation: 413/413 tests passed.
