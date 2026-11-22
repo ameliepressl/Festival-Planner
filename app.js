@@ -54,19 +54,23 @@ function loadState() {
       if (problem) throw new Error(problem);
     }
     const plan = normalizePlan(saved);
+  // The one-time migrations below change the festival details. Only the festival creator and
+  // Admins may change those (the database refuses it for Editors, migrations/006), so an
+  // Editor shows the details exactly as saved and leaves the migration to them.
+  const mayChangeDetails = canFestival('overview') && canFestival('budget');
   // One-time migrations from the removed availability editor; backups retain their saved hours.
-  if (!plan.dailyHoursResetV1) {
+  if (mayChangeDetails && !plan.dailyHoursResetV1) {
     plan.event.startMinutes = DEFAULT_EVENT.startMinutes;
     plan.event.endMinutes = DEFAULT_EVENT.endMinutes;
     delete plan.event.dayHours;
     plan.dailyHoursResetV1 = true;
   }
-  if (!plan.stageHoursResetV1) {
+  if (mayChangeDetails && !plan.stageHoursResetV1) {
     for (const hours of Object.values(plan.event.dayHours || {})) delete hours.stages;
     plan.stageHoursResetV1 = true;
   }
   // Move the existing example festival with the revised demo dates.
-  if (plan.event.name === 'Lisbon Sound Festival' && plan.event.startDate === '2026-12-30' && plan.event.endDate === '2026-12-31') {
+  if (mayChangeDetails && plan.event.name === 'Lisbon Sound Festival' && plan.event.startDate === '2026-12-30' && plan.event.endDate === '2026-12-31') {
     const shift = date => new Date(Date.parse(date + 'T12:00:00Z') + 80 * 86400000).toISOString().slice(0, 10);
     plan.event.startDate = shift(plan.event.startDate);
     plan.event.endDate = shift(plan.event.endDate);
@@ -91,6 +95,11 @@ let pendingBudgetChange = null, pendingRestore = null, suggestedStart = null, se
 // Commit first; a rejected write must not leave a different live plan on screen.
 function save(next = state) {
   if (lineupLoadProblem) { toast('The saved lineup needs recovery. Its original data has been kept unchanged.'); return false; }
+  // Without a saved lineup, the first save would also create the festival details, which only
+  // the festival creator and Admins may do (the database refuses it, migrations/006).
+  if (originalLineupText === null && !(canFestival('overview') && canFestival('budget'))) {
+    toast('The festival creator or an Admin needs to set up the festival details first.'); return false;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     state = next;

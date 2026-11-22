@@ -634,3 +634,23 @@ must recheck these flows after the separate interface, finance and empty-new-fes
 changes. Full Part 1 findings, storage review and verification limits:
 [feature-plans/technical-audit-fixes.md](feature-plans/technical-audit-fixes.md).
 Part 2 presentation notes/Word document remain deferred until Kira asks to start.
+
+## Admin-only festival details and artist budget in the database
+
+Branch: `feature-admin-only-lineup-details` (owner: Amelie). Plan:
+[feature-plans/admin-only-lineup-details.md](feature-plans/admin-only-lineup-details.md).
+
+Closes the gap found in the technical audit: an Editor could change the festival details
+(`event`) and the overall artist budget (`settings.budget`) inside the lineup section by
+sending a request directly. `migrations/006_admin_only_lineup_details.sql` makes the
+database refuse that, while Editors keep booking artists, setting fees, moving performances,
+changing stages and finalising. `app.js` no longer runs the one-time opening-hours
+migrations for Editors and stops an Editor from creating the lineup before the details exist,
+so the planner never sends a save the database would refuse.
+
+Validation: **339/339 tests passed** (335 existing + 4 new in
+`tests/admin-only-lineup-details.test.js`). Migrations 001 and 003–006 were also run against a
+local Postgres (PGlite) with Owner, Admin, Editor and Viewer: 24/24 role cases behaved as
+planned, including a direct table update and running 006 twice.
+
+Supabase: **not applied yet.** Amelie runs 006 in the SQL Editor after review.
