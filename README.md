@@ -8,14 +8,14 @@
 ![JavaScript](https://img.shields.io/badge/app-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript-17272b)
 ![Supabase](https://img.shields.io/badge/accounts%20%26%20data-Supabase-17272b)
 ![Dependencies](https://img.shields.io/badge/dependencies-1%2C%20pinned-ff684c)
-![Tests](https://img.shields.io/badge/tests-JavaScript-1a9a7c)
+[![Tests](https://github.com/ameliepressl/Festival-Planner/actions/workflows/tests.yml/badge.svg)](https://github.com/ameliepressl/Festival-Planner/actions/workflows/tests.yml)
 
 Team project · *Introduction to Programming* · **Nova SBE**
 Kira · Amelie · Frederik · Vicky
 
 **▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
 
-[Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+[At a glance](#-at-a-glance) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -24,6 +24,22 @@ Kira · Amelie · Frederik · Vicky
 </div>
 
 ---
+
+## 🎯 At a glance
+
+| Area | What you can do |
+| --- | --- |
+| **Lineup** | Multi-day timetable for 1–12 stages, artist library with real artists, budget warnings, PDF export |
+| **Tasks** | Task board and Gantt timeline with suggested dates, assignments and deadlines |
+| **Site map** | Aerial map with facility pins, own map upload, automatic layout with 10 rules, crowd and evacuation estimates |
+| **Vendors** | Food-court pitches, vendor library, **add your own stands** with menu, prices and diet labels, visitor needs (vegan, alcohol-free) |
+| **Finances** | Profit and loss, break-even, profit by ticket price, **scenarios with your own ticket numbers**, VIP / VAT / merch and other assumptions, **your own cost and income lines**, cash-flow plan |
+| **Final checklist** | Event-day checks for 12 teams |
+| **Accounts & teams** | Sign-up, up to 20 festivals per account, shared festivals with Admin / Editor / Viewer roles enforced by the database |
+| **Demos** | Two ready-made festivals (Lisbon, small; Munich, large) to try everything at once |
+
+**Tested automatically:** GitHub Actions runs the whole test suite on every pull request and every
+push to `main` (badge above). A green check on a pull request means every test passed. Details: [Tests](#-tests).
 
 ## 👥 Team
 
@@ -159,8 +175,16 @@ These are the active rules in the [current product brief](product-brief/festival
 
 ### Know the numbers
 - **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
-  and comes from, **profit by ticket price**, **scenarios** (bad weather · plan · sold out)
-  and an analysis of the artist spending. Every assumption can be changed.
+  and comes from, **profit by ticket price**, **scenarios** (bad case · your plan · best case;
+  drag a slider or type how many tickets sell in each), a cash-flow plan and an analysis of the artist
+  spending. Every assumption can be changed, including **additional assumptions** (VIP and guest-list
+  tickets, VAT, music licence, merch, grants, power, crew, cleaning, artist hospitality). **+ Add cost** /
+  **+ Add income** adds your own lines (in total, per day, per visitor or per visitor per day), which
+  flow into profit, break-even and the cash-flow plan.
+  The model is a **simplified planning estimate**, not accounting or tax advice: profit is before income
+  tax, VAT is only taken out of tickets (enter other amounts without VAT), sponsorship and pitch fees stay
+  the same in every scenario, and security, toilets, first aid and water are sized for the expected
+  visitors. The page lists these limits under *What this model leaves out*.
 
 ### Get ready for the day
 - **Final checklist** — event-day checks for 12 teams, from security to radios, with a
@@ -272,6 +296,11 @@ database reads and writes.
 `supabase-config.js` contains the public project URL and **publishable** key, intended for
 browser use. Secret/service-role keys, database passwords and access tokens must never be
 committed. New saved plan sections use a `festival-` key so account sync includes them.
+
+**Text from users is always shown as text.** Names, notes, task titles, stage names, own stands and own
+finance lines are escaped before they go into the page, and saved data is checked again when it is
+loaded, so a teammate cannot inject code into a shared festival. We audited every place that builds HTML
+(`innerHTML`); see [the audit](feature-plans/html-safety-audit.md).
 
 ## 🤝 How we work
 
