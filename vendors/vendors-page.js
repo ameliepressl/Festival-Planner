@@ -23,7 +23,12 @@
   // Two letters for a stand, shown until (or instead of) its dish photo: "Taco Tribe" → "TT".
   const initials = (name) => String(name).replace(/[^\p{L}\p{N}\s&]/gu, '').split(/\s+|&/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
   const escape = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  function save() { localStorage.setItem(VENDOR_STORAGE_KEY, JSON.stringify(placements)); }
+  function save(next) {
+    try { localStorage.setItem(VENDOR_STORAGE_KEY, JSON.stringify(next)); }
+    catch { toast('Vendor changes could not be saved in this browser. The previous bookings are kept.'); return false; }
+    placements = next;
+    return true;
+  }
 
   function pitchRow(count) {
     return pitchList(count).map((pitch) => {
@@ -136,11 +141,13 @@
     if (button.dataset.confirm) {
       const result = confirmVendor(placements, button.dataset.confirm, festivalSize().pitches);
       if (result.problem) message = { vendorId: button.dataset.confirm, text: result.problem };
-      else { placements = result.placements; save(); toast(`${findVendor(button.dataset.confirm).name} is on pitch ${placements[button.dataset.confirm]}.`); }
+      else {
+        if (!save(result.placements)) return;
+        toast(`${findVendor(button.dataset.confirm).name} is on pitch ${placements[button.dataset.confirm]}.`);
+      }
     } else if (button.dataset.remove) {
       const pitch = placements[button.dataset.remove];
-      placements = removeVendor(placements, button.dataset.remove);
-      save();
+      if (!save(removeVendor(placements, button.dataset.remove))) return;
       toast(`${findVendor(button.dataset.remove).name} removed. Pitch ${pitch} is free again.`);
     } else if (button.dataset.filter) {
       filter = button.dataset.filter;
@@ -171,11 +178,9 @@
       const fitted = fitPlacements(placements, festivalSize().pitches);
       if (fitted.removed.length) {
         // Everyone sees only pitches that still exist; only people who may edit vendors save the change.
-        placements = fitted.placements;
         if (canEditVendors()) {
-          save();
-          toast(`The food court is smaller now: ${fitted.removed.map((v) => v.name).join(', ')} lost their pitch.`);
-        }
+          if (save(fitted.placements)) toast(`The food court is smaller now: ${fitted.removed.map((v) => v.name).join(', ')} lost their pitch.`);
+        } else placements = fitted.placements;
       }
       render();
     }

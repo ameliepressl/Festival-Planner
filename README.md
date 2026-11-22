@@ -41,8 +41,8 @@ Nothing to install.
 
 **Run it on your own computer:**
 
-The app is plain files. Serve the folder with any static file server — Python's is already
-installed on macOS:
+The app is plain HTML, CSS and JavaScript. Serve the folder with a static file server.
+If Python 3 is available:
 
 ```bash
 python3 -m http.server 8000
@@ -50,6 +50,8 @@ python3 -m http.server 8000
 
 Open **<http://localhost:8000/>**, create an account (username, email, password) or sign in,
 and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
+Python only serves the files; there is no Python application backend. The live link
+shows the published version of `main`, which may differ from an unmerged local branch.
 
 > [!TIP]
 > After creating an account the Overview asks for the festival name, dates and opening hours —
@@ -57,48 +59,98 @@ and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
 
 ## 🔐 Accounts
 
-Every person signs in and plans **their own festival**. The plan is saved to the account, so
-it is the same on every device. Admins can **invite teammates** by their username in
-*Overview → Team* as **Admin**, **Editor** or **Viewer**; teammates then open the festival from
-the sidebar. The database itself enforces who may read and save what (Row Level Security).
+Each account can own **up to 20 festivals** and join shared festivals. Use the sidebar
+festival selector and **New festival** to switch or create one. Loading the Lisbon or
+Munich demo creates another festival and keeps the current one. The owner can delete
+an owned festival in **Settings**, provided they still own another one.
+
+Owners and Admins **invite teammates** by username in **Settings → Team**, as **Admin**,
+**Editor** or **Viewer**. Editors can change the lineup and task progress; Viewers only
+view. Finances, assignments and team administration have additional role restrictions.
+The database enforces access through Row Level Security and guarded updates, rather
+than relying only on disabled buttons.
+
+Saved sections sync to Supabase and can be loaded on another device. Different sections
+are merged; simultaneous edits to the same section can still overwrite one another.
+Check the account saving status before leaving. If another tab changes the open festival,
+reload the older tab before editing it.
 Details: [login](feature-plans/login.md) · [shared festivals](feature-plans/shared-festivals.md).
 
 Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
 
-1. Create a Supabase project. In *Authentication → Sign In / Providers → Email*, switch off
-   "Confirm email" (the free plan only sends a few emails per hour).
-2. Run the files in [`migrations/`](migrations/) in order (001, 002, 003, 004, 005) in the Supabase
-   *SQL Editor*.
+1. Create a Supabase project and configure email/password authentication and its email
+   confirmation behaviour for the course deployment.
+2. Apply the numbered files in [`migrations/`](migrations/) in order in the Supabase
+   SQL Editor. The database owner performs this step; the browser never runs SQL migrations.
 3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
    Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
 4. In *Authentication → URL Configuration*, add the deployed address and
    `http://localhost:8000`.
 
+Outstanding permission issue for Amelie: the database rules must also stop Editors
+from changing festival details and the overall artist budget through a direct request.
+The app already restricts these controls. Amelie will implement and test the database
+fix separately; no SQL fix is included in this audit branch and no live database
+changes were made.
+
 ## ✨ Features
 
 ### Plan the programme
-- **Overview** — the start page: festival details, projected finances, tasks that need
-  attention, milestones and the team roster.
+- **Overview** — festival facts, projected finances, tasks needing attention and a
+  readiness score. Failed planning checks become linked issues on the task board;
+  fixing their source clears them. Festival details and team management are in Settings.
 - **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed
   fees and set lengths, mark them tentative or confirmed, add calendar blocks, keep an eye on
   the budget, finalise the plan, print it as a PDF and save or restore a backup.
+- **Artist library** — search and filter real artists, then copy them into this festival's
+  editable catalogue. Library fees are fictional planning estimates, not agency quotes.
+  Available photos come from Wikimedia Commons, with attribution links; initials work
+  when photos cannot load.
+
+### Current lineup rules
+
+- Choose the festival dates and opening hours, **1–12 stages** and an artist budget.
+  Start times and durations use whole minutes, including times such as 15:11.
+- Artists have editable names, genres, default fees and durations. Each booked performance
+  keeps its agreed fee and duration even if the catalogue later changes. Fees may be zero.
+- A stage cannot have overlapping appointments, including breaks and changeovers. The
+  same artist cannot perform overlapping sets on different stages. Different artists
+  may perform simultaneously on different stages.
+- Repeated bookings of an artist are allowed after a warning and confirmation. Each
+  performance contributes its own fee to the budget.
+- A change that creates or increases a budget overrun requires confirmation. The remaining
+  budget can be negative, and the app displays that clearly.
+- There is no required artist count or minimum catalogue size. Finalising checks the
+  existing appointments; the lineup then stays read-only until reopened as a draft.
+- Add grey operational blocks and notes, edit or remove appointments, and optionally
+  reserve a linked changeover after a performance. Public PDF output shows confirmed
+  performances; internal output includes fees, operational blocks and private notes.
+
+These are the active rules in the [current product brief](product-brief/festival-architect-brief.html).
 
 ### Organise the work
-- **Task board** — project tasks with deadlines, a "needs attention" list and an editable
-  **Gantt chart** of the whole preparation, plus a countdown to the festival.
+- **Project tasks** — a task board and editable Gantt timeline with suggested dates relative
+  to the festival, assignments, filters and deadlines. Add or delete suggested/custom tasks;
+  timeline edits use Save or Cancel. A fresh project starts with fresh task progress.
 
 ### Design the ground
 - **Site map** — a realistic aerial view with a clickable pin for every facility: stages,
   gate, first aid, toilets, water, food court, emergency exits and more.
   - Upload your **own map** (aerial photo or site plan), draw the fence, set the gate and
     mark no-go areas — water is detected automatically.
-  - **Suggest optimal layout** places everything according to **10 layout rules**
+  - **Suggest layout** places facilities for the active lineup stages according to **10 layout rules**
     (stage distance, first aid / toilets / water near every stage, exits far apart …),
     with a score. Drag pins to adjust; walkways route around water and forest.
   - **Festival size:** the expected visitors decide how many toilets, water points, food
     pitches, first aiders and security staff are needed.
-- **Vendors** — 24 food, drink and merch vendors for the food court pitches, pitch income
-  and a check that visitors' needs are covered (vegan option, drinks, alcohol-free).
+  - Edits remain a draft until **Save changes**. **Undo change** reverses the last action;
+    **Discard changes** returns to the saved map. Leaving with a draft asks first.
+  - Enter usable audience areas, expected crowds and clear exit widths for density and
+    evacuation estimates. The assumptions and chosen exit routes are visible. These are
+    planning estimates, not a legal capacity assessment or safety approval.
+- **Vendors** — the original catalogue plus a searchable vendor library, with fictional
+  example stands, menus and prices. Confirm stands on food-court pitches, see pitch income
+  and check visitor needs such as vegan food and alcohol-free drinks.
 
 ### Know the numbers
 - **Finances** — profit and loss, **break-even** (tickets and price), where the money goes
@@ -111,8 +163,8 @@ Accounts and saved festivals are stored in **Supabase**. One-time setup by the p
 
 ## 📸 Screenshots
 
-All screenshots show the example festival *Lisbon Sound Festival* (2 days, 2 stages,
-5,000 visitors).
+These illustrative screenshots show an earlier *Lisbon Sound Festival* demo (2 days,
+2 stages, 5,000 visitors). Dates and some controls differ from the current interface.
 
 | Lineup planner | Site map |
 | --- | --- |
@@ -139,16 +191,25 @@ flowchart LR
 
 ## 🧪 Tests
 
-All rules and calculations are covered by automatic tests.
+The tests cover business-rule scenarios, calculations and selected page integrations.
+Some use a simulated DOM or a mock Supabase client. They do not prove that every click,
+browser, live account or database policy works.
 
 ```bash
 uvx --from nodejs-wheel node --test
 ```
 
-The tests never talk to Supabase. The database access rules are written down in
-[`migrations/`](migrations/001_accounts_and_festivals.sql).
+With Node already installed, `node --test` also works; GitHub CI uses Node 22 and runs on
+pull requests and pushes to `main`. The `uvx` command requires `uv` and downloads Node.
 
-`uv` downloads Node by itself — nobody has to install Node.
+The suite never contacts the real Supabase project. The access rules live in
+[`migrations/`](migrations/). Manual local-browser checks, reloads, failed-storage checks
+and real multi-account/database verification remain separate checks; see
+[PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for what was actually exercised.
+
+Original single-day regression exports remain in `rules/legacy-lineup-compatibility.js`
+for Node tests. They are not loaded by the browser and do not set the current app's
+requirements; the current lineup is checked by the multi-day rules and integration tests.
 
 ## 📁 Project structure
 
@@ -161,6 +222,8 @@ migrations/                   database tables and access rules (SQL, run in Supa
 vendor/                       the pinned Supabase library
 app.js                        lineup planner
 overview.js                   overview and team roster
+readiness.js                  shared planning checks and linked issue cards
+artist-library/               searchable artist catalogue and optional photos
 work-board.js · gantt-*.js    task board and Gantt chart
 festival-countdown.js         days until the festival
 site-map/                     site map and the aerial drawing
@@ -175,24 +238,35 @@ product-brief/                the product brief
 
 ## 🧭 Design principles
 
-- **Rules are separate from screens.** Every rule and calculation lives in `rules/`; the
-  screens only show things and pass clicks on. That is why everything can be tested
-  without a browser.
+- **Separate rules from screens.** Shared rules and calculations live in `rules/` so they
+  can be checked independently. Screen code handles dialogs, rendering and saving;
+  those flows also need integration and browser checks.
 - **One pinned dependency.** Plain HTML, CSS and JavaScript in the browser. The only
   third-party code is the Supabase library, copied into [`vendor/`](vendor/README.md) at an
   exact version with an integrity hash. Nothing to install, nothing that changes by itself.
 - **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
   wins over anything else.
 
+**Course stack approval remains unconfirmed.** This project uses browser JavaScript
+with Supabase. Check the [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)
+and obtain the teacher's confirmation for this stack; the team must not describe that
+approval as already granted. 2FA is not part of the agreed feature scope.
+
 ## 🔒 Data & privacy
 
-Each festival plan is saved in Supabase under its account, and Row Level Security lets
-only that account read or change it. While you work, the pages also keep a copy in your
-browser; **signing out removes it**, so the next person on the same computer cannot see your
-plan. Passwords are handled by Supabase and never stored by the app.
+Supabase holds the accounts and saved festival sections. The owner and invited members
+have access according to their roles. While you work, the browser keeps a local copy;
+**successful sign-out removes the festival copy from that browser**. Public photo caches
+may remain. Supabase Auth handles passwords; festival records do not contain passwords.
 
 A festival is only visible to its owner and the teammates the owner or an Admin invited.
-Removing someone from the team takes their access away immediately.
+Database membership changes revoke server access. An already loaded page may still display
+its cached copy until it notices the change or reloads; access control is enforced on
+database reads and writes.
+
+`supabase-config.js` contains the public project URL and **publishable** key, intended for
+browser use. Secret/service-role keys, database passwords and access tokens must never be
+committed. New saved plan sections use a `festival-` key so account sync includes them.
 
 ## 🤝 How we work
 

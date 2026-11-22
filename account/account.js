@@ -38,9 +38,18 @@
   function readMeta() {
     try { return parseAccountMeta(storage.getItem(ACCOUNT_META_KEY)); } catch { return null; }
   }
-  function writeMeta() {
+  function writeMeta(strict = false) {
+    if (staleContext) {
+      if (strict) throw new Error('Another tab changed the festival. Reload before editing.');
+      return;
+    }
+    if (ready && !contextTransition && !contextIsCurrent()) {
+      if (strict) throw new Error('Another tab changed the festival. Reload before editing.');
+      return;
+    }
     meta.dirty = meta.dirtyKeys.length > 0;
-    try { storage.setItem(ACCOUNT_META_KEY, JSON.stringify(meta)); } catch { /* private mode: nothing to remember */ }
+    try { storage.setItem(ACCOUNT_META_KEY, JSON.stringify(meta)); }
+    catch (error) { if (strict) throw error; }
   }
   function localPlan() {
     try { return collectFestivalData(storage); } catch { return {}; }
@@ -52,6 +61,9 @@
     return { userId: null, festivalId: null, syncedAt: null, dirtyKeys: [], dirty: false, legacy, access: null };
   }
 
+  let ready = false;        // true once page changes belong to the signed-in account
+  let staleContext = false;
+  let contextTransition = false;
   let meta = readMeta();
   if (!meta) {
     // First visit since accounts exist: remember whether a plan from before is in this browser.
@@ -72,54 +84,138 @@
   let access = startAccess || OWNER_ACCESS;
   let festivals = [];       // every festival the account may open (my_festivals())
   let serverRoster = [];    // the open festival's team as the database has it
-  let ready = false;        // true once page changes belong to the signed-in account
   const loadWrites = new Set();  // sections pages saved while the app was still starting
   let applying = false;     // true while this file itself writes the plan
-  let changeCount = 0;      // grows with every real change; detects edits during a save
+  const sectionRevisions = Object.create(null);
+
+  function pendingTransition() {
+    try { return storage.getItem(ACCOUNT_TRANSITION_KEY); } catch { return null; }
+  }
+
+  function lockStaleContext(message = 'Another tab opened a different festival or account. Reload this tab before editing.') {
+    staleContext = true;
+    clearTimeout(saveTimer);
+    clearTimeout(teamTimer);
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.inert = true;
+    setStatus('readonly');
+    showNotice(message);
+  }
+
+  function contextIsCurrent() {
+    if (staleContext) return false;
+    if (pendingTransition() !== null) {
+      if (ready) lockStaleContext('Another tab is changing festivals. Wait for it to finish, then reload this tab.');
+      return false;
+    }
+    if (!ready) return true;
+    const stored = readMeta();
+    if (!sameFestivalContext(meta, stored) || (stored?.access && meta.access && !sameAccess(stored.access, meta.access))) {
+      lockStaleContext();
+      return false;
+    }
+    return true;
+  }
+  window.isFestivalContextCurrent = () => contextIsCurrent() && !contextTransition;
+  function checkLocalWrite() {
+    if (pendingTransition() !== null) {
+      if (ready) lockStaleContext('Another tab is changing festivals. Reload after it finishes.');
+      throw new Error('A festival change is in progress. Reload before editing.');
+    }
+    if (ready && (!contextIsCurrent() || contextTransition)) {
+      throw new Error(staleContext ? 'Another tab changed the festival. Reload before editing.' : 'Wait until the festival change has finished.');
+    }
+  }
+  function beginTransition() {
+    contextTransition = true;
+    const layout = document.querySelector('.app-layout');
+    if (layout) layout.inert = true;
+  }
+  function endTransition() {
+    contextTransition = false;
+    if (!staleContext) {
+      const layout = document.querySelector('.app-layout');
+      if (layout) layout.inert = false;
+    }
+  }
 
   // Notice every save to a festival key. Writing the same value again is not a change.
   const nativeGetItem = Storage.prototype.getItem;
   const nativeSetItem = Storage.prototype.setItem;
   const nativeRemoveItem = Storage.prototype.removeItem;
+  function trackedWrite(key, before, write) {
+    const previous = ready ? { meta: JSON.parse(JSON.stringify(meta)),
+      text: nativeGetItem.call(storage, ACCOUNT_META_KEY), revision: sectionRevisions[key], teamRevision } : null;
+    let written = false;
+    try {
+      const result = write(); written = true;
+      sectionChanged(key, before);
+      return result;
+    } catch (error) {
+      // A saved value without its pending-save marker would be silently lost on reload.
+      // Reject the local edit as a whole if either write could not be remembered.
+      if (previous) {
+        try {
+          if (written && pendingTransition() === null) {
+            if (before === null) nativeRemoveItem.call(storage, key);
+            else nativeSetItem.call(storage, key, before);
+          }
+          if (!staleContext && nativeGetItem.call(storage, ACCOUNT_META_KEY) !== previous.text) {
+            if (previous.text === null) nativeRemoveItem.call(storage, ACCOUNT_META_KEY);
+            else nativeSetItem.call(storage, ACCOUNT_META_KEY, previous.text);
+          }
+        } catch { lockStaleContext('Browser storage could not be restored. Keep this page open and retry when storage is available.'); }
+        meta = previous.meta;
+        if (previous.revision === undefined) delete sectionRevisions[key];
+        else sectionRevisions[key] = previous.revision;
+        teamRevision = previous.teamRevision;
+      }
+      throw error;
+    }
+  }
   Storage.prototype.setItem = function (key, value) {
     const watched = this === storage && !applying && isFestivalDataKey(String(key));
+    if (watched) checkLocalWrite();
     const before = watched ? nativeGetItem.call(this, key) : null;
-    nativeSetItem.call(this, key, value);
-    if (watched && before !== String(value)) sectionChanged(String(key));
+    if (watched && before !== String(value)) return trackedWrite(String(key), before, () => nativeSetItem.call(this, key, value));
+    return nativeSetItem.call(this, key, value);
   };
   Storage.prototype.removeItem = function (key) {
     const watched = this === storage && !applying && isFestivalDataKey(String(key));
+    if (watched) checkLocalWrite();
+    const before = watched ? nativeGetItem.call(this, key) : null;
     const existed = watched && nativeGetItem.call(this, key) !== null;
-    nativeRemoveItem.call(this, key);
-    if (existed) sectionChanged(String(key));
+    if (existed) return trackedWrite(String(key), before, () => nativeRemoveItem.call(this, key));
+    return nativeRemoveItem.call(this, key);
   };
 
-  function sectionChanged(key) {
+  function sectionChanged(key, previous) {
     if (!ready) { loadWrites.add(key); return; }
     if (!currentUser) return;
-    if (key === ACCOUNT_TEAM_KEY) { peopleChanged(); teamChanged(); return; }
-    changeCount += 1;
-    markUnsaved(key);
+    if (key === ACCOUNT_TEAM_KEY) { peopleChanged(); teamChanged(previous); return; }
+    sectionRevisions[key] = (sectionRevisions[key] || 0) + 1;
+    markUnsaved(key, true);
     setStatus(access.role === 'Viewer' ? 'readonly' : 'saving');
     scheduleSave(SAVE_DELAY);
   }
 
-  function markUnsaved(key) {
+  function markUnsaved(key, strict = false) {
     if (!meta.dirtyKeys.includes('*') && !meta.dirtyKeys.includes(key)) meta.dirtyKeys.push(key);
-    writeMeta();
+    writeMeta(strict);
   }
 
-  function replacePlan(data, roster = []) {
+  function replacePlan(data, roster = [], accountMeta, recoverTransition) {
+    if (ready && !contextIsCurrent()) throw new Error('Another tab changed the festival. Reload before opening a plan.');
     applying = true;
     try {
-      applyFestivalData(storage, data);
-      if (roster.length) storage.setItem(ACCOUNT_TEAM_KEY, JSON.stringify(roster));
+      applyFestivalData(storage, data, { roster, accountMeta, recoverTransition });
     } finally {
       applying = false;
     }
   }
 
   function writeRoster(roster) {
+    if (ready && !contextIsCurrent()) throw new Error('Another tab changed the festival. Reload before updating its team.');
     applying = true;
     try { storage.setItem(ACCOUNT_TEAM_KEY, JSON.stringify(roster)); } finally { applying = false; }
     peopleChanged();
@@ -172,36 +268,42 @@
   // Saves the changed sections now. Resolves to true when nothing is left to save.
   function saveNow() {
     clearTimeout(saveTimer);
+    if (!contextIsCurrent()) return Promise.resolve(false);
     if (runningSave) return runningSave.then(() => (meta.dirty ? saveNow() : true));
     if (!currentUser || !client || !meta.dirty || !meta.festivalId) return Promise.resolve(!meta.dirty);
 
-    const sections = sectionsToSave({ storage, dirtyKeys: meta.dirtyKeys, role: access.role });
+    const sections = captureSaveBatch({ storage, dirtyKeys: meta.dirtyKeys, role: access.role,
+      revisions: sectionRevisions, userId: currentUser.id, festivalId: meta.festivalId });
     const nothingToSend = !Object.keys(sections.changes).length && !sections.removed.length;
     if (nothingToSend) {
-      meta.dirtyKeys = [];
+      meta.dirtyKeys = acknowledgeSaveBatch({ batch: sections, userId: currentUser.id, festivalId: meta.festivalId,
+        dirtyKeys: meta.dirtyKeys, revisions: sectionRevisions, currentKeys: festivalKeys(storage).filter(isSyncedKey) });
       writeMeta();
-      setStatus(sections.skipped.length ? (access.role === 'Viewer' ? 'readonly' : 'partly') : 'saved');
+      setStatus(meta.teamDirty ? 'saving' : sections.skipped.length ? (access.role === 'Viewer' ? 'readonly' : 'partly') : 'saved');
       return Promise.resolve(true);
     }
 
-    const changesBefore = changeCount;
+    const syncedBefore = meta.syncedAt;
     setStatus('saving');
     runningSave = client.rpc('save_festival_changes', {
-      festival: meta.festivalId, changes: sections.changes, removed: sections.removed
+      festival: sections.festivalId, changes: sections.changes, removed: sections.removed
     }).single()
       .then(({ data, error }) => {
         if (error) throw error;
-        const teammateSaved = meta.syncedAt !== data.previous_saved_at;
+        if (!contextIsCurrent() || !sameFestivalContext(sections, { userId: currentUser?.id, festivalId: meta.festivalId })) return false;
+        const teammateSaved = syncedBefore !== data.previous_saved_at;
         // A teammate saved in between: this browser lacks their sections until it reloads.
         meta.syncedAt = teammateSaved ? 'outdated' : data.saved_at;
-        if (changeCount === changesBefore) meta.dirtyKeys = [];
+        meta.dirtyKeys = acknowledgeSaveBatch({ batch: sections, userId: currentUser.id, festivalId: meta.festivalId,
+          dirtyKeys: meta.dirtyKeys, revisions: sectionRevisions, currentKeys: festivalKeys(storage).filter(isSyncedKey) });
         writeMeta();
         if (teammateSaved) showNotice('A teammate also saved this festival. Reload to see their changes — yours are saved.');
         if (meta.dirty) scheduleSave(SAVE_DELAY);
-        else setStatus(sections.skipped.length ? 'partly' : 'saved');
+        else setStatus(meta.teamDirty ? 'saving' : sections.skipped.length ? 'partly' : 'saved');
         return !meta.dirty;
       })
       .catch((error) => {
+        if (!contextIsCurrent()) return false;
         if (error?.code === '42501') {
           // The role was changed or the festival is no longer shared with this account.
           setStatus('readonly');
@@ -221,9 +323,10 @@
   let dismissedVersion = null;     // the version a "teammate saved" bar was closed for
   let lastSeenVersion = null;
   async function checkForTeammates() {
-    if (!ready || !currentUser || !meta.festivalId || document.hidden || runningSave || noticeShown()) return;
+    if (!ready || !currentUser || !meta.festivalId || contextTransition || !contextIsCurrent() || document.hidden || runningSave || noticeShown()) return;
     try {
       const { data, error } = await client.from('festivals').select('updated_at').eq('id', meta.festivalId).maybeSingle();
+      if (!contextIsCurrent()) return;
       if (error) return;                      // offline: try again later
       if (!data) {
         showNotice('This festival is no longer shared with you. Reload to open your own festival.');
@@ -239,41 +342,85 @@
   // --- 3. Team (Overview → Team) ----------------------------------------------------------
 
   let teamTimer = null;
-  function teamChanged() {
+  let runningTeamSave = null;
+  let teamRevision = 0;
+  function teamChanged(previous) {
     if (access.role !== 'Admin') return;      // the pages only let Admins change the team
+    if (!meta.teamDirty) meta.teamBase = parseRoster(previous);
+    meta.teamDirty = true;
+    teamRevision += 1;
+    writeMeta(true);
+    setStatus('saving');
+    scheduleTeamSave(300);
+  }
+  function scheduleTeamSave(delay) {
     clearTimeout(teamTimer);
-    teamTimer = setTimeout(saveTeam, 300);
+    teamTimer = setTimeout(flushTeamChanges, delay);
   }
 
-  async function saveTeam() {
-    const roster = localRoster();
-    const changes = teamChanges(serverRoster, roster);
-    const problems = [];
-    const members = client.from('festival_members');
-    for (const { userId, role } of changes.add) {
-      const { error } = await members.insert({ festival_id: meta.festivalId, user_id: userId, role });
-      if (error) problems.push(error);
-    }
-    for (const { userId, role } of changes.change) {
-      const { error } = await client.from('festival_members').update({ role })
-        .eq('festival_id', meta.festivalId).eq('user_id', userId);
-      if (error) problems.push(error);
-    }
-    for (const userId of changes.remove) {
-      const { error } = await client.from('festival_members').delete()
-        .eq('festival_id', meta.festivalId).eq('user_id', userId);
-      if (error) problems.push(error);
-    }
-    try {
-      serverRoster = await fetchTeam(meta.festivalId);
-    } catch {
-      showNotice('The team change could not be saved — no connection. Reload to see the current team.');
-      return;
-    }
-    if (problems.length || !sameRoster(serverRoster, roster)) {
-      writeRoster(serverRoster);
-      showNotice('Some team changes could not be saved (for example the festival creator cannot be added). Reload to see the current team.');
-    }
+  // Team changes are a separate queue because the roster is not a plan section.
+  // Every request keeps the festival id it started with, including after an await.
+  function flushTeamChanges() {
+    clearTimeout(teamTimer);
+    if (!contextIsCurrent()) return Promise.resolve(false);
+    if (runningTeamSave) return runningTeamSave.then(saved => saved && meta.teamDirty ? flushTeamChanges() : saved);
+    if (!meta.teamDirty) return Promise.resolve(true);
+    if (!currentUser || !client || access.role !== 'Admin') return Promise.resolve(false);
+    const batch = { userId: currentUser.id, festivalId: meta.festivalId, revision: teamRevision,
+      base: meta.teamBase || serverRoster, desired: localRoster() };
+    const currentBatch = () => contextIsCurrent()
+      && sameFestivalContext(batch, { userId: currentUser?.id, festivalId: meta.festivalId });
+    setStatus('saving');
+    runningTeamSave = (async () => {
+      try {
+        const actual = await fetchTeam(batch.festivalId);
+        if (!currentBatch()) return false;
+        const target = mergeTeamRoster(batch.base, batch.desired, actual);
+        const changes = teamChanges(actual, target);
+        for (const { userId, role } of changes.add) {
+          if (!currentBatch()) return false;
+          const { error } = await client.from('festival_members').insert({ festival_id: batch.festivalId, user_id: userId, role });
+          if (error) throw error;
+        }
+        for (const { userId, role } of changes.change) {
+          if (!currentBatch()) return false;
+          const { error } = await client.from('festival_members').update({ role })
+            .eq('festival_id', batch.festivalId).eq('user_id', userId);
+          if (error) throw error;
+        }
+        for (const userId of changes.remove) {
+          if (!currentBatch()) return false;
+          const { error } = await client.from('festival_members').delete()
+            .eq('festival_id', batch.festivalId).eq('user_id', userId);
+          if (error) throw error;
+        }
+        const latest = await fetchTeam(batch.festivalId);
+        if (!currentBatch()) return false;
+        if (!sameRoster(mergeTeamRoster(batch.base, batch.desired, latest), latest)) {
+          throw new Error('Some team changes were refused. Check the team and try again.');
+        }
+        serverRoster = latest;
+        if (teamRevision === batch.revision) {
+          delete meta.teamDirty; delete meta.teamBase;
+          writeRoster(latest);
+        } else {
+          // A later invitation is kept, while unrelated changes from another Admin survive.
+          const rebased = mergeTeamRoster(batch.desired, localRoster(), latest);
+          meta.teamBase = latest;
+          writeRoster(rebased);
+        }
+        writeMeta();
+        if (!meta.dirty && !meta.teamDirty) setStatus('saved');
+        return true;
+      } catch (error) {
+        if (!currentBatch()) return false;
+        setStatus(error?.code === '42501' ? 'readonly' : 'offline');
+        showNotice('Team changes are not saved yet. They are kept in this browser; check the connection and try again.');
+        if (error?.code !== '42501') scheduleTeamSave(RETRY_DELAY);
+        return false;
+      }
+    })().finally(() => { runningTeamSave = null; });
+    return runningTeamSave.then(saved => saved && meta.teamDirty ? flushTeamChanges() : saved);
   }
 
   // --- 4. Starting the app --------------------------------------------------------------
@@ -290,16 +437,21 @@
   }
 
   function remember(row, rowAccess) {
-    meta = { userId: currentUser.id, festivalId: row.id, syncedAt: row.updated_at, dirtyKeys: [], dirty: false, legacy: false, access: rowAccess };
+    meta = festivalMeta(row, rowAccess);
     writeMeta();
+  }
+  function festivalMeta(row, rowAccess) {
+    return { userId: currentUser.id, festivalId: row.id, syncedAt: row.updated_at, dirtyKeys: [], dirty: false, legacy: false, access: rowAccess };
   }
 
   // Load a festival into this browser and restart the pages with it.
-  async function openFestival(row, rowAccess) {
+  async function openFestival(row, rowAccess, recoverTransition) {
     const cloud = row.data ? row : await fetchFestival(row.id);
+    if (!cloud) throw new Error('This festival is no longer available.');
     const roster = await fetchTeam(cloud.id).catch(() => []);
-    replacePlan(cloud.data, roster);
-    remember(cloud, rowAccess);
+    const nextMeta = festivalMeta(cloud, rowAccess);
+    replacePlan(cloud.data, roster, nextMeta, recoverTransition);
+    meta = nextMeta;
     reloadForPlan();
   }
 
@@ -312,7 +464,8 @@
       loadWrites.forEach((key) => { if (key !== ACCOUNT_TEAM_KEY) markUnsaved(key); });
     }
     if (meta.dirty) saveNow();
-    else setStatus(access.role === 'Viewer' ? 'readonly' : 'saved');
+    else setStatus(meta.teamDirty ? 'saving' : access.role === 'Viewer' ? 'readonly' : 'saved');
+    if (meta.teamDirty) scheduleTeamSave(0);
     clearInterval(checkTimer);
     checkTimer = setInterval(checkForTeammates, CHECK_DELAY);
     const notice = sessionStorage.getItem('fa-account-notice');
@@ -337,9 +490,18 @@
     currentUser = { id: session.user.id, username: metadata.username || session.user.email || 'Signed in' };
     showAccountBox();
 
+    const interrupted = pendingTransition();
+    const recoverRequested = sessionStorage.getItem('fa-account-recover-transition');
+    sessionStorage.removeItem('fa-account-recover-transition');
+    if (interrupted !== null && recoverRequested !== interrupted) {
+      showProblem('A festival change is unfinished. Wait for any other tab to finish, then choose Try again. If it was interrupted, the saved festival will be recovered from your account.', true);
+      return;
+    }
+
     try {
       festivals = await fetchMyFestivals();
     } catch (error) {
+      if (interrupted !== null) { showProblem('The unfinished festival change needs a connection to recover its saved data. Try again when connected.', true); return; }
       if (meta.userId === currentUser.id && meta.festivalId) {
         // Offline, but this browser holds a festival of this account: keep working, save later.
         finishStart();
@@ -354,11 +516,24 @@
     const own = festivals.find((row) => row.owner_id === currentUser.id) || null;
     const previous = meta.userId === currentUser.id ? meta.festivalId : null;
     let target = festivals.find((row) => row.festival_id === previous) || own;
+    if (interrupted !== null) {
+      let marker;
+      try { marker = JSON.parse(interrupted); } catch { marker = {}; }
+      const contexts = [marker.after, marker.before].filter(value => value?.userId === currentUser.id);
+      target = contexts.map(value => festivals.find(row => row.festival_id === value.festivalId)).find(Boolean) || own || festivals[0];
+    }
     if (previous && !festivals.some((row) => row.festival_id === previous)) {
       sessionStorage.setItem('fa-account-notice', 'The festival you had open is no longer available (it was deleted or is no longer shared with you). This is your own festival.');
     }
 
     try {
+      if (interrupted !== null) {
+        // Never upload local sections while they may belong to a half-replaced plan.
+        const row = target ? await fetchFestival(target.festival_id) : await createFestival({});
+        const rowAccess = target ? accessFor({ ownerId: target.owner_id, ownerUsername: target.owner_username, myRole: target.my_role }, currentUser.id) : OWNER_ACCESS;
+        await openFestival(row, rowAccess, interrupted);
+        return;
+      }
       if (!target) { await startWithoutFestival(); return; }
 
       const rowAccess = accessFor({ ownerId: target.owner_id, ownerUsername: target.owner_username, myRole: target.my_role }, currentUser.id);
@@ -373,13 +548,18 @@
       // 'upload' or 'keep': the browser already holds this festival.
       access = rowAccess;
       let rosterChanged = false;
+      const pendingTeam = meta.teamDirty === true && rowAccess.role === 'Admin';
       try {
         serverRoster = await fetchTeam(cloud.id);
-        rosterChanged = !sameRoster(serverRoster, localRoster());
+        rosterChanged = !pendingTeam && !sameRoster(serverRoster, localRoster());
       } catch { /* team unknown for now: keep the roster in this browser */ }
+      if (meta.teamDirty && !pendingTeam) {
+        delete meta.teamDirty; delete meta.teamBase;
+        sessionStorage.setItem('fa-account-notice', 'Your role changed. Pending team edits could not be applied; the saved team is shown.');
+      }
       if (!sameAccess(rowAccess, startAccess || OWNER_ACCESS) || rosterChanged) {
         // The role or the team changed since the pages started: restart them with the new state.
-        writeRoster(serverRoster);
+        if (!pendingTeam) writeRoster(serverRoster);
         meta.access = rowAccess;
         meta.festivalId = cloud.id;
         writeMeta();
@@ -485,17 +665,31 @@
   // Before another festival opens: an unsaved site map draft asks first, and changes of the
   // open festival are saved. Returns '' when it is fine to leave, otherwise why not.
   const NOT_SAVED_YET = 'Your latest changes are not saved yet (no connection). Try again in a moment.';
+  function confirmDraftNavigation() {
+    if (window.confirmMapNavigation && !window.confirmMapNavigation()) return false;
+    if (window.confirmProjectNavigation && !window.confirmProjectNavigation()) return false;
+    return true;
+  }
   async function readyToLeave() {
-    if (window.confirmMapNavigation && !window.confirmMapNavigation()) return 'cancelled';
-    if (meta.dirty && !(await saveNow()) && access.role !== 'Viewer') return NOT_SAVED_YET;
+    if (!contextIsCurrent()) return 'Reload this tab before opening another festival.';
+    if (contextTransition) return 'A festival change is already in progress.';
+    if (!confirmDraftNavigation()) return 'cancelled';
+    beginTransition();
+    if (!(await flushTeamChanges()) || (meta.dirty && !(await saveNow()) && access.role !== 'Viewer')) {
+      endTransition();
+      return NOT_SAVED_YET;
+    }
+    if (!contextIsCurrent()) { endTransition(); return 'Reload this tab before opening another festival.'; }
     return '';
   }
 
   async function switchFestival(id) {
+    if (contextTransition || !contextIsCurrent()) return;
     const select = $('#festival-switch');
     const row = festivals.find((item) => item.festival_id === id);
     if (!row || id === meta.festivalId) return;
     select.disabled = true;
+    let opened = false;
     try {
       const problem = await readyToLeave();
       if (problem) {
@@ -505,11 +699,13 @@
       }
       const rowAccess = accessFor({ ownerId: row.owner_id, ownerUsername: row.owner_username, myRole: row.my_role }, currentUser.id);
       await openFestival({ id }, rowAccess);
+      opened = true;
     } catch (error) {
       select.value = meta.festivalId;
       showNotice(accountErrorMessage(error), false);
     } finally {
       select.disabled = false;
+      if (!opened) endTransition();
     }
   }
 
@@ -522,10 +718,12 @@
   window.openNewFestival = async function openNewFestival(sections = {}) {
     if (!client || !currentUser || !ready) throw new Error('Wait until your festival has loaded, then try again.');
     if (creating) throw new Error('A new festival is already being created.');
+    if (contextTransition || !contextIsCurrent()) throw new Error('Wait until the open festival is ready, or reload this tab.');
     if (!canCreateFestival(festivals, currentUser.id)) {
       throw new Error(accountErrorMessage({ code: '54000' }));
     }
     creating = true;
+    let opened = false;
     try {
       const problem = await readyToLeave();
       if (problem === 'cancelled') return false;
@@ -536,12 +734,14 @@
       sessionStorage.setItem('fa-account-notice',
         'This is a new festival. Your other festivals are saved — switch back with the FESTIVAL list in the sidebar.');
       await openFestival(row, OWNER_ACCESS);
+      opened = true;
       return true;
     } catch (error) {
       sessionStorage.removeItem('fa-account-notice');
       throw error instanceof Error ? error : new Error(accountErrorMessage(error));
     } finally {
       creating = false;
+      if (!opened) endTransition();
     }
   };
 
@@ -574,29 +774,43 @@
   }
 
   async function deleteOpenFestival() {
+    if (contextTransition || !contextIsCurrent()) return;
     const row = openFestivalRow();
     const button = $('#delete-festival');
     if (!row || !canDeleteFestival(festivals, currentUser.id, row.festival_id)) return;
     const next = festivalAfterDelete(festivals, currentUser.id, row.festival_id);
     if (!next) return;
     button.disabled = true;
+    let opened = false;
+    let deleted = false;
     try {
+      const problem = await readyToLeave();
+      if (problem) {
+        if (problem !== 'cancelled') showNotice(problem, false);
+        return;
+      }
       // No save may reach the festival while it is being deleted.
       clearTimeout(saveTimer);
       if (runningSave) await runningSave.catch(() => {});
       const { data, error } = await client.from('festivals').delete().eq('id', row.festival_id).select('id');
       if (error) throw error;
       if (!data?.length) throw new Error('Only the festival creator can delete this festival.');
+      deleted = true;
       meta.dirtyKeys = [];     // changes of the deleted festival have nowhere to go
       writeMeta();
       sessionStorage.setItem('fa-account-notice', `“${row.festival_name || 'Untitled festival'}” was deleted.`);
       const nextAccess = accessFor({ ownerId: next.owner_id, ownerUsername: next.owner_username, myRole: next.my_role }, currentUser.id);
       await openFestival({ id: next.festival_id }, nextAccess);
+      opened = true;
     } catch (error) {
       sessionStorage.removeItem('fa-account-notice');
       showNotice(error instanceof Error && !error.code ? error.message : accountErrorMessage(error), false);
       button.disabled = false;
       if (meta.dirty) scheduleSave(SAVE_DELAY);   // not deleted: keep saving this festival
+      if (deleted) lockStaleContext('This festival was deleted, but the next one could not be loaded. Reload to open an available festival.');
+    } finally {
+      if (!opened && !deleted) endTransition();
+      button.disabled = false;
     }
   }
 
@@ -655,20 +869,24 @@
   let signingOut = false;
   let leaveUnsaved = false;
   async function signOut() {
-    if (window.confirmMapNavigation && !window.confirmMapNavigation()) return;
+    if (contextTransition || !contextIsCurrent() || !confirmDraftNavigation()) return;
     const button = $('#sign-out');
-    if (meta.dirty && !leaveUnsaved && access.role !== 'Viewer') {
+    beginTransition();
+    if ((meta.dirty || meta.teamDirty) && !leaveUnsaved && access.role !== 'Viewer') {
       button.disabled = true;
-      const saved = await saveNow();
+      const teamSaved = await flushTeamChanges();
+      const saved = teamSaved && await saveNow();
       button.disabled = false;
       if (!saved) {
         leaveUnsaved = true;
         button.textContent = 'Sign out without saving';
         setStatus('offline');
+        endTransition();
         return;
       }
     }
     signingOut = true;
+    clearTimeout(saveTimer); clearTimeout(teamTimer);
     try { await client.auth.signOut({ scope: 'local' }); } catch { /* signed out locally below */ }
     try { storage.removeItem(SESSION_STORAGE_KEY); } catch { /* already gone */ }
     leaveBrowserClean();
@@ -676,9 +894,11 @@
 
   // The next person using this browser must not see the plan.
   function leaveBrowserClean() {
-    replacePlan({});
-    meta = emptyMeta();
-    writeMeta();
+    if (ready && !contextIsCurrent()) return;
+    beginTransition();
+    const cleanMeta = emptyMeta();
+    replacePlan({}, [], cleanMeta);
+    meta = cleanMeta;
     window.location.reload();
   }
 
@@ -810,10 +1030,18 @@
     $('#sign-in-form').addEventListener('submit', signIn);
     $('#sign-up-form').addEventListener('submit', signUp);
     $('#sign-out').onclick = signOut;
-    $('#account-retry').onclick = () => window.location.reload();
+    $('#account-retry').onclick = () => {
+      const marker = pendingTransition();
+      if (marker !== null) sessionStorage.setItem('fa-account-recover-transition', marker);
+      window.location.reload();
+    };
     $('#account-notice-reload').onclick = async () => {
-      if (window.confirmMapNavigation && !window.confirmMapNavigation()) return;
-      if (meta.dirty && access.role !== 'Viewer') await saveNow();
+      if (staleContext) { window.location.reload(); return; }
+      const problem = await readyToLeave();
+      if (problem) {
+        if (problem !== 'cancelled') showNotice(problem, false);
+        return;
+      }
       window.location.reload();
     };
     // returnValue is reset on every opening, so closing with Escape never repeats an earlier choice.
@@ -846,7 +1074,14 @@
 
   // Save straight away when the tab is hidden or closed, so no change is lost.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && meta.dirty && ready) saveNow();
+    if (document.visibilityState === 'hidden' && ready && !contextTransition && contextIsCurrent()) {
+      if (meta.dirty) saveNow();
+      if (meta.teamDirty) flushTeamChanges();
+    }
     if (document.visibilityState === 'visible' && ready) checkForTeammates();
+  });
+  // Only compare identifiers and roles. No plan or authentication data is broadcast.
+  window.addEventListener('storage', event => {
+    if ([ACCOUNT_META_KEY, ACCOUNT_TRANSITION_KEY].includes(event.key) && ready && !applying) contextIsCurrent();
   });
 }());

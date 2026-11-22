@@ -2,6 +2,7 @@
 const PROJECT_SETUP_KEY = 'festival-project-setup-v1';
 const PROJECT_STATUS_KEY = 'festival-work-board-status-v1';
 const PROJECT_DAY = 86400000;
+const PROJECT_TIMELINE_DAYS = 26 * 7;
 
 function projectToday(now = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
@@ -131,8 +132,38 @@ function cleanProjectTracking(plan, statuses = {}, assignments = { groups: {}, s
     assignments: { groups: keep(assignments.groups, ids.groups), steps: keep(assignments.steps, ids.steps) } };
 }
 
+// Render one manageable window, rather than building a cell for every day between
+// an accidentally mistyped task year and the festival. All task dates stay saved.
+function projectTimelineWindow({ openingDate, closingDate, ranges = [], requestedStart }) {
+  if (!validProjectDate(openingDate) || !validProjectDate(closingDate) || closingDate < openingDate || openingDate < '0001-01-01') {
+    throw new Error('Choose valid festival dates in Settings to see the project timeline.');
+  }
+  const opening = Date.parse(openingDate + 'T12:00:00Z');
+  const dayOffset = date => Math.round((Date.parse(date + 'T12:00:00Z') - opening) / PROJECT_DAY);
+  const earliest = dayOffset('0001-01-01'), latest = dayOffset('9999-12-31');
+  const valid = ranges.filter(range => Number.isInteger(range?.start) && Number.isInteger(range?.end) && range.start <= range.end);
+  let fullStart = -84;
+  let fullEnd = Math.max(13, dayOffset(closingDate) + 12);
+  for (const range of valid) {
+    fullStart = Math.min(fullStart, range.start);
+    fullEnd = Math.max(fullEnd, range.end);
+  }
+  fullStart = Math.max(earliest, Math.floor(fullStart / 7) * 7);
+  fullEnd = Math.min(latest, fullEnd);
+  const limited = fullEnd - fullStart + 1 > PROJECT_TIMELINE_DAYS;
+  const lastStart = Math.max(fullStart, fullEnd - PROJECT_TIMELINE_DAYS + 1);
+  const preferred = Number.isFinite(requestedStart) ? Math.floor(requestedStart) : Math.max(fullStart, -105);
+  const start = limited ? Math.max(fullStart, Math.min(lastStart, preferred)) : fullStart;
+  const end = Math.min(fullEnd, start + PROJECT_TIMELINE_DAYS - 1);
+  return { start, end, fullStart, fullEnd, limited,
+    previous: start > fullStart ? Math.max(fullStart, start - PROJECT_TIMELINE_DAYS) : null,
+    next: end < fullEnd ? Math.min(lastStart, start + PROJECT_TIMELINE_DAYS) : null,
+    outside: valid.filter(range => range.start < start || range.end > end).length };
+}
+
 if (typeof module !== 'undefined') module.exports = {
   PROJECT_SETUP_KEY, PROJECT_STATUS_KEY, projectToday, validProjectDate,
   shiftProjectDay, suggestedProject, removeProjectEntry, editProjectEntry,
-  assignmentsAfterProjectMove, cleanProjectTracking, projectTaskIds
+  assignmentsAfterProjectMove, cleanProjectTracking, projectTaskIds,
+  PROJECT_TIMELINE_DAYS, projectTimelineWindow
 };

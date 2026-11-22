@@ -15,8 +15,12 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 | 3 | ✅ **Crowd density + evacuation time** | Done: measured inputs and explicit planning assumptions, not safety certification ([plan](project-planning-readiness-and-map-safety.md)) | **Kira** |
 | 4 | ✅ **Ticket tiers + bar revenue + cash-flow plan** | Done: finances on a professional level ([plan](finance-pro.md)) | **Frederik** |
 | 5 | **"Copy for next year" + final report** | Closes the loop | |
-| 6 | **Two-factor authentication (2FA)** | A second check at login (e.g. a code from an authenticator app), so a stolen password alone is not enough — important once the festival data is shared | **Amelie** |
-| ✅ | **Product brief rules (team decision)** | The festivals are fictional now, so: every festival sets its own artist budget (going over it asks for confirmation), booking an artist twice is allowed after a warning, and a plan may be finalised with fewer than 4 artists. ([plan](review-followups.md)) | Team |
+| ✅ | **Current flexible lineup rules** | Configurable dates, 1–12 stages and budget; repeated performances after confirmation; budget-overrun confirmation; no minimum artist count for finalisation. The [active brief](../product-brief/festival-architect-brief.html) is the current reference. | Team |
+
+2FA is not part of the agreed scope. Earlier feature plans describe their historical
+implementation stages; they do not add old limits to the current flexible rules.
+Teacher approval for the JavaScript/Supabase stack remains unconfirmed; see the
+[current baseline](course-standard.md) and [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html).
 
 ---
 
@@ -80,7 +84,7 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 - [x] **Contingency** — automatic 10 % reserve
 - [x] **Cash-flow plan** — account balance over the months; when are we negative because deposits are due before tickets sell?
 - [ ] **Actual vs. plan** — enter real invoices; difference per cost line. ✅ finances page
-- [ ] **VAT** — gross / net for tickets and costs (Portugal 6 % / 23 %)
+- [ ] **VAT** — gross / net ticket and cost calculations using the applicable rates
 - [x] **Secure vs. planned costs** — only confirmed bookings count as secure.
 
 ## 9. Afterwards
@@ -88,16 +92,15 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 - [ ] **Settlement** — who still gets how much (artists, vendors, suppliers)
 - [ ] **Final report** — plan vs. actual for visitors, costs, revenue and incidents; printable
 - [ ] **Sustainability report** — diesel, waste and travel → CO₂ estimate
-- [ ] **Copy for next year** — the whole festival as a template for 2027, dates shifted, bookings cleared
+- [ ] **Copy for next year** — the whole festival as a template for the following year, dates shifted, bookings cleared
 
 ## 10. Platform
 
-- [x] **Accounts and data on the server** — *owner: Amelie* ([login.md](login.md)). Sign in with Supabase; each account's festival is saved on the server and is the same on every device; Row Level Security keeps every festival private to its account.
+- [x] **Accounts and data on the server** — *owner: Amelie* ([login.md](login.md)). Sign in with Supabase; saved festivals load on other devices, and Row Level Security limits access to owners and invited members. Multiple owned festivals are supported ([plan](several-festivals.md)).
 - [x] **Shared festivals** — *owner: Amelie* ([shared-festivals.md](shared-festivals.md)). Invite teammates into one festival as Admin / Editor / Viewer, enforced in the database; festival switcher in the sidebar.
-- [x] **Task assignments & team progress** — *owner: Amelie* ([task-assignments.md](task-assignments.md)). Admins give task groups (and single subtasks) to teammates; "Assigned to" filter on the board; Team progress on the Overview; enforced in the database.
-- [ ] **Two-factor authentication (2FA)** — *owner: Amelie.* After the password, a one-time code from an authenticator app (TOTP); recovery codes in case the phone is lost; only for the shared/online mode. Needs the login from "Shared data on the server".
+- [x] **Task assignments** — *owner: Amelie* ([task-assignments.md](task-assignments.md)). Admins assign tasks to teammates; the board has an "Assigned to" filter. Team management is in Settings; the former Overview team-progress card was removed.
 - [ ] **Finer roles & rights** — e.g. a booker who only edits the lineup, finance who only edits the finances. ✅ Admin / Editor / Viewer exist and are enforced in the database ([shared-festivals.md](shared-festivals.md))
 - [ ] **Change log** — who changed what, when
 - [x] **Readiness score** on the Overview; **problems become linked tasks** on the task board. Done ([plan](project-planning-readiness-and-map-safety.md)).
 - [ ] **Languages** — English / German / Portuguese
-- [ ] **CI, demo festival, export / import** of all data in one file
+- [ ] **Full-festival export / import** in one portable file. CI, demo festivals and lineup JSON backup already exist; they do not provide a backup of every festival section.

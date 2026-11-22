@@ -597,3 +597,40 @@ the sidebar; the logo once; labels in sentence case instead of tiny capitals; no
 labels above page titles; vendor initials instead of emojis; shorter, plainer texts (and no more
 "saves in this browser"). No feature changed. Tests: 273 pass, none changed. Checked every page
 in Chrome at laptop and phone width, no console errors. Status: PR open, needs a team review.
+
+
+## 22 November 2026 — Technical audit fixes (Kira)
+
+Branch: `codex/technical-audit-fixes`, based on main `92c6bd3`.
+Approved reliability/security cleanup. Kira authorised committing and pushing this
+branch for team review; no merge or database change.
+
+Fixed per-section cloud save acknowledgements; queued team-save/retry handling;
+project-draft checks before account/festival changes; cross-tab transition markers
+and recovery; plan/roster/metadata rollback; and screen save-failure consistency.
+Hardened shared markup and map input validation. Aligned single/active stages across
+map, crowd and readiness, retaining inactive measurements. Bounded extreme task dates,
+validated task identifiers, removed duplicate navigation bindings and unused preview
+rendering. Damaged saved lineups/tasks remain unchanged behind explicit recovery
+messages, with dependent figures unavailable until recovery.
+
+Updated active brief, README and baseline/agent notes to the approved flexible rules.
+Kept existing assertions intact; isolated the old Node-only regression contract from
+browser code. Legacy saved-data compatibility remains intentionally supported.
+Identified missing database protection for Admin-only festival details and the overall
+artist budget. At Kira's request, removed the prepared SQL file; Amelie will implement
+and test that fix separately. No live database changes were made.
+
+Validation: **335/335 tests passed, 0 skipped** (273 existing + 62 new); syntax checks
+passed for 28 changed/new JavaScript files and `git diff --check` was clean. Disposable
+browser checks included precise-time booking, settings, map/task edits, permissions,
+reload, extreme dates, failed writes, damaged data and confirmed backup restoration.
+The actual async account script was tested with mock services. Live authentication,
+multi-account devices and applied database permissions remain separate checks.
+Public app URL responded HTTP 200; this only confirms reachability.
+
+Teacher approval of the HTML/CSS/JavaScript stack is still unconfirmed. The team
+must recheck these flows after the separate interface, finance and empty-new-festival
+changes. Full Part 1 findings, storage review and verification limits:
+[feature-plans/technical-audit-fixes.md](feature-plans/technical-audit-fixes.md).
+Part 2 presentation notes/Word document remain deferred until Kira asks to start.
