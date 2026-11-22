@@ -202,7 +202,7 @@ function render() {
     $('#calendar').innerHTML = '<p>The saved timetable is unavailable. Recover the lineup using the notice above.</p>';
     $('#artist-list').innerHTML = '<p>The saved artist catalogue is unavailable.</p>';
     for (const id of ['performance-count', 'stage-count', 'committed', 'remaining', 'budget-total']) $('#' + id).textContent = 'Unavailable';
-    for (const id of ['edit-settings', 'add-artist', 'add-block', 'book-performance', 'finalise-btn', 'previous-day', 'next-day']) $('#' + id).disabled = true;
+    for (const id of ['edit-settings', 'add-artist', 'add-block', 'finalise-btn', 'auto-plan-lineup', 'previous-day', 'next-day']) $('#' + id).disabled = true;
     $('#restore-plan').disabled = !canRestorePlan();
     $('#print-plan').classList.add('hidden');
     return;
@@ -231,7 +231,7 @@ function render() {
   $('#budget-input').disabled = lineupLocked || !canFestival('budget');
   $('#add-artist').disabled = lineupLocked;
   $('#add-block').disabled = lineupLocked;
-  $('#book-performance').disabled = lineupLocked;
+  $('#auto-plan-lineup').disabled = lineupLocked;
   // Artists taken from the artist library get their Wikipedia photo (artist-library/artist-photos.js).
   const photoAttributes = a => {
     const lib = a.libraryId && typeof ARTIST_LIBRARY !== 'undefined' ? ARTIST_LIBRARY.find(l => l.id === a.libraryId) : null;
@@ -477,7 +477,7 @@ $('#artist-form').onsubmit=event => {
 $('#delete-artist').onclick=() => {
   if(!writable())return;
   const count=performances().filter(b => b.artistId===editingArtistId).length;
-  $('#delete-description').textContent=`Delete ${artist(editingArtistId).name}? ${count?`Their ${count} performance(s) and linked changeovers will also be removed.`:'They have no performances.'}`;
+  $('#delete-description').textContent=`Remove ${artist(editingArtistId).name} from this festival? ${count?`Their ${count} performance(s) and linked changeovers will also be removed.`:'They have no performances.'}`;
   $('#delete-dialog').showModal();
 };
 $('#confirm-delete').onclick=() => {
@@ -485,7 +485,7 @@ $('#confirm-delete').onclick=() => {
   const ids=new Set(performances().filter(b => b.artistId===editingArtistId).map(b => b.id));
   if (!save({ ...state, artists: state.artists.filter(a => a.id!==editingArtistId),
     bookings: state.bookings.filter(b => !ids.has(b.id)&&!ids.has(b.linkedTo)) })) return;
-  $('#artist-dialog').close();render();toast('Artist deleted.');
+  $('#artist-dialog').close();render();toast('Artist removed from festival.');
 };
 function hidePerformanceDetails() {
   $('#performance-tooltip').hidden=true;
@@ -624,7 +624,6 @@ $('#confirm-finalise').onclick=() => {
 };
 render();
 
-$('#book-performance').onclick = () => openBooking(state.artists[0]?.id);
 
 $('#lineup-daily').onclick = () => { lineupView = 'daily'; render(); };
 $('#lineup-festival').onclick = () => { lineupView = 'festival'; render(); };
