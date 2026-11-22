@@ -599,6 +599,13 @@ labels above page titles; vendor initials instead of emojis; shorter, plainer te
 in Chrome at laptop and phone width, no console errors. Status: PR open, needs a team review.
 
 
+## Festival settings and timetable fixes — 22 November 2026
+
+Branch: `fix-festival-settings` (owner: Vicky). Plan: `feature-plans/fix-festival-settings.md`.
+
+Saving festival details immediately refreshes the festival name in the sidebar selector. Festival settings, artist bookings and calendar blocks use 24-hour HH:MM inputs. Overnight closing times (e.g. 18:00–03:00) and after-midnight bookings stay within the selected festival day, including timetable display, conflict checks and backups. Festival view gives each day enough width for all stages, preventing overlap with the next day. The Delete this festival button aligns to the right like Edit festival details. Newly opened demos include “(demo)” in their saved name to distinguish them from personal festivals.
+
+Validation: all 275 tests pass (0 failed or skipped), including new overnight booking, conflict and backup checks. Chrome checks confirmed name display, overnight saving and reopening, the three-day/three-stage timetable spacing, settings button alignment and a newly opened demo's label. Original festival hours were restored after testing. Existing tests were not changed.
 ## 22 November 2026 — Technical audit fixes (Kira)
 
 Branch: `codex/technical-audit-fixes`, based on main `92c6bd3`.

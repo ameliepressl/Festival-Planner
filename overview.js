@@ -41,7 +41,7 @@ function renderOverview() {
   const lastDay = `${dateText(event.endDate)} ${event.endDate.slice(0, 4)}`;
   $('#overview-dates').textContent = firstDay === lastDay ? firstDay : `${firstDay} – ${lastDay}`;
   const hasCustomHours = Object.keys(event.dayHours || {}).length > 0;
-  $('#overview-hours').textContent = `${timeText(event.startMinutes)}–${timeText(event.endMinutes)}${hasCustomHours ? ' (default)' : ''}`;
+  $('#overview-hours').textContent = `${timeText(event.startMinutes)}–${timeText(event.endMinutes)}${event.endMinutes > 1440 ? ' (+1 day)' : ''}${hasCustomHours ? ' (default)' : ''}`;
   $('#overview-menu').hidden = true;
   const canEditOverview = canFestival('overview');
   $('#overview-setup').hidden = !canEditOverview || Boolean(event.name) || state.final;
@@ -180,7 +180,7 @@ $('#overview-form').addEventListener('submit', event => {
     startDate: $('#festival-start-date').value,
     endDate: $('#festival-end-date').value,
     startMinutes: inputMinutes($('#festival-open').value),
-    endMinutes: closingTime === '24:00' ? 1440 : inputMinutes(closingTime)
+    endMinutes: closingMinutes(closingTime, inputMinutes($('#festival-open').value))
   };
   $('#overview-status').textContent = '';
   const updatedEvent = updatedFestivalEvent(details, state.event);
@@ -219,6 +219,7 @@ $('#overview-form').addEventListener('submit', event => {
   $('#overview-dialog').close();
   renderOverview();
   $('#overview-status').textContent = 'Festival details saved.';
+  window.refreshFestivalName?.();
 });
 
 const TEAM_STORAGE_KEY = 'festival-architect-team-v1';

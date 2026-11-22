@@ -663,6 +663,18 @@
     select.onchange = () => switchFestival(select.value);
   }
 
+  // Keep the selector and festival management list in step with a successful local rename.
+  window.refreshFestivalName = () => {
+    if (!ready || !currentUser || !meta.festivalId) return;
+    const row = festivals.find(item => item.festival_id === meta.festivalId);
+    if (!row) return;
+    try {
+      const plan = JSON.parse(storage.getItem('festival-architect-v2'));
+      row.festival_name = typeof plan?.event?.name === 'string' ? plan.event.name.trim() : '';
+      buildSwitcher();
+    } catch { /* A broken local plan must not replace the known festival name. */ }
+  };
+
   // Before another festival opens: an unsaved site map draft asks first, and changes of the
   // open festival are saved. Returns '' when it is fine to leave, otherwise why not.
   const NOT_SAVED_YET = 'Your latest changes are not saved yet (no connection). Try again in a moment.';
