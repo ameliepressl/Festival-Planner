@@ -26,10 +26,15 @@ test('all stage gaps are at least 15 minutes and no same-genre triple occurs',()
  return seq.every((b,i)=>!i || b.start>=seq[i-1].start+seq[i-1].duration+15) && seq.every((b,i)=>i<2 || !(plan.artists.find(a=>a.id===b.artistId).genre===plan.artists.find(a=>a.id===seq[i-1].artistId).genre && plan.artists.find(a=>a.id===b.artistId).genre===plan.artists.find(a=>a.id===seq[i-2].artistId).genre));
  }))`),true);
 });
-test('budget is respected and missing artists are reported',()=>{
+// Changed with Amelie's approval (22 November): the budget is no longer a hard limit for
+// suggestions (brief: "Flexible budget"); the screen asks before an overrun is saved.
+// Details: tests/lineup-suggestion-budget.test.js.
+test('budget is not a hard limit and missing artists are reported',()=>{
  const r=setup();
- assert.equal(r(`plan.settings.budget=250;const o=automaticLineup(plan);o.bookings.filter(isPerformance).reduce((n,b)=>n+b.fee,0)<=250 && o.skipped.length>0`),true);
- assert.match(r(`plan.settings.budget=0;automaticLineup(plan).problem`),/budget/);
+ assert.equal(r(`plan.settings.budget=250;const o=automaticLineup(plan);o.problem==='' && o.bookings.filter(isPerformance).length===10 && o.skipped.length===0`),true);
+ assert.equal(r(`plan.settings.budget=0;automaticLineup(plan).problem`),'');
+ const many=setup(40);
+ assert.equal(many(`const m=automaticLineup(plan);m.skipped.length>0 && m.skipped.every(x=>/No slot found/.test(x.reason))`),true);
 });
 test('retains existing blocks/bookings and does not duplicate booked artists',()=>{
  const r=setup();

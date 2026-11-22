@@ -100,7 +100,10 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     preview = result; source = JSON.stringify(state);
     const sets = result.bookings.filter(isPerformance);
     const addedFee = sets.reduce((sum,b) => sum+b.fee,0);
-    $('#auto-plan-message').textContent = `${sets.length} suggested performances · ${euros(addedFee)} artist fees · ${euros(state.settings.budget-base.bookings.reduce((sum,b)=>sum+entryFee(b,base),0)-addedFee)} budget remaining${result.skipped.length?' · '+result.skipped.length+' not scheduled':''}`;
+    // Same budget rule as manual booking: going over is allowed, and shown before applying.
+    const remaining = state.settings.budget-base.bookings.reduce((sum,b)=>sum+entryFee(b,base),0)-addedFee;
+    const budgetText = remaining >= 0 ? `${euros(remaining)} budget remaining` : `${euros(-remaining)} over the ${euros(state.settings.budget)} artist budget`;
+    $('#auto-plan-message').textContent = `${sets.length} suggested performances · ${euros(addedFee)} artist fees · ${budgetText}${result.skipped.length?' · '+result.skipped.length+' not scheduled':''}`;
     $('#auto-plan-timing').textContent=result.notice || '';
     $('#auto-plan-preview').innerHTML = lineupSuggestionMarkup({...base,bookings:base.bookings.concat(result.bookings)},$('#auto-plan-headliner').value) + (result.skipped.length ? '<h3>Not scheduled</h3><ul>'+result.skipped.map(x => `<li><strong>${escapeHtml(artist(x.artistId).name)}</strong> — ${escapeHtml(x.reason)}</li>`).join('')+'</ul>' : '');
     $('#auto-plan-apply').textContent = result.skipped.length ? 'Use partial lineup' : 'Use this lineup';
@@ -114,8 +117,16 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     const next = {...state, lineupHeadlinerId:$('#auto-plan-headliner').value, bookings:base.bookings.concat(preview.bookings)};
     const problems = planProblems(next);
     if (problems.length) { $('#auto-plan-message').textContent = problems[0]; return; }
-    if (!save(next)) { $('#auto-plan-message').textContent = 'Could not save the lineup. Your previous timetable is kept.'; return; }
-    dialog.close(); render(); toast('Suggested lineup saved. New performances are tentative.');
+    const apply = () => {
+      if (!writable() || JSON.stringify(state) !== source) {
+        invalidate(); $('#auto-plan-message').textContent = 'The festival changed. Preview the lineup again before applying.'; return;
+      }
+      if (!save(next)) { $('#auto-plan-message').textContent = 'Could not save the lineup. Your previous timetable is kept.'; return; }
+      dialog.close(); render(); toast('Suggested lineup saved. New performances are tentative.');
+    };
+    // Like a manual booking: ask first (same dialog) if this creates or increases a budget overrun.
+    if (budgetOverrunGrows(state, next)) confirmBudget(next.bookings.reduce((sum,b) => sum+entryFee(b,next), 0), apply);
+    else apply();
   };
   updateAccess();
 })();
