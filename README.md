@@ -8,14 +8,14 @@
 ![JavaScript](https://img.shields.io/badge/app-HTML%20%C2%B7%20CSS%20%C2%B7%20JavaScript-17272b)
 ![Supabase](https://img.shields.io/badge/accounts%20%26%20data-Supabase-17272b)
 ![Dependencies](https://img.shields.io/badge/dependencies-1%2C%20pinned-ff684c)
-![Tests](https://img.shields.io/badge/tests-JavaScript-1a9a7c)
+[![Tests](https://github.com/ameliepressl/Festival-Planner/actions/workflows/tests.yml/badge.svg)](https://github.com/ameliepressl/Festival-Planner/actions/workflows/tests.yml)
 
 Team project · *Introduction to Programming* · **Nova SBE**
 Kira · Amelie · Frederik · Vicky
 
 **▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
 
-[Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+[At a glance](#-at-a-glance) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -24,6 +24,22 @@ Kira · Amelie · Frederik · Vicky
 </div>
 
 ---
+
+## 🎯 At a glance
+
+| Area | What you can do |
+| --- | --- |
+| **Lineup** | Multi-day timetable for 1–12 stages, artist library with real artists, budget warnings, PDF export |
+| **Tasks** | Task board and Gantt timeline with suggested dates, assignments and deadlines |
+| **Site map** | Aerial map with facility pins, own map upload, automatic layout with 10 rules, crowd and evacuation estimates |
+| **Vendors** | Food-court pitches, vendor library, visitor needs (vegan, alcohol-free) |
+| **Finances** | Profit and loss, break-even, profit by ticket price, scenarios, cash-flow plan |
+| **Final checklist** | Event-day checks for 12 teams |
+| **Accounts & teams** | Sign-up, up to 20 festivals per account, shared festivals with Admin / Editor / Viewer roles enforced by the database |
+| **Demos** | Two ready-made festivals (Lisbon, small; Munich, large) to try everything at once |
+
+**Tested automatically:** GitHub Actions runs the whole test suite on every pull request and every
+push to `main` (badge above). A green check on a pull request means every test passed. Details: [Tests](#-tests).
 
 ## 👥 Team
 
