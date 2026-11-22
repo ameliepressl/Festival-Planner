@@ -67,7 +67,7 @@
         ${vendor.text ? `<p>${escape(vendor.text)}</p>` : ''}
         <div class="vendor-tags">${vendor.tags.map((tag) => `<span>${tag}</span>`).join('')}</div>
         ${menuMarkup(vendor)}
-        ${message && message.vendorId === vendor.id ? `<p class="form-message" role="alert">${message.text}</p>` : ''}
+        ${message && message.vendorId === vendor.id ? `<p class="form-message" role="alert">${escape(message.text)}</p>` : ''}
         <div class="vendor-actions">${menuButton}${editButton}${actions}</div>
       </article>`;
   }

@@ -258,3 +258,14 @@ test('editing an own stand keeps its pitch; deleting needs a second click and fr
   assert.deepEqual(JSON.parse(ui.storage.get(VENDOR_STORAGE_KEY)), {});
   assert.match(ui.notices.at(-1), /Pitch P2 is free again/);
 });
+
+test('a stand name that looks like HTML is shown as text, also inside a pitch message (no code injection)', () => {
+  const name = '<img src=x onerror=alert(1)>';
+  const { list, vendor } = addCustomVendor([], stand({ name }));
+  const ui = page('Admin', { [CUSTOM_VENDORS_KEY]: JSON.stringify(list), [VENDOR_STORAGE_KEY]: JSON.stringify({ [vendor.id]: 'P2' }), 'festival-architect-ground': '{"visitors":5000}' }, typedMenu);
+  ui.click({ confirm: vendor.id }); // already on P2 → "<name> is already on pitch P2."
+  const html = ui.node('#vendors-view').innerHTML;
+  assert.match(html, /already on pitch P2/);
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});

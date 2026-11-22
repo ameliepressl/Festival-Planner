@@ -53,3 +53,10 @@ app knows about a stand, so they can be booked, appear on the site map and count
 - the Vendors page: Admin and Editor add, a wrong form stays open, Viewer is blocked, edit and two-click delete
 
 No existing test was changed.
+
+## Security follow-up (innerHTML audit)
+
+Own stand names are free text, so every place that shows them must escape them. The audit found one
+place that did not: the pitch message on a vendor card ("<name> is already on pitch P2") was inserted
+as HTML. It is now escaped (`vendors/vendors-page.js`). A new test adds a stand called
+`<img src=x onerror=alert(1)>` and checks the message shows it as text; it failed before the fix.
