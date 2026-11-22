@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="styles.css?v=project-settings" />
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
     <link rel="stylesheet" href="site-map/site-map.css" />
-    <link rel="stylesheet" href="vendors/vendors.css?v=vendor-catalogue" />
+    <link rel="stylesheet" href="vendors/vendors.css?v=custom-vendors" />
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css?v=several-festivals" />
     <link rel="stylesheet" href="compact.css?v=stages-tasks" />
@@ -732,6 +732,7 @@
 
     <dialog id="block-dialog"><form id="block-form"><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="time" step="60" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
     <dialog id="artist-dialog"><form id="artist-form"><h2 id="artist-dialog-title">Add artist</h2><div class="form-grid"><label>Name<input id="name-input" maxlength="100" required></label><label>Genre<input id="genre-input" maxlength="80" required></label><label>Price per performance (€)<input id="fee-input" type="number" min="0" step="1" required></label><label>Set duration (minutes)<input id="duration-input" type="number" min="15" max="540" step="5" required></label></div><p class="form-message" id="artist-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="delete-artist">Delete artist</button><span></span><button type="button" class="button secondary" id="cancel-artist">Cancel</button><button class="button primary">Save artist</button></div></form></dialog>
+    <dialog id="vendor-dialog" aria-labelledby="vendor-dialog-title"><form id="vendor-form" novalidate><h2 id="vendor-dialog-title">Add vendor</h2><div class="form-grid"><label>Stand name<input id="vendor-name" maxlength="60" required placeholder="e.g. Taco Tribe"></label><label>Category<select id="vendor-category"><option>Food</option><option>Drinks</option><option>Merch</option></select></label><label>Kind of stand<input id="vendor-cuisine" maxlength="40" required list="vendor-cuisine-list" placeholder="e.g. Tacos"><datalist id="vendor-cuisine-list"></datalist></label><label>Pitch fee (EUR)<input id="vendor-fee" type="number" min="0" max="20000" step="1" required placeholder="e.g. 900"></label><label class="vendor-wide">Description<input id="vendor-text" maxlength="200" placeholder="What the stand sells, in one sentence"></label><label class="vendor-wide">Dish photo (Wikipedia article, optional)<input id="vendor-photo" maxlength="80" placeholder="e.g. Taco"></label></div><fieldset class="vendor-menu-editor"><legend>Menu <small>(1 to 12 items; the stand's labels follow its menu)</small></legend><div id="vendor-menu-rows"></div><button type="button" class="button secondary" id="vendor-add-item">+ Add menu item</button></fieldset><p class="form-message" id="vendor-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="vendor-delete">Delete stand</button><span></span><button type="button" class="button secondary" id="vendor-cancel">Cancel</button><button class="button primary" id="vendor-save">Save stand</button></div></form></dialog>
     <dialog id="delete-dialog" class="confirm-dialog"><form method="dialog"><h2>Delete this artist?</h2><p id="delete-description"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep artist</button><button class="button danger" id="confirm-delete">Delete artist</button></div></form></dialog>
     <dialog id="finalise-dialog" class="confirm-dialog">
       <form method="dialog"><h2>Finalise this lineup?</h2><p>Final plans are read-only. You can reopen it later if you need to make a change.</p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button primary" id="confirm-finalise" value="default">Finalise plan</button></div></form>
@@ -762,14 +763,14 @@
     <script src="gantt-schedule.js?v=technical-audit-1"></script>
     <script src="work-board.js?v=technical-audit-1"></script>
     <script src="rules/capacity-rules.js"></script>
-    <script src="rules/vendor-rules.js?v=vendor-catalogue"></script>
+    <script src="rules/vendor-rules.js?v=custom-vendors"></script>
     <script src="rules/vendor-library.js?v=vendor-catalogue"></script>
     <script src="rules/site-map-rules.js?v=technical-audit-1"></script>
     <script src="rules/map-draft-rules.js"></script>
     <script src="rules/crowd-rules.js?v=technical-audit-1"></script>
     <script src="site-map/map-drawing.js?v=technical-audit-1"></script>
     <script src="site-map/site-map-page.js?v=technical-audit-1"></script>
-    <script src="vendors/vendors-page.js?v=technical-audit-1"></script>
+    <script src="vendors/vendors-page.js?v=custom-vendors"></script>
     <script src="rules/finance-rules.js"></script>
     <script src="finance/finance-page.js?v=technical-audit-1"></script>
     <script src="rules/demo-festival.js?v=fun-open"></script>
