@@ -79,10 +79,133 @@ function libraryVendors() {
   if (typeof module !== 'undefined' && typeof require === 'function') return require('./vendor-library.js').VENDOR_LIBRARY;
   return [];
 }
-// Every vendor that can be booked: the 24 original vendors first, then the library.
-function allVendors() { return [...VENDORS, ...libraryVendors()]; }
+// ——— Your own stands ("Add vendor" on the Vendors page) ———
+// Saved per festival under a "festival-" key, so they are part of the festival data of the account.
+// Stored as a list of vendors with the same fields as the catalogue (id starts with "c-").
+const CUSTOM_VENDORS_KEY = 'festival-architect-custom-vendors';
+const MAX_CUSTOM_VENDORS = 50;
+const MAX_MENU_ITEMS = 12;
+const MAX_VENDOR_FEE = 20000;
+const MAX_MENU_PRICE = 500;
+const DIET_TAGS = ['vegan', 'vegetarian', 'gluten-free', 'alcohol', 'alcohol-free'];
 
-function findVendor(id) { return VENDORS.find((vendor) => vendor.id === id) || libraryVendors().find((vendor) => vendor.id === id) || null; }
+const vendorText = (value) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '');
+const vendorNumber = (value) => (value === '' || value === null || value === undefined || typeof value === 'boolean' ? NaN : Number(value));
+
+// The stand's labels follow its menu, so a stand never claims more than it sells
+// (same rule as the vendor library). Vegan dishes count as vegetarian too.
+function standTagsFromMenu(menu, category) {
+  const has = (tag) => menu.some((m) => m.tags.includes(tag));
+  return DIET_TAGS.filter((tag) => has(tag) && (category === 'Drinks' || (tag !== 'alcohol' && tag !== 'alcohol-free')));
+}
+
+// Check what someone typed for a new or changed stand. Returns '' when it is fine, otherwise one
+// sentence that says what to change. "others" = every other vendor (for the name check).
+function customVendorProblem(input, others = []) {
+  const value = input && typeof input === 'object' ? input : {};
+  const name = vendorText(value.name);
+  if (name.length < 2 || name.length > 60) return 'Enter a stand name of 2–60 characters.';
+  if (others.some((v) => v.name.toLowerCase() === name.toLowerCase())) return `There is already a stand called “${name}”. Choose another name.`;
+  if (!VENDOR_CATEGORIES.includes(value.category)) return 'Choose Food, Drinks or Merch.';
+  const cuisine = vendorText(value.cuisine);
+  if (cuisine.length < 2 || cuisine.length > 40) return 'Enter the kind of stand (2–40 characters), for example “Tacos” or “Craft beer”.';
+  if (vendorText(value.text).length > 200) return 'Keep the description to 200 characters.';
+  if (vendorText(value.photo).length > 80) return 'Keep the photo search word to 80 characters.';
+  const fee = vendorNumber(value.fee);
+  if (!Number.isInteger(fee) || fee < 0 || fee > MAX_VENDOR_FEE) return `Enter the pitch fee as whole euros from €0 to €${MAX_VENDOR_FEE.toLocaleString('en-GB')}.`;
+  const menu = Array.isArray(value.menu) ? value.menu : [];
+  if (menu.length < 1 || menu.length > MAX_MENU_ITEMS) return `Add 1 to ${MAX_MENU_ITEMS} menu items.`;
+  for (const [i, entry] of menu.entries()) {
+    const item = vendorText(entry && entry.item);
+    const label = `Menu item ${i + 1}`;
+    if (item.length < 2 || item.length > 60) return `${label}: enter a name of 2–60 characters.`;
+    const price = vendorNumber(entry.price);
+    if (!Number.isFinite(price) || price <= 0 || price > MAX_MENU_PRICE) return `${label} (“${item}”): enter a price above €0 and at most €${MAX_MENU_PRICE}.`;
+    if (Math.abs(price * 100 - Math.round(price * 100)) > 1e-6) return `${label} (“${item}”): use at most two decimals for the price.`;
+    const tags = Array.isArray(entry.tags) ? entry.tags : [];
+    if (!tags.every((t) => DIET_TAGS.includes(t))) return `${label} (“${item}”): unknown label.`;
+    if (tags.includes('alcohol') && tags.includes('alcohol-free')) return `${label} (“${item}”): a drink cannot contain alcohol and be alcohol-free.`;
+    if (tags.includes('alcohol') && value.category !== 'Drinks') return `${label} (“${item}”): only drinks stands can sell alcohol.`;
+  }
+  return '';
+}
+
+// Build the stand from what was typed (only call after customVendorProblem returned '').
+function customVendorFrom(input, id) {
+  const category = input.category;
+  const menu = input.menu.map((entry) => {
+    const tags = DIET_TAGS.filter((t) => entry.tags.includes(t) || (t === 'vegetarian' && entry.tags.includes('vegan')));
+    return { item: vendorText(entry.item), price: Math.round(vendorNumber(entry.price) * 100) / 100, tags };
+  });
+  return { id, name: vendorText(input.name), category, icon: '', fee: vendorNumber(input.fee), tags: standTagsFromMenu(menu, category),
+    text: vendorText(input.text), cuisine: vendorText(input.cuisine), photo: vendorText(input.photo), menu, custom: true };
+}
+
+// "Taco Tribe 2" -> "c-taco-tribe-2"; a number is added when the id is already taken.
+function customVendorId(name, takenIds) {
+  const base = 'c-' + (vendorText(name).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'stand');
+  let id = base;
+  for (let n = 2; takenIds.includes(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
+// Add a stand to the list. Returns { list, vendor, problem }; on a problem the list is unchanged.
+function addCustomVendor(list, input) {
+  if (list.length >= MAX_CUSTOM_VENDORS) return { list, vendor: null, problem: `You can add at most ${MAX_CUSTOM_VENDORS} own stands.` };
+  const everyone = [...list, ...VENDORS, ...libraryVendors()];
+  const problem = customVendorProblem(input, everyone);
+  if (problem) return { list, vendor: null, problem };
+  const vendor = customVendorFrom(input, customVendorId(input.name, everyone.map((v) => v.id)));
+  return { list: [...list, vendor], vendor, problem: null };
+}
+
+// Change one of your own stands (its id, and so its pitch, stays the same).
+function updateCustomVendor(list, id, input) {
+  if (!list.some((v) => v.id === id)) return { list, vendor: null, problem: 'This stand no longer exists.' };
+  const others = [...list.filter((v) => v.id !== id), ...VENDORS, ...libraryVendors()];
+  const problem = customVendorProblem(input, others);
+  if (problem) return { list, vendor: null, problem };
+  const vendor = customVendorFrom(input, id);
+  return { list: list.map((v) => (v.id === id ? vendor : v)), vendor, problem: null };
+}
+
+// Delete one of your own stands; if it had a pitch, the pitch becomes free.
+function deleteCustomVendor(list, placements, id) {
+  const rest = { ...placements };
+  delete rest[id];
+  return { list: list.filter((v) => v.id !== id), placements: rest };
+}
+
+// Read the saved stands back. Broken or doubled entries are dropped instead of crashing the page.
+function parseCustomVendors(text) {
+  let saved;
+  try { saved = JSON.parse(text); } catch { return []; }
+  if (!Array.isArray(saved)) return [];
+  const result = [];
+  for (const entry of saved.slice(0, MAX_CUSTOM_VENDORS)) {
+    if (!entry || typeof entry.id !== 'string' || !/^c-[a-z0-9-]{1,60}$/.test(entry.id) || result.some((v) => v.id === entry.id)) continue;
+    if (customVendorProblem(entry, result)) continue;
+    result.push(customVendorFrom(entry, entry.id));
+  }
+  return result;
+}
+
+// The stands of the open festival, read from this browser (none in the tests unless they set storage).
+let customVendorCache = { raw: null, list: [] };
+function customVendors() {
+  let raw = null;
+  try { raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CUSTOM_VENDORS_KEY) : null; } catch { raw = null; }
+  if (raw !== customVendorCache.raw) customVendorCache = { raw, list: raw ? parseCustomVendors(raw) : [] };
+  return customVendorCache.list;
+}
+
+// Every vendor that can be booked: your own stands first, then the 24 original vendors, then the library.
+function allVendors() { return [...customVendors(), ...VENDORS, ...libraryVendors()]; }
+
+function findVendor(id) {
+  return VENDORS.find((vendor) => vendor.id === id) || customVendors().find((vendor) => vendor.id === id)
+    || libraryVendors().find((vendor) => vendor.id === id) || null;
+}
 
 // Search and filter the vendors for the Vendors page.
 // filters: { query, category, cuisine, diet, maxFee, sort } — every part is optional.
@@ -178,6 +301,8 @@ if (typeof module !== 'undefined') {
   module.exports = {
     PITCHES, MAX_PITCHES, pitchList, fitPlacements, VENDOR_STORAGE_KEY, VENDOR_CATEGORIES, VENDORS, findVendor, parsePlacements,
     freePitches, confirmVendor, removeVendor, vendorOnPitch, pitchIncome, coverage,
-    MENU_TAGS, menuFrom, allVendors, filterVendors, vendorCuisines
+    MENU_TAGS, menuFrom, allVendors, filterVendors, vendorCuisines,
+    CUSTOM_VENDORS_KEY, MAX_CUSTOM_VENDORS, MAX_MENU_ITEMS, MAX_VENDOR_FEE, MAX_MENU_PRICE, DIET_TAGS,
+    customVendorProblem, addCustomVendor, updateCustomVendor, deleteCustomVendor, parseCustomVendors, customVendors
   };
 }
