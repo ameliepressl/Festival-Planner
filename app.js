@@ -116,7 +116,7 @@ function render() {
   $('.day-navigation').classList.toggle('hidden', festivalView);
   $('#calendar').classList.toggle('festival-calendar', festivalView);
   $('#calendar').innerHTML = festivalView
-    ? dates.map(day => '<section class="festival-day"><h3>' + dateText(day) + '</h3>' + calendarMarkup(day) + '</section>').join('')
+    ? dates.map(day => '<section class="festival-day" style="--festival-day-width:' + (56 + stages().length * 145) + 'px"><h3>' + dateText(day) + '</h3>' + calendarMarkup(day) + '</section>').join('')
     : calendarMarkup(currentDay);
   $('#schedule-empty').textContent = lineupLocked ? 'Nothing is scheduled for this day.' : 'Click a free calendar slot, book an artist, or add a calendar block.';
   $('#schedule-empty').classList.toggle('hidden',state.bookings.some(b => lineupView === 'festival' || b.date===currentDay));
@@ -180,7 +180,7 @@ function openBooking(id,bookingId=null,slot=null) {
   $('#booking-artist').value=selectedArtistId;
   $('#artist-preview').textContent=`${a.name} · ${a.genre}`;
   populateBookingLocations(b?.date||slot?.date||currentDay,b?.stage||slot?.stage||'A');
-  $('#time-input').value=timeText(b?.start??slot?.start??stageHours(currentDay,'A').start);
+  $('#time-input').value=timeText((b?.start??slot?.start??stageHours(currentDay,'A').start)%1440);
   $('#booking-duration').value=b?entryDuration(b):a.duration;
   $('#booking-fee').value=b?entryFee(b):a.fee;
   $('#booking-status').value=b?.status||'tentative';
@@ -200,11 +200,11 @@ function clearBookingIssue() {
 }
 function bookingFromForm() {
   return {id:editingId||crypto.randomUUID(),artistId:selectedArtistId,date:$('#day-input').value,stage:$('#stage-input').value,
-    start:inputMinutes($('#time-input').value),duration:Number($('#booking-duration').value),fee:Number($('#booking-fee').value),
+    start:festivalDayMinutes($('#time-input').value, stageHours($('#day-input').value, $('#stage-input').value)),duration:Number($('#booking-duration').value),fee:Number($('#booking-fee').value),
     status:$('#booking-status').value,changeover:Number($('#booking-changeover').value),notes:$('#booking-notes').value.trim()};
 }
 function updateEndPreview() {
-  const start=inputMinutes($('#time-input').value),duration=Number($('#booking-duration').value);
+  const start=festivalDayMinutes($('#time-input').value, stageHours($('#day-input').value, $('#stage-input').value)),duration=Number($('#booking-duration').value);
   $('#duration-preview').textContent=`${duration} minutes`;
   $('#end-preview').textContent=Number.isFinite(start)?timeText(start+duration):'—';
 }
@@ -218,7 +218,7 @@ function showBookingIssue(b,problem) {
 }
 $('#suggest-slot').onclick=() => {
   if (suggestedStart===null) return;
-  $('#time-input').value=timeText(suggestedStart);
+  $('#time-input').value=timeText(suggestedStart%1440);
   updateEndPreview();
   clearBookingIssue();
 };
@@ -295,7 +295,7 @@ function openBlock(id=null,slot=null) {
   $('#block-day').value=b?.date||slot?.date||currentDay;
   $('#block-stage').innerHTML=stages().map(s => `<option value="${s}">${escapeHtml(stageName(s))}</option>`).join('');
   $('#block-stage').value=b?.stage||slot?.stage||'A';
-  $('#block-time').value=timeText(b?.start??slot?.start??stageHours(currentDay,'A').start);
+  $('#block-time').value=timeText((b?.start??slot?.start??stageHours(currentDay,'A').start)%1440);
   $('#block-duration').value=b?.duration??30;
   $('#block-notes').value=b?.notes||'';
   $('#block-message').textContent='';
@@ -307,7 +307,7 @@ $('#cancel-block').onclick=() => $('#block-dialog').close();
 $('#block-form').onsubmit=event => {
   event.preventDefault();if(!writable())return;
   const b={id:editingBlockId||crypto.randomUUID(),type:'block',title:$('#block-title').value.trim(),date:$('#block-day').value,
-    stage:$('#block-stage').value,start:inputMinutes($('#block-time').value),duration:Number($('#block-duration').value),notes:$('#block-notes').value.trim()};
+    stage:$('#block-stage').value,start:festivalDayMinutes($('#block-time').value, stageHours($('#block-day').value, $('#block-stage').value)),duration:Number($('#block-duration').value),notes:$('#block-notes').value.trim()};
   const problem=b.title?validation(b,editingBlockId):'Enter a title for this block.';
   if(problem){$('#block-message').textContent=problem;return;}
   state.bookings=state.bookings.filter(x => x.id!==b.id).concat(b);

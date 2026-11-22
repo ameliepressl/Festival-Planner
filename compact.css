@@ -128,7 +128,9 @@
 .lineup-view-toggle .button{padding:6px 12px;font-size:12px}
 .lineup-view-toggle [aria-pressed=true]{background:var(--ink);color:var(--white);border-color:var(--ink)}
 #lineup-view .festival-calendar{display:flex;gap:16px;overflow:auto;align-items:flex-start}
-.festival-day{flex:1 0 420px;min-width:0}
+.festival-day{flex:1 0 var(--festival-day-width,491px);min-width:var(--festival-day-width,491px)}
+.festival-day .calendar-stage{min-width:0;overflow:hidden}
+.festival-day .calendar-stage strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .festival-day h3{margin:0;padding:8px 0;font:600 14px var(--font-text);border-bottom:1px solid var(--line)}
 
 #lineup-view .schedule-heading{align-items:flex-end}
@@ -326,3 +328,13 @@
 
 /* Gantt toolbar: on narrow windows the controls wrap onto a second row instead of pushing "Edit plan" out of view */
 #task-board-view #gantt-view .gantt-controls{flex-wrap:wrap;overflow-x:visible}
+
+/* Keep festival management actions aligned with Festival details. */
+#settings-view #festival-manage{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:20px;align-items:center}
+#settings-view #festival-manage[hidden]{display:none}
+#settings-view #festival-manage-title{grid-column:1;margin:0 0 8px;font:600 20px/1.2 var(--font-display)}
+#settings-view #festival-manage-summary{grid-column:1;margin:0;font-size:13px;line-height:1.5}
+#settings-view #delete-festival{grid-column:2;grid-row:1 / 3;justify-self:end}
+#settings-view #festival-manage-help{grid-column:1/-1}
+#settings-view #festival-manage-help:empty{display:none}
+@media(max-width:650px){#settings-view #delete-festival{grid-column:1;grid-row:auto;justify-self:start;margin-top:10px}}

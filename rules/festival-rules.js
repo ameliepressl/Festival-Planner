@@ -111,7 +111,7 @@ function freshFestivalEvent(now = new Date()) {
   const tomorrow = new Date(Date.parse(today + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10);
   return { ...DEFAULT_EVENT, startDate: today, endDate: tomorrow };
 }
-const timeText = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+const timeText = n => `${String(Math.floor((n === 1440 ? n : n % 1440) / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
 function eventDays(event) {
   const dates = [], d = new Date(event.startDate + 'T12:00:00Z'), end = new Date(event.endDate + 'T12:00:00Z');
   while (d <= end && dates.length < 366) {
@@ -137,6 +137,15 @@ function inputMinutes(value) {
   if (!/^\d{2}:\d{2}$/.test(value)) return NaN;
   const [h, m] = value.split(':').map(Number);
   return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? h * 60 + m : NaN;
+}
+// Store after-midnight times beyond 1440 so they remain on the selected festival day.
+function festivalDayMinutes(value, hours) {
+  const minutes = inputMinutes(value);
+  return Number.isFinite(minutes) && hours.end > 1440 && minutes < hours.start ? minutes + 1440 : minutes;
+}
+function closingMinutes(value, start) {
+  const minutes = value === '24:00' ? 1440 : inputMinutes(value);
+  return Number.isFinite(minutes) && minutes < start ? minutes + 1440 : minutes;
 }
 // Existing performances receive snapshots once: later catalogue edits only change defaults for future bookings.
 function normalizePlan(saved) {
@@ -192,7 +201,7 @@ function performanceEntriesForPlan(b, plan) {
 }
 function buildPerformanceEntries(b) { return performanceEntriesForPlan(b, state); }
 function bookingProblem(b, ignoreId, plan, skipLinkedId = null) {
-  if (!b || !Number.isInteger(b.start) || b.start < 0 || b.start > 1439 || !Number.isInteger(entryDuration(b, plan)) || entryDuration(b, plan) < 1 || entryDuration(b, plan) > 1440) return 'Enter a valid start time and duration.';
+  if (!b || !Number.isInteger(b.start) || b.start < 0 || b.start >= 2880 || !Number.isInteger(entryDuration(b, plan)) || entryDuration(b, plan) < 1 || entryDuration(b, plan) > 1440) return 'Enter a valid start time and duration.';
   if (!eventDays(plan.event).includes(b.date) || !planStages(plan).includes(b.stage)) return 'Choose a valid festival day and stage.';
   if (isPerformance(b)) {
     if (!plan.artists.some(a => a.id === b.artistId)) return 'Choose an artist from the catalogue.';
@@ -248,7 +257,7 @@ function validDate(value) {
   const d = new Date(value + 'T12:00:00Z');
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
-function validHours(hours) { return isObject(hours) && Number.isInteger(hours.start) && Number.isInteger(hours.end) && hours.start >= 0 && hours.start < hours.end && hours.end <= 1440; }
+function validHours(hours) { return isObject(hours) && Number.isInteger(hours.start) && Number.isInteger(hours.end) && hours.start >= 0 && hours.start < 1440 && hours.start < hours.end && hours.end - hours.start <= 1440 && hours.end < 2880; }
 function updatedFestivalEvent(details, previousEvent) {
   const event = { ...previousEvent, ...details };
   if (event.dayHours) {
@@ -266,7 +275,7 @@ function eventChangeProblem(event, plan) {
   }
   if (eventDays(event).at(-1) !== event.endDate) return 'The festival cannot be longer than 366 days.';
   if (!validHours({ start: event.startMinutes, end: event.endMinutes })) {
-    return 'Enter valid opening and closing times. Closing time must be later than opening time.';
+    return 'Enter valid opening and closing times. Use HH:MM; a closing time earlier than opening is on the next morning.';
   }
   for (const booking of plan.bookings) {
     const name = entryName(booking, plan);
@@ -307,7 +316,7 @@ function planProblems(plan) {
   for (const b of plan.bookings) {
     if (!isObject(b) || !(validId(b.id) || (b.type === 'block' && validId(b.linkedTo) && b.id === `changeover-${b.linkedTo}`)) || bookingIds.has(b.id)) { problems.push('An appointment has an invalid or duplicate identifier.'); continue; }
     bookingIds.add(b.id);
-    if (!dates.includes(b.date) || !stageIds.includes(b.stage) || !Number.isInteger(b.start) || b.start < 0 || b.start > 1439 || !Number.isInteger(b.duration) || b.duration < 1 || b.duration > 1440 || !validText(b.notes, 2000, true)) problems.push('An appointment has invalid dates, times or notes.');
+    if (!dates.includes(b.date) || !stageIds.includes(b.stage) || !Number.isInteger(b.start) || b.start < 0 || b.start >= 2880 || !Number.isInteger(b.duration) || b.duration < 1 || b.duration > 1440 || !validText(b.notes, 2000, true)) problems.push('An appointment has invalid dates, times or notes.');
     if (b.type === 'block') {
       if (!validText(b.title, b.linkedTo ? 120 : 100) || (b.linkedTo !== undefined && !validId(b.linkedTo))) problems.push('A calendar block has invalid details.');
     } else if ((b.type !== undefined && b.type !== 'performance') || !artistIds.has(b.artistId) || !Number.isFinite(b.fee) || b.fee < 0 || !['tentative', 'confirmed'].includes(b.status) || !Number.isInteger(b.changeover) || b.changeover < 0 || b.changeover > 1440) problems.push('A performance has invalid artist, fee, status or changeover details.');

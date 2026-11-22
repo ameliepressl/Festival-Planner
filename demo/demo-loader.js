@@ -28,6 +28,8 @@
   //   ganttPlan: the project plan whose tasks the Munich demo marks as done.
   function demoSections(which, { maps = [], ganttPlan = null } = {}) {
     const demo = which === 'load-munich' ? munichDemoFestival() : demoFestival();
+    // Save the label with the demo so every device and teammate sees the distinction.
+    if (typeof demo.plan.event?.name === 'string') demo.plan.event.name += ' (demo)';
     const pitches = capacityNeeds(demo.ground.visitors).pitches;
     const placements = demo.vendors.reduce((p, id) => confirmVendor(p, id, pitches).placements, {});
     // The demo map gets one stage per lineup stage (the Munich demo has three).

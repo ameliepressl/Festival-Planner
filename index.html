@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="vendors/vendors.css?v=vendor-catalogue" />
     <link rel="stylesheet" href="finance/finance.css" />
     <link rel="stylesheet" href="account/account.css?v=several-festivals" />
-    <link rel="stylesheet" href="compact.css?v=stages-tasks" />
+    <link rel="stylesheet" href="compact.css?v=settings-actions" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Loaded last: fonts, colours, buttons and the frame (sidebar, header) for every page. -->
@@ -24,7 +24,7 @@
     <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
     <script src="supabase-config.js"></script>
     <script src="rules/account-rules.js?v=several-festivals"></script>
-    <script src="account/account.js?v=several-festivals"></script>
+    <script src="account/account.js?v=overnight-hours"></script>
   </head>
   <body>
     <!-- Icons for the sidebar (24×24, drawn with a 1.75 stroke in the text colour). -->
@@ -629,12 +629,12 @@
           <label>Venue or city (optional)<input id="festival-venue" maxlength="120" /></label>
           <label>First day<input id="festival-start-date" type="date" required /></label>
           <label>Last day<input id="festival-end-date" type="date" required /></label>
-          <label>Daily opening time<input id="festival-open" type="time" required /></label>
+          <label>Daily opening time<input id="festival-open" type="text" inputmode="numeric" placeholder="HH:MM" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" required /></label>
           <label>Daily closing time<input id="festival-close" required pattern="[0-9]{2}:[0-9]{2}" aria-describedby="overview-hours-help" /></label>
           <label>Artist booking budget (€)<input id="festival-budget" type="number" min="0" step="any" required aria-describedby="overview-budget-help" /></label>
         </div>
         <p class="field-help" id="overview-budget-help">Your own budget for all artist fees. You can change it any time.</p>
-        <p class="field-help" id="overview-hours-help">Use HH:MM for closing time. Enter 24:00 for midnight.</p>
+        <p class="field-help" id="overview-hours-help">Use 24-hour HH:MM. A closing time earlier than opening (e.g. 18:00–03:00) ends the next morning, within the same festival day. Midnight can be entered as 00:00 or 24:00.</p>
         <p class="field-help" id="overview-custom-hours" hidden>Existing hours for specific days still apply to those days.</p>
         <p class="form-message" id="overview-error" role="alert"></p>
         <div class="overview-dialog-actions">
@@ -680,7 +680,7 @@
         <div class="artist-preview" id="artist-preview"></div>
         <div class="form-grid">
           <label>Performance day<select id="day-input"></select></label><label>Stage<select id="stage-input"><option value="A">Stage A · Main Stage</option><option value="B">Stage B · Warehouse</option></select></label>
-          <label>Start time<input id="time-input" type="time" step="60" required></label>
+          <label>Start time<input id="time-input" type="text" inputmode="numeric" placeholder="HH:MM" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" required></label>
           <label>Booking status<select id="booking-status"><option value="tentative">Tentative</option><option value="confirmed">Confirmed</option></select></label>
           <label>Performance duration (minutes)<input id="booking-duration" type="number" min="1" max="1440" step="1" required /></label>
           <label>Agreed performance fee (€)<input id="booking-fee" type="number" min="0" step="1" required /></label>
@@ -730,7 +730,7 @@
       </form>
     </dialog>
 
-    <dialog id="block-dialog"><form id="block-form"><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="time" step="60" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
+    <dialog id="block-dialog"><form id="block-form"><h2 id="block-dialog-title">Add calendar block</h2><div class="form-grid"><label>Title<input id="block-title" maxlength="100" required placeholder="Stage changeover"></label><label>Day<select id="block-day"></select></label><label>Stage<select id="block-stage"></select></label><label>Start time<input id="block-time" type="text" inputmode="numeric" placeholder="HH:MM" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]" required></label><label>Duration (minutes)<input id="block-duration" type="number" min="1" max="540" step="1" required></label></div><label class="notes-label">Notes (optional)<textarea id="block-notes" rows="3" maxlength="2000" placeholder="What needs to happen during this time?"></textarea></label><p class="form-message" id="block-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger hidden" id="remove-block">Remove block</button><span></span><button type="button" class="button secondary" id="cancel-block">Cancel</button><button class="button primary">Save block</button></div></form></dialog>
     <dialog id="artist-dialog"><form id="artist-form"><h2 id="artist-dialog-title">Add artist</h2><div class="form-grid"><label>Name<input id="name-input" maxlength="100" required></label><label>Genre<input id="genre-input" maxlength="80" required></label><label>Price per performance (€)<input id="fee-input" type="number" min="0" step="1" required></label><label>Set duration (minutes)<input id="duration-input" type="number" min="15" max="540" step="5" required></label></div><p class="form-message" id="artist-message" role="alert"></p><div class="dialog-actions"><button type="button" class="button danger" id="delete-artist">Delete artist</button><span></span><button type="button" class="button secondary" id="cancel-artist">Cancel</button><button class="button primary">Save artist</button></div></form></dialog>
     <dialog id="delete-dialog" class="confirm-dialog"><form method="dialog"><h2>Delete this artist?</h2><p id="delete-description"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep artist</button><button class="button danger" id="confirm-delete">Delete artist</button></div></form></dialog>
     <dialog id="finalise-dialog" class="confirm-dialog">
@@ -745,9 +745,9 @@
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
     <script src="rules/project-rules.js"></script>
-    <script src="rules/festival-rules.js?v=review-followups"></script>
+    <script src="rules/festival-rules.js?v=overnight-hours-review-followups"></script>
     <script src="rules/artist-library.js?v=artist-library-2"></script>
-    <script src="app.js?v=munich-merge"></script>
+    <script src="app.js?v=festival-day-width"></script>
     <script src="artist-library/artist-photos.js?v=munich-demo"></script>
     <script src="artist-library/artist-library.js?v=artist-library-2"></script>
     <script src="rules/checklist-rules.js?v=stages-tasks"></script>
@@ -773,8 +773,8 @@
     <script src="rules/finance-rules.js"></script>
     <script src="finance/finance-page.js?v=munich-demo"></script>
     <script src="rules/demo-festival.js?v=fun-open"></script>
-    <script src="demo/demo-loader.js?v=several-festivals"></script>
-    <script src="overview.js?v=review-followups"></script>
+    <script src="demo/demo-loader.js?v=demo-label"></script>
+    <script src="overview.js?v=overnight-hours"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js"></script>
   </body>
