@@ -48,10 +48,8 @@ function buildStageScene(backdrop, W, H) {
       for (let i = 0; i < 6; i++) if (rnd() < 0.55) land.windows.push({ x: x + r(3, w - 7), y: horizon + H * 0.06 - h + r(6, h - 10), phase: r(0, 6.3) });
       x += w + r(1, 8);
     }
-    if (landmark) { // clean: no other houses behind the landmark, so its outline stands out against the sky
-      land.layers = land.layers.filter(b => b.x + b.w * 0.5 < zoneLeft - 10);
-      land.windows = land.windows.filter(w => w.x < zoneLeft - 10);
-    }
+    const ownSkyline = landmark && typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[landmark.kind] && BACKDROP_LANDMARK_STYLES[landmark.kind].shape === 'skyline';
+    if (ownSkyline) { land.layers = []; land.windows = []; } // the city's own skyline replaces the generic one, across the whole horizon
   }
 
   // The crowd: a smaller back row and a bigger front row; some hold up arms or phones.
@@ -237,12 +235,6 @@ function drawLandmark(ctx, scene, t, beat) {
   const soil = ctx.createLinearGradient(0, scene.horizon, 0, H);
   soil.addColorStop(0, 'rgba(5,3,10,0)'); soil.addColorStop(0.45, colours.shade); soil.addColorStop(1, '#05030a');
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, scene.horizon, W, H - scene.horizon);
-  ctx.restore();
-  // Floodlights at night: a warm glow behind the landmark and light washing up from the ground.
-  ctx.save();
-  const cx = m.left + m.width / 2, halo = ctx.createRadialGradient(cx, gy - m.height * 0.35, 0, cx, gy - m.height * 0.35, Math.max(60, m.height * 0.75));
-  halo.addColorStop(0, 'rgba(255,214,150,.30)'); halo.addColorStop(1, 'rgba(255,214,150,0)');
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55; ctx.fillStyle = halo; ctx.fillRect(m.left - 40, 0, W - m.left + 40, gy);
   ctx.restore();
   if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
     ctx.save();

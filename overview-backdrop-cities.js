@@ -154,10 +154,10 @@ const CITY_SHAPES = {
   // A skyline of towers, one of them taller with a crown. The towers are the same every frame.
   skyline(ctx, c) {
     const { m, gy, style: s, t, colours } = c, rnd = backdropRandom(backdropSeed(m.kind));
-    const n = Math.max(7, Math.floor(m.width / 24)), bw = m.width / n, star = Math.floor(n * 0.4);
+    const n = Math.max(12, Math.floor(c.W / 24)), bw = c.W / n, star = Math.min(n - 1, Math.floor(m.x / bw)); // across the whole horizon, the tallest tower where the landmark would stand
     for (let i = 0; i < n; i++) {
       const r1 = rnd(), r2 = rnd(), tall = i === star;
-      const h = (tall ? 0.95 : 0.18 + r1 * 0.5) * m.height * (s.tall || 0.8), w = bw * (tall ? 0.85 : 0.75 + r2 * 0.2), x = m.left + i * bw + (bw - w) / 2;
+      const h = (tall ? 0.95 : 0.18 + r1 * 0.5) * m.height * (s.tall || 0.8), w = bw * (tall ? 0.85 : 0.75 + r2 * 0.2), x = i * bw + (bw - w) / 2;
       ctx.beginPath(); ctx.rect(x, gy - h, w, h + 2);
       litFill(ctx, gy - h, gy, s.light, s.dark); ctx.fill();
       for (let y = gy - 8; y > gy - h + 5; y -= 8) for (let wx = x + 3; wx < x + w - 3; wx += 6) {
@@ -173,7 +173,7 @@ const CITY_SHAPES = {
         cityGlow(ctx, '#ff2b2b', blinking(t, 2.4, i)); ctx.beginPath(); ctx.arc(cx, top - h * 0.22, 2.2, 0, CITY_TAU); ctx.fill();
       }
     }
-    cityPaint(ctx, colours.shade, 0.6); ctx.fillRect(m.left, gy, m.width, 3);
+    
   },
 
   // A pagoda with upturned roofs, a prang, or a castle keep.
