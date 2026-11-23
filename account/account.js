@@ -249,7 +249,7 @@
 
   async function createFestival(data) {
     const { data: row, error } = await client.from('festivals')
-      .insert({ data: cleanFestivalData(data) }).select('id, owner_id, updated_at').single();
+      .insert({ data: withStartingFinance(cleanFestivalData(data)) }).select('id, owner_id, updated_at').single();
     if (!error) return row;
     if (error.code === '23505') {               // created meanwhile in another tab
       const own = (await fetchMyFestivals()).find((item) => item.owner_id === currentUser.id);
@@ -582,23 +582,12 @@
     const action = syncAction({ meta, userId: currentUser.id, localData: localPlan(), cloud: null });
     if (action === 'choose') { showChoice(null, OWNER_ACCESS); return; }
     if (action === 'create') {
-      remember(await createFestival(localPlan()), OWNER_ACCESS);
-      access = OWNER_ACCESS;
-      serverRoster = [];
-      if (!sameAccess(OWNER_ACCESS, startAccess || OWNER_ACCESS) || localRoster().length) {
-        writeRoster([]);
-        reloadForPlan();
-        return;
-      }
-      festivals = await fetchMyFestivals().catch(() => festivals);
-      buildSwitcher();
-      finishStart();
+      // Open the saved sections too: creation adds the zero finance assumptions.
+      await openFestival(await createFestival(localPlan()), OWNER_ACCESS);
       return;
     }
     // 'create-empty': the browser holds a plan that is not this account's own
-    remember(await createFestival({}), OWNER_ACCESS);
-    replacePlan({});
-    reloadForPlan();
+    await openFestival(await createFestival({}), OWNER_ACCESS);
   }
 
   // A plan from before accounts is in this browser: let the organiser pick.
@@ -609,22 +598,21 @@
       : 'This browser still holds a festival plan from before accounts existed. Do you want to save it in your new account, or start with an empty plan?';
     $('#choice-use-account').textContent = cloud ? 'Use my account’s plan' : 'Start with an empty plan';
     $('#choice-use-browser').onclick = () => runChoice(async () => {
-      const row = cloud || await createFestival(localPlan());
-      remember(row, rowAccess);
-      if (cloud) {
-        // Replace the account's plan: send every section of this browser and remove the
-        // sections only the account's plan had.
-        meta.dirtyKeys = [...new Set([...Object.keys(localPlan()), ...Object.keys(cleanFestivalData(cloud.data))])];
-        writeMeta();
+      if (!cloud) {
+        await openFestival(await createFestival(localPlan()), rowAccess);
+        return;
       }
-      writeRoster(cloud ? await fetchTeam(cloud.id).catch(() => []) : []);
+      remember(cloud, rowAccess);
+      // Replace the account's plan: send every section of this browser and remove the
+      // sections only the account's plan had.
+      meta.dirtyKeys = [...new Set([...Object.keys(localPlan()), ...Object.keys(cleanFestivalData(cloud.data))])];
+      writeMeta();
+      writeRoster(await fetchTeam(cloud.id).catch(() => []));
       reloadForPlan();
     });
     $('#choice-use-account').onclick = () => runChoice(async () => {
       if (cloud) { await openFestival(cloud, rowAccess); return; }
-      remember(await createFestival({}), rowAccess);
-      replacePlan({});
-      reloadForPlan();
+      await openFestival(await createFestival({}), rowAccess);
     });
   }
 
@@ -742,7 +730,7 @@
       if (problem === 'cancelled') return false;
       if (problem) throw new Error(problem);
       const { data: row, error } = await client.from('festivals')
-        .insert({ data: cleanFestivalData(sections) }).select('id, owner_id, updated_at').single();
+        .insert({ data: withStartingFinance(cleanFestivalData(sections)) }).select('id, owner_id, updated_at').single();
       if (error) throw new Error(accountErrorMessage(error));
       sessionStorage.setItem('fa-account-notice',
         'This is a new festival. Your other festivals are saved — switch back with the FESTIVAL list in the sidebar.');

@@ -104,6 +104,7 @@ function accountScreen() {
     setTimeout(fn, delay) { timers.set(++nextTimer, { fn, delay }); return nextTimer; },
     clearTimeout(id) { timers.delete(id); }, setInterval() { return 1; }, clearInterval() {}, TextEncoder, console });
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'rules/account-rules.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'rules/finance-rules.js'), 'utf8'), context);
   const source = fs.readFileSync(path.join(ROOT, 'account/account.js'), 'utf8');
   const hook = `window.accountTest = {
     start, saveNow, flushTeamChanges, readyToLeave, switchFestival, deleteOpenFestival, signOut,
@@ -397,4 +398,110 @@ test('failed rollback keeps its marker, and failure to publish a marker changes 
     } };
   assert.throws(() => applyFestivalData(blocked, { [LINEUP]: 'B saved' }), /Marker unavailable/);
   assert.deepEqual(Object.fromEntries(untouched), { [LINEUP]: 'A saved' });
+});
+
+// New projects get their own zero finance section. Existing projects are opened as saved;
+// these tests use only the account service above, never a real account or database.
+const FINANCE = 'festival-architect-finance';
+const { emptyFinance, DEFAULT_FINANCE } = require('../rules/finance-rules.js');
+
+function firstFestivalStartup(ui, { userId = null, legacy = false } = {}) {
+  ui.rows.clear();
+  ui.values.set(ACCOUNT_META_KEY, JSON.stringify({ userId, festivalId: null, syncedAt: null,
+    dirtyKeys: [], dirty: false, legacy, access: null }));
+  ui.api.resetForStartup();
+  return ui.api.start();
+}
+
+test('the first festival of a new account stores and opens zero finance values immediately', async () => {
+  const ui = accountScreen();
+  await firstFestivalStartup(ui);
+  const created = ui.mutations.find(request => request.table === 'festivals' && request.action === 'insert');
+  assert.deepEqual(JSON.parse(created.value.data[FINANCE]), emptyFinance());
+  assert.deepEqual(JSON.parse(ui.storage.getItem(FINANCE)), emptyFinance(), 'the local copy includes the seeded values before reload');
+  assert.equal(ui.api.state().meta.festivalId, THIRD);
+  assert.equal(ui.reloads(), 1);
+  ui.api.resetForStartup(); await ui.api.start();
+  assert.deepEqual(JSON.parse(ui.storage.getItem(FINANCE)), emptyFinance());
+  assert.equal(ui.mutations.filter(request => request.action === 'insert').length, 1, 'reloading does not create or reset the festival');
+});
+
+test('starting a first festival from another account clears its finance values and seeds zero locally', async () => {
+  const ui = accountScreen();
+  const otherFinance = JSON.stringify({ ...DEFAULT_FINANCE, ticketPrice: 177 });
+  ui.values.set(FINANCE, otherFinance);
+  await firstFestivalStartup(ui, { userId: OTHER });
+  assert.deepEqual(JSON.parse(ui.rows.get(THIRD).data[FINANCE]), emptyFinance());
+  assert.deepEqual(JSON.parse(ui.storage.getItem(FINANCE)), emptyFinance());
+  assert.equal(ui.saveRequests.length, 0, 'the other account’s values are not uploaded');
+});
+
+test('starting empty at the legacy-plan choice opens the stored zero finance section', async () => {
+  const ui = accountScreen();
+  ui.values.set(FINANCE, JSON.stringify({ ...DEFAULT_FINANCE, ticketPrice: 88 }));
+  await firstFestivalStartup(ui, { legacy: true });
+  assert.equal(ui.mutations.length, 0, 'choosing a plan comes before creating it');
+  await ui.node('#choice-use-account').onclick();
+  assert.deepEqual(JSON.parse(ui.rows.get(THIRD).data[FINANCE]), emptyFinance());
+  assert.deepEqual(JSON.parse(ui.storage.getItem(FINANCE)), emptyFinance());
+});
+
+test('importing a legacy plan keeps entered finance values instead of replacing them with zeros', async () => {
+  const ui = accountScreen();
+  const saved = JSON.stringify({ ...DEFAULT_FINANCE, ticketPrice: 88, sponsorship: 1234,
+    extras: [{ id: 'xshuttle', kind: 'cost', label: 'Shuttle bus', amount: 450, basis: 'total', timing: 'festival' }] });
+  ui.values.set(FINANCE, saved);
+  await firstFestivalStartup(ui, { legacy: true });
+  await ui.node('#choice-use-browser').onclick();
+  assert.equal(ui.rows.get(THIRD).data[FINANCE], saved);
+  assert.equal(ui.storage.getItem(FINANCE), saved);
+});
+
+test('New festival starts at zero after saving edits without altering the previous festival', async () => {
+  const ui = accountScreen();
+  const saved = JSON.stringify({ ...DEFAULT_FINANCE, ticketPrice: 62, sponsorship: 4500 });
+  ui.rows.get(FIRST).data = { [FINANCE]: saved };
+  ui.values.set(FINANCE, saved);
+  const edited = JSON.stringify({ ...JSON.parse(saved), marketing: 3210 });
+  ui.storage.setItem(FINANCE, edited);
+  const creating = ui.window.openNewFestival();
+  await settle();
+  assert.equal(ui.saveRequests.length, 1, 'the old project is saved before a new one opens');
+  assert.equal(ui.saveRequests[0].args.changes[FINANCE], edited);
+  ui.rows.get(FIRST).data[FINANCE] = edited; // simulated successful account save
+  ui.saveRequests[0].resolve({ data: { saved_at: 't1', previous_saved_at: 't0' }, error: null });
+  assert.equal(await creating, true);
+  assert.deepEqual(JSON.parse(ui.rows.get(THIRD).data[FINANCE]), emptyFinance());
+  assert.deepEqual(JSON.parse(ui.storage.getItem(FINANCE)), emptyFinance());
+  assert.equal(ui.rows.get(FIRST).data[FINANCE], edited, 'new-project initialization never touches the old row');
+  ui.api.resetForStartup(); await ui.api.start();
+  await ui.api.switchFestival(FIRST);
+  assert.equal(ui.storage.getItem(FINANCE), edited, 'reopening the old festival retains the latest values');
+});
+
+test('opening an existing saved festival preserves customized finances and own cost lines', async () => {
+  const ui = accountScreen();
+  const saved = JSON.stringify({ ...emptyFinance(), ticketPrice: 71, sellThrough: 65, goodSellThrough: 90,
+    extras: [{ id: 'xstaff', kind: 'cost', label: 'Backstage staff', amount: 650, basis: 'total', timing: 'before' }] });
+  ui.rows.get(SECOND).data = { [FINANCE]: saved };
+  await ui.api.switchFestival(SECOND);
+  assert.equal(ui.storage.getItem(FINANCE), saved);
+  ui.api.resetForStartup(); await ui.api.start();
+  assert.equal(ui.storage.getItem(FINANCE), saved);
+  assert.equal(ui.mutations.filter(request => request.action === 'insert').length, 0, 'existing rows are never initialized again');
+});
+
+test('creating either demo preserves its supplied finance section exactly', async () => {
+  const { demoFestival, munichDemoFestival } = require('../rules/demo-festival.js');
+  for (const demo of [demoFestival(), munichDemoFestival()]) {
+    const ui = accountScreen();
+    const supplied = { [LINEUP]: JSON.stringify(demo.plan), [FINANCE]: JSON.stringify({ ...DEFAULT_FINANCE, ...demo.finance }) };
+    const before = clone(supplied);
+    assert.equal(await ui.window.openNewFestival(supplied), true);
+    assert.equal(ui.rows.get(THIRD).data[FINANCE], before[FINANCE]);
+    assert.equal(ui.storage.getItem(FINANCE), before[FINANCE]);
+    assert.deepEqual(supplied, before, 'the demo source is not changed');
+    ui.api.resetForStartup(); await ui.api.start();
+    assert.equal(ui.storage.getItem(FINANCE), before[FINANCE]);
+  }
 });

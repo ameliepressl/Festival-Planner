@@ -98,6 +98,26 @@ function extraTotal(extra, days, visitors) {
 
 const DEFAULT_FINANCE = { ...Object.fromEntries(FINANCE_FIELDS.map((f) => [f.id, f.value])), extras: [] };
 
+// Example defaults above still belong to the demos and older saved assumptions.
+// A newly created festival gets its own complete, zero-valued finance section instead.
+function emptyFinance() {
+  return { ...Object.fromEntries(FINANCE_FIELDS.map((field) => [field.id, 0])), extras: [] };
+}
+
+// Called only when creating a festival, never when loading one. Explicit sections
+// (including demo finances or an imported plan) always take priority.
+function withStartingFinance(sections = {}) {
+  return { [FINANCE_STORAGE_KEY]: JSON.stringify(emptyFinance()), ...sections };
+}
+
+// An untouched plan has no meaningful price comparison or break-even forecast yet.
+// Real bookings and vendor fees count even before any assumptions are entered.
+function hasFinanceValues({ settings, artistFees = 0, pitchIncome = 0 }) {
+  return FINANCE_FIELDS.some((field) => settings[field.id] > 0)
+    || (settings.extras || []).some((line) => line.amount > 0)
+    || artistFees > 0 || pitchIncome > 0;
+}
+
 function validFinanceValue(fieldId, value) {
   const field = FINANCE_FIELDS.find((f) => f.id === fieldId);
   const number = Number(value);
@@ -454,7 +474,8 @@ function cashFlow(model, ticketingFee) {
 // In the browser these are plain globals; in the tests (Node) they are exported.
 if (typeof module !== 'undefined') {
   module.exports = {
-    FINANCE_STORAGE_KEY, FINANCE_FIELDS, DEFAULT_FINANCE, validFinanceValue, parseFinance, financeProblem,
+    FINANCE_STORAGE_KEY, FINANCE_FIELDS, DEFAULT_FINANCE, emptyFinance, withStartingFinance, hasFinanceValues,
+    validFinanceValue, parseFinance, financeProblem,
     ticketTiers, averagePriceFactor, profitMatrix, CASH_MONTHS, CASH_TIMING, splitByWeight, cashFlow,
     artistSpending, financeModel, scenarios, priceCurve,
     EXTRA_KINDS, EXTRA_BASES, EXTRA_TIMINGS, MAX_FINANCE_EXTRAS, financeExtraProblem, parseFinanceExtras, extraTotal, keepScenarioOrder
