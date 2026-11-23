@@ -848,3 +848,11 @@ The Daily view and Festival view switch uses the same segmented style as Project
 Suggest lineup now asks for a closing headliner for each festival day. It highlights each headliner in the preview and reports when a daily choice is missing, repeated, or cannot close the day. Confirmed performances and calendar blocks stay in place.
 
 Validation: **515/515 tests passed**. The browser preview showed two closing headliners across two days. A direct drag moved a tentative performance to a different stage and time, and it stayed there after reload. Dragging the same performance after confirmation left it in place. The browser reported no console errors during these checks.
+
+## Section conflicts (two people editing the same section)
+
+Owner: Amelie · Branch: `feature-section-conflicts` · Plan: [section-conflicts.md](feature-plans/section-conflicts.md).
+
+Found by Amelie's two-browser test: a stale browser silently overwrote a teammate's change inside the same section. Each section now has a version in the database (`migrations/007_section_conflicts.sql`); a save that started from an older version is refused for that section only, the edit stays in the browser, and a bar offers Keep mine or Use theirs. Reloading keeps the edit and asks again; signing out and switching festivals wait for the decision. Run migration 007 in the Supabase SQL Editor before merging; the page also works without it.
+
+Validation: **572/572 tests passed** with current `main` and the lineup branch (PR 55) merged in (19 new in `tests/section-conflicts.test.js`); the SQL was run against a real PostgreSQL together with migrations 001–006, twice.

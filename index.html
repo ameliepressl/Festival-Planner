@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="site-map/site-map.css?v=pin-presentation-1" />
     <link rel="stylesheet" href="vendors/vendors.css?v=custom-vendors" />
     <link rel="stylesheet" href="finance/finance.css?v=finance-scenarios" />
-    <link rel="stylesheet" href="account/account.css?v=forgot-password" />
+    <link rel="stylesheet" href="account/account.css?v=section-conflicts-1" />
     <link rel="stylesheet" href="compact.css?v=lineup-view-switch" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="notifications.css" />
@@ -27,8 +27,8 @@
          The Supabase library is a pinned copy; the browser checks its hash (see vendor/README.md). -->
     <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
     <script src="supabase-config.js"></script>
-    <script src="rules/account-rules.js?v=reset-link-scanners"></script>
-    <script src="account/account.js?v=zero-finance-start-1"></script>
+    <script src="rules/account-rules.js?v=section-conflicts-1"></script>
+    <script src="account/account.js?v=section-conflicts-1"></script>
   </head>
   <body>
     <!-- Icons for the sidebar (24×24, drawn with a 1.75 stroke in the text colour). -->
@@ -105,6 +105,8 @@
     <div class="account-notice" id="account-notice" role="status" aria-live="polite" hidden>
       <span id="account-notice-text"></span>
       <button type="button" class="button primary" id="account-notice-reload">Reload</button>
+      <button type="button" class="button primary" id="account-notice-keep" hidden>Keep mine</button>
+      <button type="button" class="button light" id="account-notice-theirs" hidden>Use theirs</button>
       <button type="button" class="account-notice-close" id="account-notice-close" aria-label="Close message">×</button>
     </div>
     <div class="app-layout">

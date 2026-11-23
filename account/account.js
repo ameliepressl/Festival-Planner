@@ -229,8 +229,13 @@
   // --- 2. Talking to Supabase -----------------------------------------------------------
 
   async function fetchFestival(id) {
-    const { data, error } = await client.from('festivals')
-      .select('id, owner_id, data, updated_at').eq('id', id).maybeSingle();
+    let { data, error } = await client.from('festivals')
+      .select('id, owner_id, data, updated_at, section_versions').eq('id', id).maybeSingle();
+    if (error && /section_versions/.test(error.message || '')) {
+      // The database has not been updated with migration 007 yet: work without versions, as before.
+      ({ data, error } = await client.from('festivals')
+        .select('id, owner_id, data, updated_at').eq('id', id).maybeSingle());
+    }
     if (error) throw error;
     return data;
   }
@@ -265,28 +270,36 @@
     saveTimer = setTimeout(saveNow, delay);
   }
 
-  // Saves the changed sections now. Resolves to true when nothing is left to save.
+  // Sections the database refused because a teammate saved them first. The person's edit stays in
+  // the browser, untouched, until they choose (Keep mine / Use theirs, see showConflictNotice).
+  function heldKeys() { return Object.keys(meta.conflicts || {}); }
+  function savable() { return hasUnheldChanges(meta.dirtyKeys, meta.conflicts); }
+
+  // Saves the changed sections now. Resolves to true when nothing is left to save (sections
+  // that wait for the person's decision are not counted: ask heldKeys() about them).
   function saveNow() {
     clearTimeout(saveTimer);
     if (!contextIsCurrent()) return Promise.resolve(false);
-    if (runningSave) return runningSave.then(() => (meta.dirty ? saveNow() : true));
-    if (!currentUser || !client || !meta.dirty || !meta.festivalId) return Promise.resolve(!meta.dirty);
+    if (runningSave) return runningSave.then(() => (savable() ? saveNow() : true));
+    if (!currentUser || !client || !savable() || !meta.festivalId) return Promise.resolve(!savable());
 
     const sections = captureSaveBatch({ storage, dirtyKeys: meta.dirtyKeys, role: access.role,
-      revisions: sectionRevisions, userId: currentUser.id, festivalId: meta.festivalId });
+      revisions: sectionRevisions, userId: currentUser.id, festivalId: meta.festivalId, held: heldKeys() });
     const nothingToSend = !Object.keys(sections.changes).length && !sections.removed.length;
     if (nothingToSend) {
       meta.dirtyKeys = acknowledgeSaveBatch({ batch: sections, userId: currentUser.id, festivalId: meta.festivalId,
         dirtyKeys: meta.dirtyKeys, revisions: sectionRevisions, currentKeys: festivalKeys(storage).filter(isSyncedKey) });
       writeMeta();
-      setStatus(meta.teamDirty ? 'saving' : sections.skipped.length ? (access.role === 'Viewer' ? 'readonly' : 'partly') : 'saved');
+      setStatus(heldKeys().length ? 'conflict' : meta.teamDirty ? 'saving' : sections.skipped.length ? (access.role === 'Viewer' ? 'readonly' : 'partly') : 'saved');
       return Promise.resolve(true);
     }
 
     const syncedBefore = meta.syncedAt;
+    const sent = [...Object.keys(sections.changes), ...sections.removed];
+    const expected = expectedVersions(meta.versions, sent);   // null: the database does not count versions yet
     setStatus('saving');
     runningSave = client.rpc('save_festival_changes', {
-      festival: sections.festivalId, changes: sections.changes, removed: sections.removed
+      festival: sections.festivalId, changes: sections.changes, removed: sections.removed, ...(expected ? { expected } : {})
     }).single()
       .then(({ data, error }) => {
         if (error) throw error;
@@ -294,13 +307,19 @@
         const teammateSaved = syncedBefore !== data.previous_saved_at;
         // A teammate saved in between: this browser lacks their sections until it reloads.
         meta.syncedAt = teammateSaved ? 'outdated' : data.saved_at;
-        meta.dirtyKeys = acknowledgeSaveBatch({ batch: sections, userId: currentUser.id, festivalId: meta.festivalId,
+        // Sections a teammate saved first are refused: they stay as they are in this browser, and the person chooses.
+        const outcome = applySaveResult({ versions: meta.versions, conflicts: meta.conflicts }, { keys: sent }, data);
+        if (outcome.versions) meta.versions = outcome.versions;
+        if (Object.keys(outcome.conflicts || {}).length) meta.conflicts = outcome.conflicts; else delete meta.conflicts;
+        const acknowledged = { ...sections, keys: [...outcome.saved, ...sections.skipped] };
+        meta.dirtyKeys = acknowledgeSaveBatch({ batch: acknowledged, userId: currentUser.id, festivalId: meta.festivalId,
           dirtyKeys: meta.dirtyKeys, revisions: sectionRevisions, currentKeys: festivalKeys(storage).filter(isSyncedKey) });
         writeMeta();
-        if (teammateSaved) showNotice('A teammate also saved this festival. Reload to see their changes — yours are saved.');
-        if (meta.dirty) scheduleSave(SAVE_DELAY);
-        else setStatus(meta.teamDirty ? 'saving' : sections.skipped.length ? 'partly' : 'saved');
-        return !meta.dirty;
+        if (outcome.refused.length) showConflictNotice();
+        else if (teammateSaved) showNotice('A teammate also saved this festival. Reload to see their changes — yours are saved.');
+        if (savable()) scheduleSave(SAVE_DELAY);
+        else setStatus(heldKeys().length ? 'conflict' : meta.teamDirty ? 'saving' : sections.skipped.length ? 'partly' : 'saved');
+        return !savable();
       })
       .catch((error) => {
         if (!contextIsCurrent()) return false;
@@ -441,7 +460,9 @@
     writeMeta();
   }
   function festivalMeta(row, rowAccess) {
-    return { userId: currentUser.id, festivalId: row.id, syncedAt: row.updated_at, dirtyKeys: [], dirty: false, legacy: false, access: rowAccess };
+    const versions = cleanVersions(row.section_versions);
+    return { userId: currentUser.id, festivalId: row.id, syncedAt: row.updated_at, dirtyKeys: [], dirty: false, legacy: false, access: rowAccess,
+      ...(versions ? { versions } : {}) };
   }
 
   // Load a festival into this browser and restart the pages with it.
@@ -463,13 +484,14 @@
       // pages tidied their saved data while starting: store that version too
       loadWrites.forEach((key) => { if (key !== ACCOUNT_TEAM_KEY) markUnsaved(key); });
     }
-    if (meta.dirty) saveNow();
-    else setStatus(meta.teamDirty ? 'saving' : access.role === 'Viewer' ? 'readonly' : 'saved');
+    if (savable()) saveNow();
+    else if (!heldKeys().length) setStatus(meta.teamDirty ? 'saving' : access.role === 'Viewer' ? 'readonly' : 'saved');
     if (meta.teamDirty) scheduleTeamSave(0);
     clearInterval(checkTimer);
     checkTimer = setInterval(checkForTeammates, CHECK_DELAY);
     const notice = sessionStorage.getItem('fa-account-notice');
     if (notice) { sessionStorage.removeItem('fa-account-notice'); showNotice(notice, false); }
+    if (heldKeys().length) showConflictNotice();   // reloading keeps the person's edit and asks again
   }
 
   async function start() {
@@ -569,6 +591,8 @@
       }
       meta.festivalId = cloud.id;
       meta.access = rowAccess;
+      // A browser from before versions existed starts counting from what the database has now.
+      if (!meta.versions && cleanVersions(cloud.section_versions)) meta.versions = cleanVersions(cloud.section_versions);
       writeMeta();
       buildSwitcher();
       finishStart();
@@ -675,6 +699,7 @@
     if (!contextIsCurrent()) return 'Reload this tab before opening another festival.';
     if (contextTransition) return 'A festival change is already in progress.';
     if (!confirmDraftNavigation()) return 'cancelled';
+    if (heldKeys().length) { showConflictNotice(); return 'cancelled'; }   // choose Keep mine or Use theirs first
     beginTransition();
     if (!(await flushTeamChanges()) || (meta.dirty && !(await saveNow()) && access.role !== 'Viewer')) {
       endTransition();
@@ -956,12 +981,12 @@
     if ((meta.dirty || meta.teamDirty) && !leaveUnsaved && access.role !== 'Viewer') {
       button.disabled = true;
       const teamSaved = await flushTeamChanges();
-      const saved = teamSaved && await saveNow();
+      const saved = teamSaved && await saveNow() && !heldKeys().length;
       button.disabled = false;
       if (!saved) {
         leaveUnsaved = true;
         button.textContent = 'Sign out without saving';
-        setStatus('offline');
+        if (heldKeys().length) showConflictNotice(); else setStatus('offline');
         endTransition();
         return;
       }
@@ -1037,7 +1062,8 @@
     saving: 'Saving…',
     offline: 'Not saved yet — no connection to your account. Retrying…',
     readonly: 'View only — your changes are not saved',
-    partly: 'Saved. Changes to finances or task assignments can only be saved by an Admin.'
+    partly: 'Saved. Changes to finances or task assignments can only be saved by an Admin.',
+    conflict: 'Not saved — a teammate changed the same section. Choose how to continue.'
   };
 
   function setStatus(kind) {
@@ -1057,7 +1083,49 @@
     if (!notice) return;
     $('#account-notice-text').textContent = text;
     $('#account-notice-reload').hidden = !offerReload;
+    ['#account-notice-keep', '#account-notice-theirs'].forEach((id) => { const button = $(id); if (button) button.hidden = true; });
     notice.hidden = false;
+  }
+
+  // Two people changed the same section: say so, keep the person's edit, and let them choose.
+  function showConflictNotice() {
+    const notice = $('#account-notice');
+    if (!notice || !heldKeys().length) return;
+    $('#account-notice-text').textContent = conflictMessage(heldKeys());
+    $('#account-notice-reload').hidden = true;
+    ['#account-notice-keep', '#account-notice-theirs'].forEach((id) => { const button = $(id); if (button) button.hidden = false; });
+    notice.hidden = false;
+    setStatus('conflict');
+  }
+
+  // Keep mine: the held sections start from the teammate's version, so the next save replaces it.
+  function keepMyVersion() {
+    if (!contextIsCurrent() || contextTransition || !heldKeys().length) return;
+    meta.versions = keepMine({ versions: meta.versions, conflicts: meta.conflicts }).versions;
+    delete meta.conflicts;
+    writeMeta();
+    $('#account-notice').hidden = true;
+    setStatus('saving');
+    saveNow();
+  }
+
+  // Use theirs: save everything else, then load the saved festival; the held edits are dropped.
+  async function useTheirVersion() {
+    if (!contextIsCurrent() || contextTransition || !heldKeys().length) return;
+    beginTransition();
+    try {
+      if (!(await flushTeamChanges()) || (await saveNow(), savable())) {
+        endTransition();
+        showNotice(NOT_SAVED_YET, false);
+        return;
+      }
+      const row = await fetchFestival(meta.festivalId);
+      if (!row) throw new Error('This festival is no longer available.');
+      await openFestival(row, meta.access || access);
+    } catch (error) {
+      endTransition();
+      showNotice(accountErrorMessage(error), false);
+    }
   }
 
   function showScreen(name) {
@@ -1132,6 +1200,8 @@
       if (marker !== null) sessionStorage.setItem('fa-account-recover-transition', marker);
       window.location.reload();
     };
+    $('#account-notice-keep').onclick = keepMyVersion;
+    $('#account-notice-theirs').onclick = useTheirVersion;
     $('#account-notice-reload').onclick = async () => {
       if (staleContext) { window.location.reload(); return; }
       const problem = await readyToLeave();
