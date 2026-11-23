@@ -31,7 +31,8 @@ Several of us are beginners. Explain what you change and why, in plain language.
 - `product-brief/festival-architect-brief.html` = the product brief. It wins over anything else.
 - `feature-plans/` = one plan per feature: Why, What, Out of scope, Done when.
 - `PROJECT_PROGRESS.md` = who owns which branch and its status.
-- Rules are always checked in `rules/festival-rules.js`, never only in the screen.
+- Rules are always checked in `rules/` (one file per area, e.g. `festival-rules.js`, `finance-rules.js`,
+  `vendor-rules.js`), never only in the screen.
 
 ## Accounts and data
 
@@ -75,8 +76,10 @@ Several of us are beginners. Explain what you change and why, in plain language.
 
 - Start every feature from the latest `main`. One branch per feature.
 - Never commit to `main` directly. Open a pull request; one other team member reviews it.
-- Write the plan in `feature-plans/` before building. Update `PROJECT_PROGRESS.md` in the same pull request.
+- Write the plan in `feature-plans/` before building, starting from `feature-plans/_TEMPLATE.md`. Update `PROJECT_PROGRESS.md` in the same pull request.
 - Change only what the feature needs. Do not fix other things you notice — note them instead.
+- Follow the checklist in `CONTRIBUTING.md`; the pull request template asks for the plan, how AI was
+  used, the test output and the browser check. Why we work this way: `docs/ai-workflow.md`.
 
 ## Tests and verification
 
