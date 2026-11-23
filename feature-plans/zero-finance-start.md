@@ -20,7 +20,7 @@ Existing saved projects and both demo festivals must retain their finance values
 
 - Changing stored festivals, demo figures, database tables, access permissions, lineup budgets or festival-size defaults.
 - Changing finance formulas or the explicit Reset-to-example action.
-- Publishing, pushing or merging this local branch.
+- Publishing, pushing or merging this branch into `main`.
 
 ## Done when
 
@@ -47,4 +47,10 @@ Browser verification used separate localhost origins with a fictional account se
 - The empty finance page fits a 375px viewport without document overflow; the desktop view is also readable. Both preview consoles had no errors.
 - Returned to the normal app and verified the existing Lisbon festival still displays its saved figures. No saved user festival was created or edited for testing.
 
-Full test output is available locally at `/private/tmp/zero-finance-start-tests.txt`; no commit, push or merge was made.
+Initial test output is available locally at `/private/tmp/zero-finance-start-tests.txt`.
+
+## Integration with current main — 23 November 2026
+
+Saved the finance work in local commit `836ceff`, then merged `origin/main` at `03407d0` into this branch without conflicts. This includes the notification sender feature while retaining the finance initialization and both sets of script cache versions.
+
+After integration: **479 tests, 479 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo**. Output: `/private/tmp/zero-finance-main-integration-tests.txt`. Reloaded the normal app: Finances and the notification bell load, the existing Lisbon forecast is unchanged, and no console errors were reported. This branch contains all commits from that `main`; no changes were pushed or merged into remote `main`.

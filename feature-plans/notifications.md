@@ -121,3 +121,34 @@ flowchart LR
 
 **Limits of the in-app version until then:** notifications appear when the app is opened, and the
 read state is kept per browser.
+
+## Follow-up: who assigned the task
+
+Branch `feature-notification-sender`. Asked for by the team after the first version: every
+notification names the person who handed out the task.
+
+- [x] "Amelie assigned you *Book security*"; deadlines show "Due Fri 12 Mar · From Amelie";
+      "You assigned yourself …" when it was you. Older assignments without a record keep the
+      old sentence, and so do tasks from someone who has left the team.
+- [x] **Rules in `rules/task-rules.js`:** `withAssigners` records, when assignments are saved, who
+      gave each new or changed one (unchanged ones keep their giver; "nobody" is never recorded);
+      `assignerOf` finds it for a subtask (its own record, otherwise its group's);
+      `parseAssignments` reads it back and drops broken or stray records.
+- [x] **Stored inside `festival-task-assignments-v1`** as `assignedBy`. That key is already guarded
+      by the database (`migrations/004`): only Owner and Admins can change it, so an Editor cannot
+      fake who assigned a task. No new migration.
+- [x] Both save paths record it: the Timeline's *Save changes* (`gantt-editor.js`) and
+      `task-assignments.js`.
+- [x] Cache versions in `index.html` raised for every changed script, so no browser mixes an old
+      `task-rules.js` with the new notification rules.
+
+**Tests:** `tests/notification-sender.test.js` (9 tests): recorded on save; kept when someone else
+saves later; new giver after reassigning; no record for "nobody" or without an account; own subtask
+vs. group; saved and read back, broken records dropped; older data without a giver; the sentences;
+the page shows the giver as text. No existing test was changed.
+Result: 463 tests, 463 pass, 0 fail.
+
+**Checked by hand** (local copy on port 8021, a simulated Owner "Amelie" and Editor "Kira"): Amelie
+picked Kira as owner of a subtask in Timeline → Edit plan and saved; the saved data held
+`assignedBy` for that subtask only; Kira's bell showed "1" with "Due Mon 23 Nov · From Amelie".
+A second subtask assigned the same way showed up as well. No console errors; test data removed.

@@ -48,10 +48,12 @@
     button.dataset.stepId = item.stepId;
     if (item.unread) button.classList.add('unread');
     const text = element('span', 'notification-text', notificationText(item));
-    const meta = element('span', 'notification-meta', dueLabel(item));
+    // e.g. "Due Fri 20 Nov · From Amelie"
+    const details = [dueLabel(item), notificationSource(item)].filter(Boolean).join(' · ');
+    const meta = element('span', 'notification-meta', details);
     if (item.isNew && item.kind !== 'new') meta.prepend(element('b', 'notification-new', 'New'));
     button.append(element('span', 'notification-dot'), text, meta);
-    button.setAttribute('aria-label', (item.unread ? 'Unread: ' : '') + text.textContent + (meta.textContent ? '. ' + dueLabel(item) : ''));
+    button.setAttribute('aria-label', (item.unread ? 'Unread: ' : '') + text.textContent + (details ? '. ' + details : ''));
     button.addEventListener('click', () => openTask(item.stepId));
     row.append(button);
     return row;

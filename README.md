@@ -168,7 +168,7 @@ These are the active rules in the [current product brief](product-brief/festival
 - **Project tasks** — a task board and editable Gantt timeline with suggested dates relative
   to the festival, assignments, filters and deadlines. Add or delete suggested/custom tasks;
   timeline edits use Save or Cancel. A fresh project starts with fresh task progress.
-- **Notifications** — a bell in the top bar tells you when a task was assigned to you, and which
+- **Notifications** — a bell in the top bar tells you when a task was assigned to you and by whom, and which
   of your tasks are due within 7 days or overdue. One click opens the task under *My tasks*;
   "Mark all as read" clears the counter, and open deadlines come back the next day.
   Notifications appear when you open the app (no e-mails yet; see the [plan](feature-plans/notifications.md)).

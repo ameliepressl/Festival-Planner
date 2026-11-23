@@ -182,8 +182,11 @@
     try {
       persistProject(plan);
       if (JSON.stringify(statuses) !== JSON.stringify(cleaned.statuses)) localStorage.setItem(PROJECT_STATUS_KEY, JSON.stringify(cleaned.statuses));
-      if (mayAssign && JSON.stringify(window.taskAssignments.read()) !== JSON.stringify(cleaned.assignments)) {
-        localStorage.setItem(TASK_ASSIGNMENTS_KEY, JSON.stringify(cleaned.assignments));
+      // Also remembers who handed out each new assignment (shown in notifications).
+      const current = window.taskAssignments.read();
+      const assignments = withAssigners(current, cleaned.assignments, window.taskAssignments.myUserId?.());
+      if (mayAssign && JSON.stringify(current) !== JSON.stringify(assignments)) {
+        localStorage.setItem(TASK_ASSIGNMENTS_KEY, JSON.stringify(assignments));
       }
     } catch (failure) {
       customPlan = wasCustomPlan;
