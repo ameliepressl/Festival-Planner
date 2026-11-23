@@ -14,8 +14,11 @@
     border: { label: 'Draw fence', hint: 'Click the corners of the festival ground one after another, then press “Done”.' },
     entrance: { label: 'Set gate', hint: 'Click the spot on the fence where the main entrance should be.' },
     paint: { label: 'Mark no-go', hint: 'Drag over water, forest, roads or buildings to mark them as no-go areas.' },
-    erase: { label: 'Erase no-go', hint: 'Drag over red areas to make them usable again.' }
+    erase: { label: 'Erase no-go', hint: 'Drag over red areas to make them usable again.' },
+    // Not a toolbar button: started from "Pins to place" (rules/map-pin-rules.js).
+    place: { label: 'Place pins', hint: 'Click the map to place the pin.' }
   };
+  const TOOLBAR_MODES = Object.entries(MODES).filter(([id]) => id !== 'place');
 
   // Festival size: the expected visitors decide how many toilets, water points and pitches the map needs.
   // A saved lineup decides how many stages the map has (Stage A, B, C, ...).
@@ -35,7 +38,9 @@
   let mode = 'explore';
   let showNogo = false;
   let draftBorder = null;
-  let box = null;     // the visible part of the map (zoom and pan)
+  let placing = null; // the pin that the next click on the map places (mode "place")
+  let ghost = null;   // preview under the mouse while placing: { at, ok }
+  let box = null;    // the visible part of the map (zoom and pan)
   let pointer = null; // what the mouse is doing right now
   let busy = false;
   let simulation = null;
@@ -76,7 +81,7 @@
     ({ sites, ground, currentId } = cloneMapDraft(draft.present));
     needs = sizeFor(ground.visitors); items = layoutItems(needs);
     selectedId = null; draftBorder = draft.present.pendingFence ? cloneMapDraft(draft.present.pendingFence) : null;
-    pointer = null; box = null; mode = draftBorder?.length ? 'border' : 'explore';
+    pointer = null; box = null; placing = null; ghost = null; mode = draftBorder?.length ? 'border' : 'explore';
     renderPage();
   }
   function commitChanges() {
@@ -162,9 +167,9 @@
         <div class="sm-main" role="region" aria-labelledby="festival-layout-title">
           <h2 id="festival-layout-title">Festival layout</h2>
           <div class="sm-tools" role="group" aria-label="Map tools">
-            ${Object.entries(MODES).map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
+            ${TOOLBAR_MODES.map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
             <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> Show no-go areas</label>
-            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
+            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary sm-clear-button" id="sm-clear-pins" aria-haspopup="dialog" aria-controls="sm-clear-dialog">Clear all pins</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
           </div>
           <div class="map-chips" role="group" aria-label="Show categories">
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
@@ -185,6 +190,7 @@
           <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </div>
         <aside class="sm-side">
+          <section class="sm-card sm-tray" id="sm-tray" aria-labelledby="sm-tray-title" hidden></section>
           <section class="sm-card" id="sm-details" aria-live="polite"></section>
         </aside>
       </div>
@@ -193,7 +199,8 @@
         <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${escape(m.id)}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
         <div id="sm-settings"></div>
         <p class="field-help">Changes remain a draft until you choose Save changes above the map.</p><p id="sm-settings-message" role="status" aria-live="polite"></p>
-      </dialog>`;
+      </dialog>
+      <dialog id="sm-clear-dialog" class="confirm-dialog sm-clear-dialog" aria-labelledby="sm-clear-title"><form method="dialog"></form></dialog>`;
     box = box && box.site === currentId ? box : { site: currentId, x: 0, y: 0, w: s.width, h: s.height };
     drawScene();
     drawAll();
@@ -207,7 +214,7 @@
     renderCrowd();
     renderDraftActions();
     if (!editable()) {
-      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
+      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-clear-pins, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
     }
     const playbackPanel = view.querySelector('#sm-simulation');
     playbackPanel.ontoggle = () => {
@@ -224,7 +231,7 @@
     bindMap();
   }
 
-  function drawAll() { applyBox(); drawNogo(); drawObjects(); drawEdit(); renderHint(); renderDetails(); renderScore(); renderCrowd(); }
+  function drawAll() { applyBox(); drawNogo(); drawObjects(); drawEdit(); renderHint(); renderDetails(); renderScore(); renderCrowd(); renderTray(); }
 
   // ---------- drawing the layers ----------
   function drawScene() { view.querySelector('#sm-scene').innerHTML = MapDrawing.scene(site()); }
@@ -288,11 +295,168 @@
       out += points.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="${r * 1.4}" fill="#ff684c" stroke="#fff" stroke-width="${r * 0.4}" />`).join('');
     }
     if (mode === 'entrance' && s.entrance) out += `<circle cx="${s.entrance[0]}" cy="${s.entrance[1]}" r="${r * 3}" fill="none" stroke="#ff684c" stroke-width="${r * 0.6}" />`;
+    // While placing: a see-through pin follows the mouse; red with a cross where it cannot stand.
+    const item = mode === 'place' && placing && ghost ? findItem(placing, items) : null;
+    if (item) {
+      const pinSize = box.w / 58;
+      out += `<g class="sm-ghost ${ghost.ok ? 'ok' : 'blocked'}" transform="translate(${ghost.at[0]} ${ghost.at[1]})" pointer-events="none">
+        <circle r="${pinSize * 0.5}" fill="none" stroke="#fff" stroke-width="${pinSize * 0.12}" stroke-dasharray="${pinSize * 0.3} ${pinSize * 0.2}" />
+        ${MapDrawing.pin(item, pinSize, ghost.ok ? colourOf(item.category) : '#c14b3c', ghost.ok ? item.symbol : '✕', false)}</g>`;
+    }
     layer.innerHTML = out;
+  }
+
+  // ---------- "Clear all pins" and placing them again (rules/map-pin-rules.js) ----------
+  function showCategory(categoryId) {
+    if (active.includes(categoryId)) return;
+    active = [...active, categoryId];
+    const chip = view.querySelector(`[data-category="${categoryId}"]`);
+    chip?.classList.add('on'); chip?.setAttribute('aria-pressed', 'true');
+  }
+
+  // Arms one pin: the next click on the map places it.
+  function startPlacing(id) {
+    const item = findItem(id, items);
+    if (!item || site().placements[id] || !editable() || busy) return;
+    if (draftBorder?.length) { mapMessage('Finish the fence with Done, or cancel drawing it, before placing pins.'); return; }
+    showCategory(item.category);
+    if (mode !== 'place') setMode('place');
+    placing = id; ghost = null;
+    drawEdit(); renderHint(); renderTray();
+  }
+
+  function stopPlacing() {
+    placing = null; ghost = null;
+    if (mode === 'place') setMode('explore'); else { drawEdit(); renderTray(); }
+  }
+
+  function placeAt(point) {
+    const s = site();
+    const item = findItem(placing, items);
+    const spot = pinSpot(s, item, point);
+    if (!spot.ok) { mapMessage(spot.problem); return; }
+    s.placements = { ...s.placements, [item.id]: spot.at };
+    if (item.id === 'entrance') s.entrance = spot.at;
+    save();
+    const next = nextPinToPlace(items, s.placements, item.id);
+    placing = next?.id || null; ghost = null;
+    if (next) showCategory(next.category);
+    selectedId = item.id;
+    drawAll();
+    if (!next) {
+      setMode('explore');
+      celebrate();
+    }
+  }
+
+  // The last pin is on the map: say how good the new layout is.
+  function celebrate() {
+    const s = site();
+    const score = layoutScore(checkLayout(s, s.placements, items));
+    view.querySelector('.sm-ring')?.classList.add('sm-ring-done');
+    mapMessage(score === 100 ? `All ${items.length} pins placed, and every layout rule is met. Choose Save changes to keep it.`
+      : `All ${items.length} pins placed. Layout check: ${score}%. Click a red rule to see what to move, then Save changes.`);
+  }
+
+  function fillMissing() {
+    const s = site();
+    const result = suggestLayout(s, items);
+    if (result.problem) { mapMessage(result.problem); return; }
+    const before = items.filter((item) => s.placements[item.id]).length;
+    s.placements = fillMissingPins(s.placements, result.placements);
+    placing = null; ghost = null;
+    save();
+    if (mode === 'place') setMode('explore');
+    drawAll();
+    const added = items.filter((item) => s.placements[item.id]).length - before;
+    const score = layoutScore(checkLayout(s, s.placements, items));
+    mapMessage(`${added} ${added === 1 ? 'pin' : 'pins'} added; your ${before} placed ${before === 1 ? 'pin stays' : 'pins stay'} where you put them. Layout check: ${score}%.`);
+  }
+
+  // The list on the right: every pin still waiting for a place, by category, with progress.
+  function renderTray() {
+    const tray = view.querySelector('#sm-tray');
+    if (!tray) return;
+    const s = site();
+    const groups = pinsToPlace(items, s.placements);
+    tray.hidden = groups.length === 0 || lineupProblem();
+    if (tray.hidden) { tray.innerHTML = ''; return; }
+    const { total, placed } = pinCounts(items, s.placements);
+    const locked = !editable() || busy;
+    const current = placing ? findItem(placing, items) : null;
+    tray.innerHTML = `
+      <div class="sm-tray-head"><h2 id="sm-tray-title">Pins to place</h2><span>${placed} of ${total}</span></div>
+      <div class="sm-tray-progress" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
+      <p class="sm-note">${current ? `Now placing <b>${escape(current.name)}</b>. Click its spot on the map${current.onFence ? '; it snaps to the fence' : ''}.`
+        : 'Pick a pin, then click its spot on the map. The next one is ready right after.'}</p>
+      ${groups.map((group) => `<div class="sm-tray-group"><p class="sm-sub">${escape(group.title)} <small>${group.items.length}</small></p><div class="sm-tray-pins">
+        ${group.items.map((item) => `<button type="button" class="sm-tray-pin ${item.id === placing ? 'on' : ''}" data-place="${item.id}" aria-pressed="${item.id === placing}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} title="${escape(item.text)}">
+          <i>${escape(item.symbol)}</i>${escape(item.name)}</button>`).join('')}</div></div>`).join('')}
+      <div class="sm-tray-actions">
+        <button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''}>Fill the rest for me</button>
+        ${current ? '<button type="button" class="button secondary" data-tray="stop">Stop placing</button>' : ''}
+      </div>
+      <small class="sm-note">“Fill the rest” keeps every pin you placed and plans only the missing ones.</small>`;
+  }
+
+  // The confirmation for "Clear all pins": what goes, what stays, and that it can be undone.
+  function openClearDialog() {
+    const s = site();
+    const dialog = view.querySelector('#sm-clear-dialog');
+    const hasGate = Boolean(s.placements.entrance);
+    // "Keep the main entrance" starts ticked, so the first count already leaves the gate out.
+    const counts = pinCounts(items, s.placements, { keepGate: hasGate });
+    if (!counts.toRemove) { mapMessage('There are no pins to clear on this map. Pick one under “Pins to place”.'); return; }
+    const byCategory = MAP_CATEGORIES.map((category) => ({ ...category,
+      count: items.filter((item) => item.category === category.id && item.id !== 'entrance' && s.placements[item.id]).length })).filter((category) => category.count);
+    dialog.querySelector('form').innerHTML = `
+      <p class="eyebrow">Site map · ${escape(s.name)}</p>
+      <h2 id="sm-clear-title">Start the layout from scratch?</h2>
+      <p>All <b id="sm-clear-count">${counts.toRemove}</b> pins are taken off the map so you can place every facility yourself.</p>
+      <ul class="sm-clear-chips">${byCategory.map((category) => `<li style="--marker:${category.colour}"><i></i>${category.count} ${escape(category.title)}</li>`).join('')}</ul>
+      ${hasGate ? '<label class="sm-clear-keep"><input type="checkbox" id="sm-clear-keep-gate" checked /> <span>Keep the main entrance where it is<small>Everything else is planned around the gate.</small></span></label>' : ''}
+      <div class="sm-clear-stays"><b>Stays as it is:</b> the map, the fence, no-go areas, the festival size and crowd measurements.</div>
+      <p class="sm-clear-safe">Nothing is saved yet. <b>Undo change</b> brings the pins back right away, <b>Discard changes</b> returns to your saved map.</p>
+      <div class="dialog-actions"><button class="button secondary" value="cancel">Keep my pins</button><button class="button danger" value="clear" id="sm-clear-confirm">Clear ${counts.toRemove} pins</button></div>`;
+    const keep = dialog.querySelector('#sm-clear-keep-gate');
+    keep?.addEventListener('change', () => {
+      const n = pinCounts(items, s.placements, { keepGate: keep.checked }).toRemove;
+      dialog.querySelector('#sm-clear-count').textContent = n;
+      dialog.querySelector('#sm-clear-confirm').textContent = `Clear ${n} pins`;
+    });
+    dialog.returnValue = '';
+    dialog.onclose = () => {
+      if (dialog.returnValue === 'clear') clearPins({ keepGate: Boolean(keep?.checked) });
+      else view.querySelector('#sm-clear-pins')?.focus();
+    };
+    dialog.showModal();
+    dialog.querySelector('[value="cancel"]').focus();
+  }
+
+  function clearPins({ keepGate }) {
+    if (!editable() || busy) return;
+    const s = site();
+    const removed = pinCounts(items, s.placements, { keepGate }).toRemove;
+    s.placements = clearedPlacements(s.placements, { keepGate });
+    selectedId = null;
+    save();
+    const first = nextPinToPlace(items, s.placements);
+    placing = null;
+    drawAll();
+    if (first) startPlacing(first.id);
+    mapMessage(`${removed} pins cleared. Click the map to place ${first ? first.name : 'the first pin'}; Undo change brings them all back.`);
   }
 
   function renderHint() {
     const hint = view.querySelector('#sm-hint');
+    if (mode === 'place') {
+      const item = placing ? findItem(placing, items) : null;
+      const left = pinsToPlace(items, site().placements).reduce((sum, group) => sum + group.items.length, 0);
+      hint.innerHTML = item
+        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
+        : '<span>Pick a pin under “Pins to place”.</span>';
+      return;
+    }
     const extra = mode === 'border' || draftBorder?.length
       ? ` <button type="button" class="button primary" data-border="done" ${(draftBorder || []).length < 3 ? 'disabled' : ''}>Done (${(draftBorder || []).length} corners)</button> <button type="button" class="button secondary" data-border="cancel">Cancel</button>`
       : '';
@@ -458,7 +622,7 @@
       view.querySelector('#sm-select').value = currentId;
       renderSettings(); return false;
     }
-    currentId = id; selectedId = null; draftBorder = null; box = null; mode = 'explore';
+    currentId = id; selectedId = null; draftBorder = null; box = null; placing = null; ghost = null; mode = 'explore';
     // Choosing the festival's active map is saved deliberately too. Overview keeps
     // using the previous committed map until Save changes is chosen.
     if (!skipNavigationCheck && editable()) save();
@@ -469,10 +633,11 @@
   function setMode(next) {
     closeSimulation();
     mode = next;
+    if (mode !== 'place') { placing = null; ghost = null; }
     if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
     view.querySelectorAll('[data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-pressed', b.dataset.mode === mode); });
-    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions();
+    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions(); renderTray();
   }
 
   function select(id) {
@@ -583,7 +748,7 @@
       const s = site();
       const p = toMap(event);
       const itemEl = event.target.closest('.fa-item');
-      pointer = { start: [event.clientX, event.clientY], startBox: { ...box }, moved: false, itemId: itemEl?.dataset.id || null, el: itemEl };
+      pointer = { start: [event.clientX, event.clientY], startBox: { ...box }, moved: false, itemId: itemEl?.dataset.id || null, el: itemEl, at: p };
       svg.setPointerCapture(event.pointerId);
       if ((!editable() || busy) && mode !== 'explore') { pointer = null; return; }
       if (mode === 'border') { draftBorder = [...(draftBorder || []), p]; save(); drawEdit(); renderHint(); renderDraftActions(); pointer = null; return; }
@@ -599,6 +764,13 @@
     });
 
     svg.addEventListener('pointermove', (event) => {
+      if (!pointer && mode === 'place' && placing) {
+        const p = toMap(event);
+        const spot = pinSpot(site(), findItem(placing, items), p);
+        ghost = { at: spot.ok ? spot.at : p, ok: spot.ok };
+        drawEdit();
+        return;
+      }
       if (!pointer) return;
       const dx = event.clientX - pointer.start[0];
       const dy = event.clientY - pointer.start[1];
@@ -617,8 +789,10 @@
       if (pointer.paint) { save(); drawObjects(); renderScore(); renderDetails(); renderCrowd(); }
       else if (pointer.drag) { save(); drawAll(); }
       else if (!pointer.moved && pointer.itemId) select(pointer.itemId);
+      else if (!pointer.moved && mode === 'place' && placing && editable() && !busy) { const at = pointer.at; pointer = null; placeAt(at); return; }
       pointer = null;
     };
+    svg.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawEdit(); } });
     svg.addEventListener('pointerup', finish);
     svg.addEventListener('pointercancel', finish);
     svg.addEventListener('wheel', (event) => { event.preventDefault(); zoom(event.deltaY > 0 ? 1.15 : 1 / 1.15, toMap(event)); }, { passive: false });
@@ -642,6 +816,17 @@
       return;
     }
     if (t.closest('#sm-suggest')) { if (editable() && !busy) suggest(); return; }
+    if (t.closest('#sm-clear-pins')) { if (editable() && !busy) openClearDialog(); return; }
+    const placeButton = t.closest('[data-place]');
+    if (placeButton) { startPlacing(placeButton.dataset.place); return; }
+    const trayAction = t.closest('[data-tray]')?.dataset.tray;
+    if (trayAction === 'stop') { stopPlacing(); return; }
+    if (trayAction === 'skip') {
+      const next = nextPinToPlace(items, site().placements, placing);
+      if (next && next.id !== placing) startPlacing(next.id);
+      return;
+    }
+    if (trayAction === 'fill') { if (editable() && !busy) fillMissing(); return; }
     const modeButton = t.closest('[data-mode]');
     if (modeButton) { if (modeButton.dataset.mode === 'explore' || (editable() && !busy)) setMode(modeButton.dataset.mode); return; }
     const chip = t.closest('[data-category]');
@@ -675,7 +860,7 @@
     if (t.closest('[data-go-vendors]')) return document.querySelector('.sidebar-item[data-section="Vendors"]').click();
     const action = t.closest('[data-action]')?.dataset.action;
     if (action && (!editable() || busy)) return;
-    if (action === 'plan-missing') return suggest();
+    if (action === 'plan-missing') return fillMissing();
     if (t.closest('.sm-upload')) mapMessage('Choose a JPG or PNG image. Uploading it creates a new map.');
     if (action === 'detect') {
       busy = true; renderDraftActions();
@@ -731,6 +916,10 @@
         mapMessage('Enter a map width from 20 to 20,000 metres. The previous valid width has been kept.');
       }
     }
+  });
+  // Esc stops placing pins (unless a dialog is open; then Esc closes the dialog).
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && mode === 'place' && !view.classList.contains('hidden') && !view.querySelector('dialog[open]')) stopPlacing();
   });
   view.addEventListener('keydown', (event) => {
     const rule = event.target.closest('[data-rule]');

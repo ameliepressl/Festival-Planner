@@ -181,6 +181,9 @@ These are the active rules in the [current product brief](product-brief/festival
   - **Suggest layout** places facilities for the active lineup stages according to **10 layout rules**
     (stage distance, first aid / toilets / water near every stage, exits far apart …),
     with a score. Drag pins to adjust; walkways route around water and forest.
+  - **Clear all pins** starts the layout from scratch (the gate can stay). **Pins to place** then lists
+    every missing facility: pick one, click its spot (gate and exits snap to the fence, water and forest
+    are refused), and the next is ready. **Fill the rest for me** plans only what is still missing.
   - **Festival size:** the expected visitors decide how many toilets, water points, food
     pitches, first aiders and security staff are needed.
   - Edits remain a draft until **Save changes**. **Undo change** reverses the last action;
