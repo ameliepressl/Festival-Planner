@@ -15,7 +15,7 @@ Kira · Amelie · Frederik · Vicky
 
 **▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
 
-[At a glance](#-at-a-glance) · [Start here](#-start-here) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [How we work with AI](#-how-we-work-with-ai) · [Roadmap](feature-plans/roadmap.md)
+[At a glance](#-at-a-glance) · [Start here](#-start-here) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Data & privacy](#-data--privacy) · [How we work with AI](#-how-we-work-with-ai) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -69,8 +69,16 @@ Nothing to install.
 
 **Run it on your own computer:**
 
-The app is plain HTML, CSS and JavaScript. Serve the folder with a static file server.
-If Python 3 is available:
+The app is plain HTML, CSS and JavaScript, so there is nothing to install or build.
+Get a fresh copy and serve the folder with a static file server (Python 3 has one built in):
+
+```bash
+git clone https://github.com/ameliepressl/Festival-Planner.git
+```
+
+```bash
+cd Festival-Planner
+```
 
 ```bash
 python3 -m http.server 8000
@@ -80,6 +88,14 @@ Open **<http://localhost:8000/>**, create an account (username, email, password)
 and keep the terminal running while you use the app. Stop it with `Ctrl + C`.
 Python only serves the files; there is no Python application backend. The live link
 shows the published version of `main`, which may differ from an unmerged local branch.
+
+**Run the tests** (in the same folder; needs [`uv`](https://docs.astral.sh/uv/), which downloads Node for you):
+
+```bash
+uvx --from nodejs-wheel node --test
+```
+
+With Node 22 already installed, `node --test` does the same. More in [Tests](#-tests).
 
 > [!TIP]
 > After creating an account the Overview asks for the festival name, dates and opening hours —
@@ -184,14 +200,12 @@ These are the active rules in the [current product brief](product-brief/festival
   - **Suggest layout** places facilities for the active lineup stages according to **10 layout rules**
     (stage distance, first aid / toilets / water near every stage, exits far apart …),
     with a score. Drag pins to adjust; walkways route around water and forest.
-  - **Drag any pin** to move it; click a pin for a small menu with **Move** and **Remove** (or press Delete).
-    The **Pins to place** dock under the map: drag pins from it onto the map, or drag a pin onto it to take it off.
-    **Clear all pins** starts the layout from scratch (the gate can stay). **Pins to place** then lists
-    every missing facility: pick one, click its spot (gate and exits snap to the fence, water and forest
-    are refused), and the next is ready. **Fill the rest for me** plans only what is still missing.
-    **+ Add pin** puts an extra pin on the map: more toilets, water, first aid, a bar, info point,
-    security post, recycling or your own named pin (e.g. "VIP area"). Added toilets, water and first aid
-    count in the layout check; **Delete** in the pin menu removes an added pin completely.
+  - **Edit pins right on the map:** drag any pin to move it, or click it for a small menu (Move · Remove).
+    The **Pins to place** dock under the map takes pins off (drag them onto it) and puts them back.
+  - **Clear all pins** starts from scratch (the gate can stay): place pins one by one, with a preview that
+    refuses water, forest and spots outside the fence, or let **Fill the rest for me** plan what is missing.
+  - **+ Add pin** adds extra toilets, water, first aid, a bar, info point, security post, recycling point or
+    your own named pin (e.g. "VIP area"). Added toilets, water and first aid count in the layout check.
   - **Festival size:** the expected visitors decide how many toilets, water points, food
     pitches, first aiders and security staff are needed.
   - Edits remain a draft until **Save changes**. **Undo change** reverses the last action;
@@ -254,13 +268,24 @@ flowchart LR
 
 ## 🧪 Tests
 
-The tests cover business-rule scenarios, calculations and selected page integrations.
-Some use a simulated DOM or a mock Supabase client. They do not prove that every click,
-browser, live account or database policy works.
+**513 tests in 46 files, all passing on `main`** (GitHub Actions runs them on every pull request
+and every push to `main`).
 
 ```bash
 uvx --from nodejs-wheel node --test
 ```
+
+| The tests cover | Examples |
+| --- | --- |
+| **Accepted actions** | booking an artist, saving a plan, placing a pin, assigning a task |
+| **Rejected actions** | overlapping sets on one stage, a pin in the lake, an Editor changing the budget, a Viewer saving |
+| **Edge cases** | zero fees, overnight opening hours, empty or broken saved data, names with HTML in them |
+| **Calculations** | budget, break-even, scenarios, toilets / water per visitor, crowd density and evacuation time |
+| **Page flows** | selected screens with a simulated page and a mock Supabase client |
+
+**They do not cover:** real clicks in every browser, the live Supabase project and its Row Level
+Security policies (those are in [`migrations/`](migrations/) and were checked by hand), e-mail delivery,
+or the look of the pages. Some use a simulated DOM or a mock Supabase client.
 
 With Node already installed, `node --test` also works; GitHub CI uses Node 22 and runs on
 pull requests and pushes to `main`. The `uvx` command requires `uv` and downloads Node.
@@ -315,12 +340,25 @@ CONTRIBUTING.md               step-by-step checklist and Definition of Done
 - **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
   wins over anything else.
 
-**Course stack approval remains unconfirmed.** This project uses browser JavaScript
-with Supabase. Check the [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)
-and obtain the teacher's confirmation for this stack; the team must not describe that
-approval as already granted. 2FA is not part of the agreed feature scope.
+**Stack.** The app uses browser JavaScript with Supabase rather than the course's default Python stack
+(see the [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)).
+Whether this stack is approved for the course is still to be confirmed with the teacher.
+2FA is not part of the agreed feature scope.
 
 ## 🔒 Data & privacy
+
+**Where the example data comes from**
+
+| Data | Source | Note |
+| --- | --- | --- |
+| Artist library (387 artists) | Real artist names and genres, [`rules/artist-library.js`](rules/artist-library.js) | Fees are **fictional planning estimates**, not real quotes |
+| Artist photos | Loaded from Wikimedia Commons via Wikipedia, with attribution links | Not stored in the repository; initials when no photo loads |
+| Vendors (24 + 172 in the library) | Fictional stands, menus and prices, [`rules/vendor-rules.js`](rules/vendor-rules.js), [`rules/vendor-library.js`](rules/vendor-library.js) | Dish photos from Wikimedia Commons |
+| Demo festivals (Lisbon, Munich) | Fictional, [`rules/demo-festival.js`](rules/demo-festival.js) | Lineups fit their stages, hours and budgets |
+| Site map ground | Drawn by the app; your own map upload stays in your festival | |
+| Rules of thumb (toilets, water, crowd density) | Planning estimates in [`rules/`](rules/) | Not a legal capacity or safety assessment |
+
+**Who can see what**
 
 Supabase holds the accounts and saved festival sections. The owner and invited members
 have access according to their roles. While you work, the browser keeps a local copy;
