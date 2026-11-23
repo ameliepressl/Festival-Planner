@@ -777,3 +777,14 @@ In timeline edit mode, Clear all tasks opens a confirmation for festival owners 
 After a saved bulk deletion, Restore last deletion appears beside the view switch and Manage work areas for festival owners and Admins. It recovers the last cleared tasks or deleted work area, including saved dates, progress and assignments. It keeps newer work and consumes the recovery record after one successful restore.
 
 Validation: **491/491 tests passed**, including eight new regression checks. An isolated browser preview confirmed saving a task and its owner together, creating an area from both views, clearing with Cancel and Save, and persistence after reload. The timeline dialog requires a subtask, and the saved task appears on the board. Editor and Viewer controls matched their existing roles. The board dialog fit at 390 px. Browser checks also covered the fixed position of Manage work areas, an area rename, moving and deleting tasks, cancelling a draft deletion, and reloading. Recovery checks covered restoring a deleted area after reload, keeping a newer task, recovering completion and ownership, and restoring after Clear all tasks. No console errors appeared during the verified flows.
+
+## Festival backdrop on the Overview — 23 November 2026
+
+Branch: `feature-festival-backdrop` (owner: Amelie). Plan: `feature-plans/festival-backdrop.md`.
+
+A banner above the Overview draws a "festival poster" in code: the colours follow the lineup's main
+genre (neon, ember, gold, heat, dusk, candy, sunset) and the landscape follows the venue (coast,
+mountains, park, city), with a stage, swaying light beams and a crowd. Decorative only: nothing is
+saved or sent, no photos, user text never goes into the SVG. New files: `rules/backdrop-rules.js`,
+`overview-backdrop.js`, `overview-backdrop.css`; `overview.js` calls it after rendering.
+Validation: 523/523 tests passed (10 new).
