@@ -68,9 +68,22 @@ one browser key, and the last save of a key wins.
    6. Safari, new conflict, then reload the page before choosing: the edit and the question are still there.
    7. Both sessions reload and show the same data.
 
+## Found in the first retest with two accounts (23 Nov, evening)
+
+Test 2 (a vendor change saved while a finance conflict waited) replaced the conflict bar with the general
+"A teammate also saved … yours are saved" bar, so Keep mine / Use theirs disappeared until a reload. Fixed: while
+a section waits, no general bar replaces the conflict bar; any other bar keeps the two choices (and no useless
+Reload); a closed conflict bar opens again when the status in the sidebar is clicked. Four regression tests
+(two of them fail on the earlier code).
+
+**Keep mine takes the whole section.** After Keep mine the finances of the person who chose it replace the teammate's
+version *entirely* (e.g. a sponsorship value the teammate saved in between is lost too). That is the intended meaning
+of Keep mine for now: a section is saved as one piece (see Out of scope). Use theirs, or copying the value by hand
+before choosing, are the ways to keep the teammate's number.
+
 ## Tests
 
-- `tests/section-conflicts.test.js`: 19 tests (rules, the real `account/account.js` with a fake database that behaves like
+- `tests/section-conflicts.test.js`: 23 tests (rules, the real `account/account.js` with a fake database that behaves like
   migration 007, and the two-browser test step by step).
 - The SQL was run against a real PostgreSQL (PGlite) together with migrations 001–006, twice in a row: different sections
   both saved; a stale same-section save refused and not written; a mixed batch saves only the clean section; a stale

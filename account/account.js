@@ -316,7 +316,9 @@
           dirtyKeys: meta.dirtyKeys, revisions: sectionRevisions, currentKeys: festivalKeys(storage).filter(isSyncedKey) });
         writeMeta();
         if (outcome.refused.length) showConflictNotice();
-        else if (teammateSaved) showNotice('A teammate also saved this festival. Reload to see their changes — yours are saved.');
+        // While a section waits for the person's decision, the conflict bar already says a teammate saved:
+        // a second, general bar ("yours are saved") must not replace it or hide Keep mine / Use theirs.
+        else if (teammateSaved && !heldKeys().length) showNotice('A teammate also saved this festival. Reload to see their changes — yours are saved.');
         if (savable()) scheduleSave(SAVE_DELAY);
         else setStatus(heldKeys().length ? 'conflict' : meta.teamDirty ? 'saving' : sections.skipped.length ? 'partly' : 'saved');
         return !savable();
@@ -1063,7 +1065,7 @@
     offline: 'Not saved yet — no connection to your account. Retrying…',
     readonly: 'View only — your changes are not saved',
     partly: 'Saved. Changes to finances or task assignments can only be saved by an Admin.',
-    conflict: 'Not saved — a teammate changed the same section. Choose how to continue.'
+    conflict: 'Not saved — a teammate changed the same section. Click here to choose how to continue.'
   };
 
   function setStatus(kind) {
@@ -1081,9 +1083,11 @@
   function showNotice(text, offerReload = true) {
     const notice = $('#account-notice');
     if (!notice) return;
+    // Any bar shown while a section waits keeps the two choices within reach (and Reload would only ask again).
+    const waiting = heldKeys().length > 0;
     $('#account-notice-text').textContent = text;
-    $('#account-notice-reload').hidden = !offerReload;
-    ['#account-notice-keep', '#account-notice-theirs'].forEach((id) => { const button = $(id); if (button) button.hidden = true; });
+    $('#account-notice-reload').hidden = !offerReload || waiting;
+    ['#account-notice-keep', '#account-notice-theirs'].forEach((id) => { const button = $(id); if (button) button.hidden = !waiting; });
     notice.hidden = false;
   }
 
@@ -1231,6 +1235,8 @@
     $('#delete-festival-dialog').addEventListener('close', () => {
       if ($('#delete-festival-dialog').returnValue === 'delete') deleteOpenFestival();
     });
+    // A closed conflict bar can be opened again from the status in the sidebar.
+    $('#account-sync-status').onclick = () => { if (heldKeys().length) showConflictNotice(); };
     $('#account-notice-close').onclick = () => {
       $('#account-notice').hidden = true;
       dismissedVersion = lastSeenVersion;
