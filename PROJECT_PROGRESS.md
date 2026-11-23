@@ -836,3 +836,15 @@ landscape follows the venue; 112 well-known cities add their lit-up landmark (12
 and stands still with "reduce motion". The first still SVG version was replaced at Amelie's request.
 New files: `rules/backdrop-rules.js`, `overview-backdrop.js`, `overview-backdrop.css`.
 Validation: 529/529 tests passed (16 in `tests/festival-backdrop.test.js`).
+
+## Lineup planner improvements — 23 November 2026
+
+Owner: Vicky · Branch: `feature-lineup-planner-improvement` · Plan: [lineup-planner-improvement.md](feature-plans/lineup-planner-improvement.md).
+
+In the timetable, editors can drag tentative performances between times, stages, and visible days. Drops snap to five minutes and use the booking rules for conflicts, opening hours, and changeovers. A valid move also moves the linked changeover. Confirmed performances stay fixed during dragging.
+
+The Daily view and Festival view switch uses the same segmented style as Project tasks.
+
+Suggest lineup now asks for a closing headliner for each festival day. It highlights each headliner in the preview and reports when a daily choice is missing, repeated, or cannot close the day. Confirmed performances and calendar blocks stay in place.
+
+Validation: **515/515 tests passed**. The browser preview showed two closing headliners across two days. A direct drag moved a tentative performance to a different stage and time, and it stayed there after reload. Dragging the same performance after confirmation left it in place. The browser reported no console errors during these checks.
