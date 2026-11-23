@@ -120,3 +120,38 @@ test('the page shows the giver as text', () => {
   assert.equal(metas[0], 'Due Fri 12 Mar · From Amelie');
   assert.equal(made.some((item) => item.innerHTML !== ''), false);
 });
+
+// Feedback from the team: tasks assigned before givers were recorded showed no sender.
+test('without a saved giver, the only person who can assign is named', () => {
+  const team = assignablePeople({
+    owner: { userId: AMELIE, username: 'Amelie' },
+    members: [{ userId: KIRA, username: 'Kira', role: 'Editor' }, { userId: VICKY, username: 'Vicky', role: 'Viewer' }]
+  });
+  const old = { groups: {}, steps: { '1.1.1': KIRA, '1.1.2': KIRA } };   // saved before givers were recorded
+  const steps = [step('1.1.1', '1.1'), step('1.1.2', '1.1', '2027-03-12')];
+  const { items } = notificationsFor({ steps, assignments: old, people: team, myUserId: KIRA, today: '2027-03-10' });
+  assert.deepEqual(items.map((item) => [item.stepId, notificationText(item), notificationSource(item)]), [
+    ['1.1.2', '“Task 1.1.2” is due in 2 days', 'From Amelie'],
+    ['1.1.1', 'You were assigned “Task 1.1.1”', 'From Amelie']
+  ]);
+});
+
+test('without a saved giver and several Admins, the sender is "the Owner or an Admin"', () => {
+  const old = { groups: {}, steps: { '1.1.1': KIRA } };
+  const { items } = notificationsFor({ steps: [step('1.1.1', '1.1')], assignments: old, people, myUserId: KIRA, today: '2027-03-10' });
+  assert.equal(notificationSource(items[0]), 'From the Owner or an Admin');
+});
+
+test('the Owner who is the only Admin sees "Assigned by you" for older tasks', () => {
+  const solo = assignablePeople({ owner: { userId: AMELIE, username: 'Amelie' }, members: [] });
+  const old = { groups: {}, steps: { '1.1.1': AMELIE } };
+  const { items } = notificationsFor({ steps: [step('1.1.1', '1.1')], assignments: old, people: solo, myUserId: AMELIE, today: '2027-03-10' });
+  assert.equal(notificationSource(items[0]), 'Assigned by you');
+});
+
+test('a saved giver always wins over the guess', () => {
+  const saved = withAssigners(emptyAssignments(), { groups: {}, steps: { '1.1.1': KIRA } }, VICKY);
+  const { items } = notificationsFor({ steps: [step('1.1.1', '1.1', '2027-03-12')], assignments: saved, people, myUserId: KIRA, today: '2027-03-10' });
+  assert.equal(items[0].likelyFrom, null);
+  assert.equal(notificationSource(items[0]), 'From Vicky');
+});
