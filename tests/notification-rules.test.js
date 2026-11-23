@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   NOTIFICATION_SEEN_PREFIX, notificationSeenKey, emptySeen, parseSeen, daysUntilDue, myAssignedSteps,
-  notificationsFor, markAllRead, notificationBadge, notificationText
+  notificationsFor, markAllRead, notificationBadge, notificationText, notificationEmptyText
 } = require('../rules/notification-rules.js');
 const { assignablePeople, isSyncedKey } = {
   ...require('../rules/task-rules.js'),
@@ -147,4 +147,14 @@ test('notification sentences, including singular and plural', () => {
   assert.equal(text('dueSoon', 1), '“Book security” is due tomorrow');
   assert.equal(text('dueSoon', 5), '“Book security” is due in 5 days');
   assert.equal(text('new', null), 'You were assigned “Book security”');
+});
+
+test('an empty list tells Owner and Admins where tasks are assigned, and others who assigns them', () => {
+  const admin = notificationEmptyText(true);
+  const editor = notificationEmptyText(false);
+  assert.match(admin, /^You're all caught up\./);
+  assert.match(admin, /Project tasks → Timeline → Edit plan → Subtasks/);
+  assert.match(editor, /^You're all caught up\./);
+  assert.match(editor, /Owner and Admins assign tasks/);
+  assert.doesNotMatch(editor, /Edit plan/);
 });

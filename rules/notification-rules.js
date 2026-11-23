@@ -107,9 +107,19 @@ function notificationText(item) {
   return `You were assigned ${title}`;
 }
 
+// The text of an empty list. Owner and Admins also learn where tasks are assigned,
+// because the Owner choice only appears for the selected subtask in the Timeline.
+function notificationEmptyText(canAssign) {
+  const base = "You're all caught up. Tasks assigned to you and their deadlines appear here.";
+  return canAssign
+    ? `${base} To assign tasks: Project tasks → Timeline → Edit plan → Subtasks, then click a subtask and choose its Owner.`
+    : `${base} The festival's Owner and Admins assign tasks.`;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     NOTIFICATION_SEEN_PREFIX, NOTIFICATION_DUE_SOON_DAYS, notificationSeenKey, emptySeen, parseSeen, daysUntilDue,
-    myAssignedSteps, notificationsFor, markAllRead, notificationBadge, notificationText
+    myAssignedSteps, notificationsFor, markAllRead, notificationBadge, notificationText,
+    notificationEmptyText
   };
 }

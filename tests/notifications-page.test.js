@@ -111,3 +111,15 @@ test('clicking a notification opens Project tasks filtered to my tasks', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(opened)), [{ assignee: 'me' }]);  // the object comes from the page's sandbox
   assert.equal(node('#notifications-panel').hidden, true);
 });
+
+test('an Editor is told who assigns tasks, not how', () => {
+  const { node } = page();
+  assert.match(node('#notifications-empty').textContent, /Owner and Admins assign tasks/);
+});
+
+test('an Admin is told where tasks are assigned', () => {
+  const s = page({ me: ADMIN, role: 'Admin' });
+  s.run('window.taskAssignments.canAssign = () => true;');
+  s.context.window.dispatchEvent({ type: 'task-assignments-changed' });
+  assert.match(s.node('#notifications-empty').textContent, /Timeline → Edit plan → Subtasks/);
+});

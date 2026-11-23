@@ -57,17 +57,17 @@ assignment into a complete workflow: assign → get notified → open the task �
 ## Tests
 
 **Added**
-- `tests/notification-rules.test.js` (14 tests): the read-state key is never synced; broken saved state
+- `tests/notification-rules.test.js` (15 tests): the read-state key is never synced; broken saved state
   is dropped; only my subtasks (through the group or the subtask), never someone who left the team;
   order overdue → due soon → new; done and other people's tasks never notify; "Mark all as read" and
   deadlines coming back the next day; a task assigned later shows up as new; no due date → never a
   deadline; the 7-day limit; the 9+ counter; singular/plural sentences.
-- `tests/notifications-page.test.js` (8 tests): hidden without an account and for someone not on the
+- `tests/notifications-page.test.js` (10 tests): hidden without an account and for someone not on the
   team; the counter and sentences; task titles with HTML stay text; opening and closing; "Mark all as
   read" writes only the `fa-` key, never a `festival-` key; a broken saved state does not break the
-  page; a click opens Project tasks with *My tasks*.
+  page; a click opens Project tasks with *My tasks*; an empty list tells Owner and Admins where tasks are assigned (the Owner choice only appears for the selected subtask in the Timeline), and others who assigns them.
 
-**Result:** `uvx --from nodejs-wheel node --test` → 444 tests, 444 pass, 0 fail (422 before + 22 new).
+**Result:** `uvx --from nodejs-wheel node --test` → 447 tests, 447 pass, 0 fail (422 before + 25 new).
 
 **Checked by hand** (local copy on port 8019, Munich demo, a signed-in Editor simulated in the browser
 console, two due dates moved to make one task overdue and one due soon):

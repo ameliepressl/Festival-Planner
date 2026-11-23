@@ -80,6 +80,7 @@
     }
     list.replaceChildren(...rows);
     empty.hidden = current.items.length > 0;
+    empty.textContent = notificationEmptyText(Boolean(window.taskAssignments?.canAssign?.()));
   }
 
   function open() {
