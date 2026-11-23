@@ -8,7 +8,7 @@ const map = require('../rules/site-map-rules.js');
 const capacity = require('../rules/capacity-rules.js');
 const draftRules = require('../rules/map-draft-rules.js');
 const {
-  clearedPlacements, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins
+  clearedPlacements, withoutPin, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins
 } = require('../rules/map-pin-rules.js');
 
 const items = map.layoutItems({ ...capacity.capacityNeeds(5000), stages: 2 });
@@ -156,4 +156,26 @@ test('a few pins of a kind keep their own buttons with their full names', () => 
     assert.ok(choices.some((choice) => choice.id === entry.id && choice.label === entry.name && choice.count === 1), entry.name);
   }
   assert.equal(choices.some((choice) => choice.label === 'Free water'), false);
+});
+
+test('removing one pin takes only that pin off the map; it then waits under "Pins to place"', () => {
+  const site = demo();
+  const rest = withoutPin(site.placements, 'toilets-a');
+  assert.equal(rest['toilets-a'], undefined);
+  assert.equal(Object.keys(rest).length, Object.keys(site.placements).length - 1);
+  assert.ok(site.placements['toilets-a'], 'the saved placements object is not changed');
+  const waiting = pinsToPlace(items, rest).flatMap((group) => group.items.map((entry) => entry.id));
+  assert.deepEqual(waiting, ['toilets-a']);
+  assert.deepEqual(withoutPin(rest, 'toilets-a'), rest, 'removing a pin that is not on the map changes nothing');
+});
+
+test('a removed pin can be placed again on its own, and the layout check counts it again', () => {
+  const site = demo();
+  const rest = withoutPin(site.placements, 'stage-b');
+  assert.equal(map.checkLayout(site, rest, items).find((rule) => rule.id === 'all-placed').ok, false);
+  const spot = pinSpot(site, item('stage-b'), site.placements['stage-b']);
+  assert.equal(spot.ok, true);
+  const back = { ...rest, 'stage-b': spot.at };
+  assert.equal(map.checkLayout(site, back, items).find((rule) => rule.id === 'all-placed').ok, true);
+  assert.equal(nextPinToPlace(items, back, 'stage-b'), null);
 });

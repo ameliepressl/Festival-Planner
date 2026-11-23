@@ -325,6 +325,25 @@
     drawEdit(); renderHint(); renderTray();
   }
 
+  // One pin off the map (Remove from map, Delete key); with pickUp it is ready to be placed again.
+  function removePin(id, { pickUp = false } = {}) {
+    const s = site();
+    const item = findItem(id, items);
+    if (!item || !s.placements[id] || !editable() || busy) return;
+    if (draftBorder?.length) { mapMessage('Finish the fence with Done, or cancel drawing it, before changing pins.'); return; }
+    s.placements = withoutPin(s.placements, id);
+    if (selectedId === id) selectedId = null;
+    save();
+    drawAll();
+    if (pickUp) {
+      startPlacing(id);
+      mapMessage(`Click the new spot for ${item.name}. Esc puts it under “Pins to place”.`);
+    } else {
+      mapMessage(`${item.name} removed from the map. Place it again from “Pins to place”, or use Undo change.`);
+      view.querySelector(`#sm-tray [data-place="${id}"]`)?.focus({ preventScroll: true });
+    }
+  }
+
   function stopPlacing() {
     placing = null; ghost = null;
     if (mode === 'place') setMode('explore'); else { drawEdit(); renderTray(); }
@@ -379,10 +398,17 @@
     if (!tray) return;
     const s = site();
     const groups = pinChoices(items, s.placements);
-    tray.hidden = groups.length === 0 || lineupProblem();
+    tray.hidden = lineupProblem();
     if (tray.hidden) { tray.innerHTML = ''; return; }
     const { total, placed } = pinCounts(items, s.placements);
     const locked = !editable() || busy;
+    if (!groups.length) {
+      tray.innerHTML = `
+      <div class="sm-tray-head"><h2 id="sm-tray-title">Pins to place</h2><span>${placed} of ${total}</span></div>
+      <div class="sm-tray-progress done" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:100%"></i></div>
+      <p class="sm-note"><b>Every facility is on the map.</b> To change one, click its pin and choose <b>Move to another spot</b> or <b>Remove from map</b>; it then waits here until you place it again. <b>Clear all pins</b> starts over.</p>`;
+      return;
+    }
     const current = placing ? findItem(placing, items) : null;
     tray.innerHTML = `
       <div class="sm-tray-head"><h2 id="sm-tray-title">Pins to place</h2><span>${placed} of ${total}</span></div>
@@ -498,7 +524,10 @@
       </dl>
       ${nearby ? `<p class="sm-sub">Nearest</p><ul class="sm-nearby">${nearby}</ul>` : ''}
       ${rules.length ? `<p class="sm-sub">Layout rules</p><ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>` : ''}
-      <p class="sm-sub">${mode === 'move' ? 'Drag the pin to move it.' : 'Switch to “Move pins” to move it.'}</p>`;
+      ${editable() ? `<div class="sm-pin-actions">
+        <button type="button" class="button secondary" data-pin="move" ${busy ? 'disabled' : ''}>Move to another spot</button>
+        <button type="button" class="button danger" data-pin="remove" ${busy ? 'disabled' : ''}>Remove from map</button></div>
+      <p class="sm-sub">${mode === 'move' ? 'Or drag the pin on the map.' : 'Tip: select the pin and press Delete to remove it.'}</p>` : ''}`;
   }
 
   function renderScore() {
@@ -515,9 +544,11 @@
         <div class="sm-ring" style="--score:${score}"><span>${score}<small>%</small></span></div>
         <div><p class="sm-score-label">Layout check</p><strong>${passed} of ${rules.length} rules met</strong><small>${score === 100 ? 'This layout is ready to work with.' : 'Click a rule to see what to fix.'}</small></div>
       </div>
-      ${rules[0].ok ? '' : `<div class="sm-missing"><span>${items.filter((i) => !s.placements[i.id]).length} facilities for ${needs.visitors.toLocaleString('en-GB')} visitors still need a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
+      ${rules[0].ok ? '' : `<div class="sm-missing"><span>${missingText(items.filter((i) => !s.placements[i.id]).length)} for ${needs.visitors.toLocaleString('en-GB')} visitors still ${items.filter((i) => !s.placements[i.id]).length === 1 ? 'needs' : 'need'} a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
       <ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}" data-rule="${rule.id}" tabindex="0"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>`;
   }
+
+  const missingText = (count) => `${count} ${count === 1 ? 'facility' : 'facilities'}`;
 
   function renderSettings() {
     const s = site();
@@ -799,6 +830,7 @@
     svg.addEventListener('keydown', (event) => {
       const itemEl = event.target.closest('.fa-item');
       if (itemEl && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); select(itemEl.dataset.id); }
+      if (itemEl && (event.key === 'Delete' || event.key === 'Backspace')) { event.preventDefault(); removePin(itemEl.dataset.id); }
     });
   }
 
@@ -817,6 +849,8 @@
     }
     if (t.closest('#sm-suggest')) { if (editable() && !busy) suggest(); return; }
     if (t.closest('#sm-clear-pins')) { if (editable() && !busy) openClearDialog(); return; }
+    const pinAction = t.closest('[data-pin]')?.dataset.pin;
+    if (pinAction && selectedId) { removePin(selectedId, { pickUp: pinAction === 'move' }); return; }
     const placeButton = t.closest('[data-place]');
     if (placeButton) { startPlacing(placeButton.dataset.place); return; }
     const trayAction = t.closest('[data-tray]')?.dataset.tray;
@@ -924,9 +958,15 @@
       }
     }
   });
-  // Esc stops placing pins (unless a dialog is open; then Esc closes the dialog).
+  // Esc stops placing pins; Delete removes the selected pin (not while a dialog is open).
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && mode === 'place' && !view.classList.contains('hidden') && !view.querySelector('dialog[open]')) stopPlacing();
+    if (view.classList.contains('hidden') || view.querySelector('dialog[open]')) return;
+    if (event.key === 'Escape' && mode === 'place') stopPlacing();
+    // Delete removes the selected pin, unless the person is typing in a field.
+    const typing = event.target?.closest?.('input, textarea, select, [contenteditable="true"]');
+    if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && !typing && !event.target?.closest?.('.fa-item')) {
+      event.preventDefault(); removePin(selectedId);
+    }
   });
   view.addEventListener('keydown', (event) => {
     const rule = event.target.closest('[data-rule]');

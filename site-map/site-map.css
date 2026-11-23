@@ -194,3 +194,6 @@
 .sm-hint .button.secondary:hover{background:rgba(255,255,255,.12)}
 .sm-tray-pin b{font:700 11px var(--font-text);color:var(--muted);margin-left:2px}
 .sm-tray-pin.on b{color:#ffd9cf}
+.sm-pin-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sm-pin-actions .button{padding:9px 13px}
+.sm-tray-progress.done i{background:#43a995}

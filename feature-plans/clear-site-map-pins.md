@@ -1,4 +1,4 @@
-# Feature — Clear all pins on the Site map
+# Feature — Clear all pins, or one pin, on the Site map
 
 Owner: Frederik · Branch: `feature-clear-site-map` · Builds on: the Site map and its draft (`rules/map-draft-rules.js`)
 
@@ -15,6 +15,12 @@ layout from scratch."* Until now an organiser could only move the suggested pins
       festival size, crowd measurements) and that nothing is saved yet.
 - [x] **Keep the main entrance** is ticked by default, because everything else is planned around the gate.
       The button counts live: "Clear 77 pins" / "Clear 78 pins".
+- [x] **One pin at a time** (team feedback after the first try): click a pin, then **Move to another spot**
+      (picks it up; the next click on the map puts it down) or **Remove from map**. **Delete** removes the
+      selected pin too, but never while typing in a field. A removed pin waits under *Pins to place* and
+      can be placed again on its own; **Undo change** brings it back.
+- [x] **Pins to place** stays visible even when every pin is on the map ("78 of 78") and explains how to
+      take one off, so adding a single pin is always possible.
 - [x] **Pins to place** card: every pin still missing, grouped by category, with a progress bar
       ("12 of 78"). Pick a pin, click its spot on the map, and the next one of the same kind is ready.
 - [x] Many pins of one kind share one button ("Toilets ×25", "Free water ×20", "Food pitches ×20");
@@ -30,7 +36,7 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 - [x] Everything stays a draft: **Undo change** brings the pins back right after clearing,
       **Discard changes** returns to the saved map, **Save changes** keeps the new layout.
 - [x] Viewers (no edit right) see the button disabled, like *Suggest layout*.
-- [x] **Rules in `rules/map-pin-rules.js`:** `clearedPlacements`, `pinCounts`, `pinsToPlace`,
+- [x] **Rules in `rules/map-pin-rules.js`:** `clearedPlacements`, `withoutPin`, `pinCounts`, `pinsToPlace`,
       `pinChoices`, `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`. Screen code only
       in `site-map/site-map-page.js`, styles in `site-map/site-map.css`.
 - [x] Cache versions raised in `index.html` for the changed page script and stylesheet.
@@ -50,17 +56,21 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 
 ## Tests
 
-`tests/clear-site-map-pins.test.js` (15 tests): clear with and without the gate; the saved object is never
+`tests/clear-site-map-pins.test.js` (17 tests): clear with and without the gate; the saved object is never
 changed; counts; pins grouped by category; next pin after placing and after Skip; normal spot; lake,
 forest and outside the fence refused with a message; gate and exits snap onto the fence and pass the
 layout check; nonsense input; "Fill the rest" keeps hand-placed pins; clear + Undo through the map draft;
 a cleared map still parses with fence, gate and no-go areas; many pins of one kind share a button (stage
-toilets first) while a few keep their own names. No existing test was changed.
-Full suite: 498 tests, 498 pass, 0 fail.
+toilets first) while a few keep their own names; one pin removed waits alone under "Pins to place" and
+placed again completes the layout check. No existing test was changed.
+Full suite: 500 tests, 500 pass, 0 fail.
 
 Browser check (Munich demo, port 8021, test storage cleared afterwards): dialog shows 77 pins with the gate
 kept, 78 without; after clearing only the gate is left and Stage A is ready; the preview pin follows the
 mouse and turns red over the lake; a click in the lake is refused with the message; Stage B is ready after
 Stage A; *Fill the rest* adds 76 pins and keeps both hand-placed ones (layout check 90 %); *Discard changes*
 restores all 78 saved pins; *Keep my pins* closes the dialog and returns focus; the grouped *Toilets ×25*
-button starts with "Toilets · Stage A". No console errors.
+button starts with "Toilets · Stage A". One pin: *Remove from map* takes Stage C off (77 of 78, it waits in
+the list and gets focus); Enter on it and a click on the map put it back (all rules met again); *Move to
+another spot* picks it up; Delete removes the selected or focused pin; Backspace while typing in the
+visitors field removes nothing; Undo and Discard restore. No console errors.

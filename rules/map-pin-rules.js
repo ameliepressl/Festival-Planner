@@ -1,4 +1,4 @@
-// Site map: clear all pins and place them again one by one (feature-plans/clear-site-map-pins.md).
+// Site map: clear all pins or one pin, and place pins again one by one (feature-plans/clear-site-map-pins.md).
 // No screen code here. Builds on rules/site-map-rules.js (MAP_CATEGORIES, isUsable, isOnFence,
 // nearestBoundaryPoint, metresPerUnit). Only the pins change: the map, its fence, the no-go areas
 // and the crowd measurements always stay.
@@ -10,6 +10,13 @@ const pinMap = typeof module !== 'undefined' && typeof require === 'function'
 // The placements left after "Clear all pins". keepGate keeps only the main entrance.
 function clearedPlacements(placements = {}, { keepGate = false } = {}) {
   return keepGate && placements.entrance ? { entrance: [...placements.entrance] } : {};
+}
+
+// One pin taken off the map; it then waits under "Pins to place". Nothing else changes.
+function withoutPin(placements = {}, id) {
+  const rest = { ...placements };
+  delete rest[id];
+  return rest;
 }
 
 // How many pins of the current facility list are on the map, and how many "Clear" would remove.
@@ -84,5 +91,5 @@ function fillMissingPins(placements = {}, suggested = {}) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { clearedPlacements, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins };
+  module.exports = { clearedPlacements, withoutPin, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins };
 }
