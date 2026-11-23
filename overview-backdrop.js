@@ -228,6 +228,13 @@ function blinking(t, speed, phase = 0) { return Math.sin(t * speed + phase) > 0 
 function drawLandmark(ctx, scene, t, beat) {
   const m = scene.landmark, { W, H, colours } = scene, gy = m.ground;
   const [laserA, laserB] = colours.lasers;
+  // Solid ground under the landmark, so it stands on something and does not float in front of the skyline.
+  ctx.save();
+  const left = Math.max(0, m.left - 20), soil = ctx.createLinearGradient(0, gy, 0, H);
+  soil.addColorStop(0, colours.shade); soil.addColorStop(1, '#05030a');
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = soil; ctx.fillRect(left, gy, W - left, H - gy);
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.3; ctx.fillStyle = colours.lasers[0]; ctx.fillRect(left, gy, W - left, 1.5);
+  ctx.restore();
   if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
     ctx.save();
     if (typeof drawCityLandmark === 'function') drawCityLandmark(ctx, scene, t, beat);
