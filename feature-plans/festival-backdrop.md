@@ -12,7 +12,11 @@ the live demo and shows at a glance what kind of festival it is.
 - [x] A banner above the Overview with an **animated live stage** on a `<canvas>`. It shows:
       - lasers that sweep to the beat and change pattern every 16 beats
       - light cones, haze and an aurora sky with twinkling stars
-      - a DJ at the decks (head bobbing, scratching, a hand up every bar) in front of a glowing back wall, and speaker stacks on both sides whose cones pump to the beat
+      - a DJ at the decks (head bobbing and swaying, scratching, a hand up every bar, both arms up before the flames) and an MC with a microphone, in front of an LED wall that changes its picture every 8 beats, and speaker stacks on both sides whose cones pump to the beat
+      - smoke jets every 4 beats, flame jets with sparks every 32 beats, a firework every 16 beats, a shooting star now and then, drifting clouds and a moon with craters
+      - a crowd in four rows (far rows pale and small, near rows dark and big) with arms, phones and glow sticks moving to the beat
+      - on the coast, glitter on the water below the moon, the stage lights and the landmark
+      - a camera look: soft out-of-focus lights, colour fringes at the edges, film grain and a vignette
       - confetti bursts every 8 beats
       - a crowd that bounces to the beat, with raised arms and phone lights
       - moving waves (coast) and flickering windows (city)

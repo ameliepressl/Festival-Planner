@@ -52,16 +52,21 @@ function buildStageScene(backdrop, W, H) {
     if (ownSkyline) { land.layers = []; land.windows = []; } // the city's own skyline replaces the generic one, across the whole horizon
   }
 
-  // The crowd: a smaller back row and a bigger front row; some hold up arms or phones.
+  // The crowd in four rows, from far (small, pale) to near (big, dark); some hold up arms, phones or glow sticks.
   const crowd = [];
-  [[H * 0.84, H * 0.03, 0.75, 11], [H * 0.93, H * 0.045, 1, 15]].forEach(([y, size, shade, gap]) => {
+  [[H * 0.815, H * 0.022, 0.5, 9, 0.1], [H * 0.85, H * 0.03, 0.72, 12, 0.16], [H * 0.9, H * 0.04, 0.88, 14, 0.22], [H * 0.965, H * 0.058, 1, 20, 0.28]].forEach(([y, size, shade, gap, armChance]) => {
     for (let x = -10; x < W + 10; x += r(gap * 0.8, gap * 1.3)) {
-      crowd.push({ x, y: y + r(-3, 3), size: size * r(0.8, 1.15), shade, phase: r(0, 1), arm: rnd() < 0.18 ? (rnd() < 0.5 ? -1 : 1) : 0, phone: rnd() < 0.07 });
+      crowd.push({ x, y: y + r(-3, 3), size: size * r(0.8, 1.15), shade, phase: r(0, 1), arm: rnd() < armChance ? (rnd() < 0.5 ? -1 : 1) : 0, phone: rnd() < 0.08, stick: rnd() < 0.14 });
     }
   });
 
+  // Dark clouds drifting across the sky, and a few out-of-focus lights in front of the camera.
+  const clouds = Array.from({ length: 4 }, () => ({ x: r(0, 1.3), y: H * r(0.1, 0.4), size: W * r(0.1, 0.17), speed: r(0.004, 0.011),
+    puffs: Array.from({ length: 4 }, () => ({ dx: r(-0.6, 0.6), dy: r(-0.1, 0.1), k: r(0.5, 1) })) }));
+  const bokeh = Array.from({ length: 7 }, () => ({ x: r(0, W), y: r(H * 0.5, H * 0.95), radius: r(H * 0.025, H * 0.07), phase: r(0, 6.3), colour: rnd() < 0.5 ? 0 : 1 }));
+
   const haze = Array.from({ length: 80 }, () => ({ x: stage.cx + r(-W * 0.35, W * 0.35), y: r(0, H), size: r(0.8, 2.4), speed: r(6, 22), phase: r(0, 6.3) }));
-  return { W, H, horizon, stage, stars, aurora, sun, land, landmark, crowd, haze, colours: backdrop.colours, bpm: backdrop.bpm, seed: backdrop.seed };
+  return { W, H, horizon, stage, stars, aurora, sun, land, landmark, crowd, clouds, bokeh, haze, colours: backdrop.colours, bpm: backdrop.bpm, seed: backdrop.seed };
 }
 
 // --- One frame at time t (seconds) ----------------------------------------------------------
@@ -105,6 +110,15 @@ function drawStageFrame(ctx, scene, t) {
   ctx.globalAlpha = 0.95; ctx.fillStyle = colours.sun;
   ctx.beginPath(); ctx.arc(scene.sun.x, scene.sun.y, scene.sun.radius, 0, TAU); ctx.fill();
 
+  // Craters on the moon, fireworks, a shooting star now and then, and dark clouds drifting by.
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#000000';
+  [[-0.3, -0.2, 0.22], [0.25, 0.1, 0.16], [-0.05, 0.4, 0.12]].forEach(([dx, dy, k]) => {
+    ctx.globalAlpha = 0.08; ctx.beginPath(); ctx.arc(scene.sun.x + dx * scene.sun.radius, scene.sun.y + dy * scene.sun.radius, k * scene.sun.radius, 0, TAU); ctx.fill();
+  });
+  drawFireworks(ctx, scene, beat);
+  drawShootingStar(ctx, scene, t);
+  drawClouds(ctx, scene, t);
+
   drawLand(ctx, scene, t);
   if (scene.landmark) drawLandmark(ctx, scene, t, beat);
 
@@ -146,6 +160,7 @@ function drawStageFrame(ctx, scene, t) {
   }
 
   drawStage(ctx, scene, beat, pulse);
+  drawFogAndPyro(ctx, scene, beat);
   drawConfetti(ctx, scene, beat);
 
   // Lens flares: streaks of light from the stage lamps, brightest on the beat.
@@ -180,6 +195,67 @@ function drawStageFrame(ctx, scene, t) {
   const vignette = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.75);
   vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H);
+
+  drawCameraLook(ctx, scene, t, pulse);
+}
+
+// --- Sky: fireworks, a shooting star, clouds --------------------------------------------------
+
+// A firework in the sky every 16 beats (out of step with the flame jets), spreading and falling for about 2.6 s.
+function drawFireworks(ctx, scene, beat) {
+  const { W, H, colours } = scene, TAU = Math.PI * 2, round = Math.floor((beat + 8) / 16), age = ((beat + 8) % 16) * 60 / scene.bpm;
+  if (age > 2.6) return;
+  const rnd = backdropRandom(scene.seed + round * 104729);
+  const x = W * (0.12 + rnd() * 0.76), y = H * (0.12 + rnd() * 0.2), colour = colours.lasers[round % 2];
+  const spread = age => (1 - Math.exp(-age * 2.4)) * H * 0.3, drop = age => 0.5 * H * 0.22 * age * age;
+  ctx.globalCompositeOperation = 'lighter';
+  const fade = Math.pow(Math.max(0, 1 - age / 2.6), 1.5);
+  const flash = ctx.createRadialGradient(x, y, 0, x, y, H * 0.25);
+  flash.addColorStop(0, colour); flash.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.35 * Math.max(0, 1 - age * 3); ctx.fillStyle = flash; ctx.beginPath(); ctx.arc(x, y, H * 0.25, 0, TAU); ctx.fill();
+  ctx.strokeStyle = colour; ctx.fillStyle = '#ffffff'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  for (let i = 0; i < 28; i++) {
+    const angle = i / 28 * TAU, reach = 0.7 + 0.3 * ((i * 7) % 5) / 5, before = Math.max(0, age - 0.12);
+    const x1 = x + Math.cos(angle) * spread(age) * reach, y1 = y + Math.sin(angle) * spread(age) * reach + drop(age);
+    const x0 = x + Math.cos(angle) * spread(before) * reach, y0 = y + Math.sin(angle) * spread(before) * reach + drop(before);
+    ctx.globalAlpha = 0.95 * fade; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.globalAlpha = 0.8 * fade; ctx.beginPath(); ctx.arc(x1, y1, 1.6, 0, TAU); ctx.fill(); // the bright head of each spark
+  }
+}
+
+// A shooting star every 9 seconds, visible for under a second.
+function drawShootingStar(ctx, scene, t) {
+  const { W, H } = scene, round = Math.floor(t / 9), age = t - round * 9;
+  if (age > 0.8) return;
+  const rnd = backdropRandom(scene.seed + round * 6007);
+  const angle = Math.PI * (0.78 + rnd() * 0.06), x = W * (0.35 + rnd() * 0.6) + Math.cos(angle) * W * 0.6 * age, y = H * (0.04 + rnd() * 0.18) + Math.sin(angle) * W * 0.6 * age;
+  const tail = W * 0.09, tx = x - Math.cos(angle) * tail, ty = y - Math.sin(angle) * tail;
+  const streak = ctx.createLinearGradient(tx, ty, x, y);
+  streak.addColorStop(0, 'rgba(255,255,255,0)'); streak.addColorStop(1, '#ffffff');
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - age / 0.8; ctx.strokeStyle = streak; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+}
+
+// Dark, soft clouds that drift slowly; the ones near the moon get a lit edge.
+function drawClouds(ctx, scene, t) {
+  const { W, sun } = scene, TAU = Math.PI * 2;
+  scene.clouds.forEach(cloud => {
+    const cx = (((cloud.x + t * cloud.speed) % 1.3 + 1.3) % 1.3 - 0.15) * W;
+    cloud.puffs.forEach(puff => {
+      const x = cx + puff.dx * cloud.size, y = cloud.y + puff.dy * cloud.size, radius = cloud.size * 0.5 * puff.k;
+      const lit = Math.max(0, 1 - Math.hypot(x - sun.x, y - sun.y) / (W * 0.45));
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.4);
+      const shape = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      shape.addColorStop(0, 'rgba(12,8,24,.6)'); shape.addColorStop(1, 'rgba(12,8,24,0)');
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.fillStyle = shape;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, TAU); ctx.fill();
+      const edge = ctx.createRadialGradient(0, -radius * 0.25, 0, 0, -radius * 0.25, radius * 0.8);
+      edge.addColorStop(0, scene.colours.sun); edge.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.14 * lit * lit; ctx.fillStyle = edge;
+      ctx.beginPath(); ctx.arc(0, -radius * 0.25, radius * 0.8, 0, TAU); ctx.fill();
+      ctx.restore();
+    });
+  });
 }
 
 function drawBeam(ctx, x, y, angle, length, width, colour, alpha) {
@@ -216,6 +292,19 @@ function drawLand(ctx, scene, t) {
       for (let x = -length; x <= W + length; x += length / 8) ctx.lineTo(x + shift, y + Math.sin((x / length) * Math.PI * 2) * (2 + i));
       ctx.stroke();
     }
+    // Reflections on the water: broken lines of light below the sun or moon, the stage lights and the landmark.
+    const lamps = [[scene.sun.x, colours.sun, 1], [scene.stage.cx - scene.stage.w * 0.75, colours.lasers[0], 0.7], [scene.stage.cx + scene.stage.w * 0.75, colours.lasers[1], 0.7]];
+    if (scene.landmark) lamps.push([scene.landmark.x, '#ffd9a0', 0.8]);
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineWidth = 1.4;
+    lamps.forEach(([x, colour, strength], n) => {
+      ctx.strokeStyle = colour;
+      for (let k = 0; k < 9; k++) {
+        const y = horizon + 3 + k * (shore - horizon) / 9, spread = (5 + k * 5) * (0.55 + 0.45 * Math.sin(t * 1.7 + k * 1.9 + n * 2.3)), jitter = Math.sin(t * 0.9 + k * 2.7 + n) * (3 + k * 1.5);
+        ctx.globalAlpha = strength * 0.5 * (1 - k / 11) * (0.6 + 0.4 * Math.sin(t * 2.3 + k * 1.3 + n));
+        ctx.beginPath(); ctx.moveTo(x - spread + jitter, y); ctx.lineTo(x + spread + jitter, y); ctx.stroke();
+      }
+    });
+    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = colours.shade;
     ctx.globalAlpha = 0.95; ctx.fillRect(0, shore, W, H - shore); // the beach
     ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; // foam at the water's edge
     ctx.beginPath(); ctx.moveTo(0, shore); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, shore + Math.sin(x * 0.05 + t * 1.2) * 1.5); ctx.stroke();
@@ -464,8 +553,10 @@ function drawStage(ctx, scene, beat, pulse) {
     ctx.globalAlpha = 0.12 + 0.12 * pulse; ctx.strokeStyle = i % 2 ? laserA : laserB;
     ctx.beginPath(); ctx.moveTo(stage.cx, centreY); ctx.lineTo(stage.cx + Math.cos(angle) * wall.w, centreY + Math.sin(angle) * wall.w); ctx.stroke();
   }
+  drawLedWall(ctx, scene, wall, beat, pulse);
   ctx.restore();
   drawSpeakers(ctx, scene, beat, pulse);
+  drawMc(ctx, scene, beat, pulse);
   drawDj(ctx, scene, beat, pulse);
   // Front lights flashing on the beat.
   ctx.globalCompositeOperation = 'lighter';
@@ -477,6 +568,122 @@ function drawStage(ctx, scene, beat, pulse) {
   }
 }
 
+// The LED screen behind the DJ: a new picture every 8 beats (rings, level bars, stripes, dots) and the pixel grid of a real screen.
+function drawLedWall(ctx, scene, wall, beat, pulse) {
+  const [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const mode = Math.floor(beat / 8) % 4, cx = wall.x + wall.w / 2, cy = wall.y + wall.h * 0.62;
+  ctx.globalCompositeOperation = 'lighter';
+  if (mode === 0) {
+    for (let i = 0; i < 5; i++) {
+      const k = (beat * 0.5 + i / 5) % 1;
+      ctx.globalAlpha = (1 - k) * (0.35 + 0.35 * pulse); ctx.strokeStyle = i % 2 ? laserA : laserB; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, k * wall.w * 0.62, 0, TAU); ctx.stroke();
+    }
+  } else if (mode === 1) {
+    const n = 14, bw = wall.w / n;
+    for (let i = 0; i < n; i++) {
+      const level = 0.25 + 0.55 * Math.abs(Math.sin(beat * 1.3 + i * 0.7)) * (0.6 + 0.4 * pulse);
+      ctx.globalAlpha = 0.5; ctx.fillStyle = i % 2 ? laserA : laserB;
+      ctx.fillRect(wall.x + i * bw + 1, wall.y + wall.h * (1 - level), bw - 2, wall.h * level);
+    }
+  } else if (mode === 2) {
+    ctx.lineWidth = wall.w * 0.05;
+    for (let i = -6; i < 12; i++) {
+      const x = wall.x + (i + (beat * 0.5) % 1) * wall.w * 0.1;
+      ctx.globalAlpha = 0.3 + 0.2 * pulse; ctx.strokeStyle = i % 2 ? laserA : laserB;
+      ctx.beginPath(); ctx.moveTo(x, wall.y + wall.h); ctx.lineTo(x + wall.h * 0.6, wall.y); ctx.stroke();
+    }
+  } else {
+    const cols = 12, rows = 5, dx = wall.w / cols, dy = wall.h / rows;
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const wave = 0.5 + 0.5 * Math.sin(beat * 1.6 - (i + j) * 0.8);
+      ctx.globalAlpha = 0.15 + 0.6 * wave; ctx.fillStyle = (i + j) % 2 ? laserA : laserB;
+      ctx.beginPath(); ctx.arc(wall.x + (i + 0.5) * dx, wall.y + (j + 0.5) * dy, Math.min(dx, dy) * 0.28 * (0.6 + 0.6 * wave), 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.22; ctx.fillStyle = '#05030a';
+  for (let y = wall.y; y < wall.y + wall.h; y += 4) ctx.fillRect(wall.x, y, wall.w, 1);
+}
+
+// A second performer, an MC with a microphone: jumps on every beat, one hand up, the other swinging.
+function drawMc(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const P = (stage.floor - stage.top) * 0.5, x = stage.cx + stage.w * 0.3, floorY = stage.floor - 14;
+  const hop = Math.abs(Math.sin(Math.PI * beat)) * 0.06 * P, footY = floorY - hop, hipY = footY - 0.3 * P, shoulderY = footY - 0.62 * P, headY = footY - 0.76 * P, hr = 0.085 * P;
+  const dark = '#06030c', hand = { x: x + 0.22 * P, y: headY - 0.02 * P + Math.sin(beat * Math.PI) * 0.03 * P };
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.shadowColor = laserB; ctx.shadowBlur = 6; ctx.fillStyle = dark; ctx.strokeStyle = dark; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2, 0.07 * P);
+  [-1, 1].forEach(side => { ctx.beginPath(); ctx.moveTo(x + side * 0.03 * P, hipY); ctx.lineTo(x + side * 0.07 * P, footY); ctx.stroke(); });
+  ctx.lineWidth = Math.max(3, 0.15 * P);
+  ctx.beginPath(); ctx.moveTo(x, hipY); ctx.lineTo(x, shoulderY + 0.04 * P); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, headY, hr, 0, TAU); ctx.fill();
+  ctx.lineWidth = Math.max(1.6, 0.05 * P);
+  ctx.beginPath(); ctx.moveTo(x + 0.07 * P, shoulderY + 0.02 * P); ctx.lineTo(x + 0.15 * P, (shoulderY + hand.y) / 2); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+  const swing = Math.sin(beat * Math.PI + 1) * 0.08 * P;
+  ctx.beginPath(); ctx.moveTo(x - 0.07 * P, shoulderY + 0.02 * P); ctx.lineTo(x - 0.15 * P + swing, shoulderY + 0.18 * P); ctx.lineTo(x - 0.16 * P + swing * 1.4, hipY); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 + 0.5 * pulse; ctx.fillStyle = laserA; // the microphone catches the light
+  ctx.beginPath(); ctx.arc(hand.x, hand.y - 0.03 * P, Math.max(1.2, 0.025 * P), 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+// Smoke jets from the stage front every 4 beats; at the start of every 32 beats two flame jets with flying sparks.
+function drawFogAndPyro(ctx, scene, beat) {
+  const { H, stage, colours } = scene, [laserA, laserB] = colours.lasers, TAU = Math.PI * 2;
+  const puff = (beat % 4) / 4;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const x = stage.cx + (i / 5 - 0.5) * stage.w * 1.1 + Math.sin(beat + i) * 4, y = stage.floor - 6 - puff * H * 0.07 * (1 + (i % 2) * 0.4), radius = stage.w * (0.1 + 0.16 * puff);
+    const smoke = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    smoke.addColorStop(0, i % 2 ? laserA : laserB); smoke.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.24 * Math.min(1, puff * 10) * Math.pow(1 - puff, 1.5); ctx.fillStyle = smoke;
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill();
+  }
+  const cycle = beat % 32, seconds = cycle * 60 / scene.bpm;
+  if (seconds > 2.4) return;
+  const burst = cycle < 2 ? Math.sin(cycle / 2 * Math.PI) : 0;
+  [[stage.x - 4, -1], [stage.x + stage.w + 4, 1]].forEach(([x, side]) => {
+    if (burst > 0.02) {
+      const h = H * 0.3 * burst, w = stage.w * 0.07 * (0.6 + 0.4 * burst);
+      const flame = ctx.createLinearGradient(x, stage.floor, x, stage.floor - h);
+      flame.addColorStop(0, '#fff3c0'); flame.addColorStop(0.35, '#ffb347'); flame.addColorStop(1, 'rgba(255,90,40,0)');
+      ctx.globalAlpha = 0.9 * burst; ctx.fillStyle = flame;
+      ctx.beginPath(); ctx.ellipse(x, stage.floor - h / 2, w, h / 2, 0, 0, TAU); ctx.fill();
+    }
+    for (let i = 0; i < 16; i++) {
+      const angle = -Math.PI / 2 + side * (0.12 + 0.09 * (i % 8)), speed = H * (0.55 + 0.35 * ((i * 37) % 10) / 10);
+      const sx = x + Math.cos(angle) * speed * seconds, sy = stage.floor + Math.sin(angle) * speed * seconds + 0.5 * H * 1.8 * seconds * seconds;
+      if (sy > stage.floor) continue;
+      ctx.globalAlpha = Math.max(0, 1 - seconds / 2.4); ctx.fillStyle = i % 3 ? '#ffb347' : '#fff3c0';
+      ctx.beginPath(); ctx.arc(sx, sy, 1.4, 0, TAU); ctx.fill();
+    }
+  });
+}
+
+// What a camera adds: soft out-of-focus lights, colour fringes at the edges and a little film grain.
+function drawCameraLook(ctx, scene, t, pulse) {
+  const { W, H, colours } = scene, [laserA, laserB] = colours.lasers, TAU = Math.PI * 2;
+  ctx.globalCompositeOperation = 'lighter';
+  scene.bokeh.forEach(b => {
+    const x = b.x + Math.sin(t * 0.15 + b.phase) * W * 0.02, y = b.y + Math.cos(t * 0.11 + b.phase) * H * 0.02, colour = colours.lasers[b.colour];
+    const disc = ctx.createRadialGradient(x, y, 0, x, y, b.radius);
+    disc.addColorStop(0, colour); disc.addColorStop(0.85, colour); disc.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.05 + 0.05 * pulse; ctx.fillStyle = disc; ctx.beginPath(); ctx.arc(x, y, b.radius, 0, TAU); ctx.fill();
+  });
+  const left = ctx.createLinearGradient(0, 0, W * 0.07, 0), right = ctx.createLinearGradient(W, 0, W * 0.93, 0);
+  left.addColorStop(0, laserA); left.addColorStop(1, 'rgba(0,0,0,0)'); right.addColorStop(0, laserB); right.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.07; ctx.fillStyle = left; ctx.fillRect(0, 0, W * 0.07, H);
+  ctx.fillStyle = right; ctx.fillRect(W * 0.93, 0, W * 0.07, H);
+  const rnd = backdropRandom(scene.seed + Math.floor(t * 12));
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 160; i++) {
+    ctx.globalAlpha = 0.05 + rnd() * 0.09; ctx.fillStyle = rnd() < 0.5 ? '#ffffff' : '#000000';
+    ctx.fillRect(rnd() * W, rnd() * H, 1.2, 1.2);
+  }
+  ctx.globalAlpha = 1;
+}
+
 // A DJ behind the decks: head bobbing, one hand scratching, the other on the mixer, and on the
 // first beat of every bar a hand goes up. P is the height of the DJ in pixels.
 function drawDj(ctx, scene, beat, pulse) {
@@ -484,18 +691,21 @@ function drawDj(ctx, scene, beat, pulse) {
   const P = (stage.floor - stage.top) * 0.6, cx = stage.cx, floorY = stage.floor - 14;
   const tableTop = floorY - 0.42 * P, shoulderY = floorY - 0.78 * P, bob = pulse * 0.02 * P;
   const headY = floorY - 0.9 * P + bob, hr = 0.075 * P;
-  const bar = beat % 8, lift = bar < 1 ? Math.sin(bar * Math.PI) : 0;
+  const rise = x => (x > 0 && x < 1 ? Math.sin(x * Math.PI) : 0);
+  const bar = beat % 8, drop = beat % 32 >= 28 ? rise((beat % 32 - 28) / 4) : 0; // before the flames, both arms go up for four beats
+  const liftR = Math.max(rise(bar), drop), liftL = Math.max(rise(bar - 4), drop);
+  const sway = Math.sin(beat * Math.PI * 0.5) * 0.018 * P, bx = cx + sway * 0.5, hx = cx + sway + Math.sin(beat * Math.PI) * 0.01 * P; // body sways, head nods
   const dark = '#06030c';
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
   // Body, head and headphones, with a rim of stage light.
   ctx.shadowColor = laserA; ctx.shadowBlur = 7; ctx.fillStyle = dark; ctx.strokeStyle = dark;
-  ctx.beginPath(); ctx.moveTo(cx - 0.15 * P, shoulderY + bob * 0.5); ctx.quadraticCurveTo(cx, shoulderY - 0.04 * P + bob * 0.5, cx + 0.15 * P, shoulderY + bob * 0.5);
+  ctx.beginPath(); ctx.moveTo(bx - 0.15 * P, shoulderY + bob * 0.5); ctx.quadraticCurveTo(bx, shoulderY - 0.04 * P + bob * 0.5, bx + 0.15 * P, shoulderY + bob * 0.5);
   ctx.lineTo(cx + 0.11 * P, tableTop + 2); ctx.lineTo(cx - 0.11 * P, tableTop + 2); ctx.closePath(); ctx.fill();
-  ctx.fillRect(cx - 0.03 * P, headY + hr * 0.6, 0.06 * P, 0.07 * P);
-  ctx.beginPath(); ctx.arc(cx, headY, hr, 0, TAU); ctx.fill();
+  ctx.fillRect(hx - 0.03 * P, headY + hr * 0.6, 0.06 * P, 0.07 * P);
+  ctx.beginPath(); ctx.arc(hx, headY, hr, 0, TAU); ctx.fill();
   ctx.lineWidth = Math.max(1.5, 0.028 * P);
-  ctx.beginPath(); ctx.arc(cx, headY, hr * 1.18, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(cx + side * hr * 1.18, headY + hr * 0.1, hr * 0.38, 0, TAU); ctx.fill(); });
+  ctx.beginPath(); ctx.arc(hx, headY, hr * 1.18, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(hx + side * hr * 1.18, headY + hr * 0.1, hr * 0.38, 0, TAU); ctx.fill(); });
   ctx.shadowBlur = 0;
   // The DJ table with a light strip on its front.
   const tw = 0.95 * P;
@@ -524,10 +734,12 @@ function drawDj(ctx, scene, beat, pulse) {
   const shoulderLY = shoulderY + 0.03 * P + bob * 0.5;
   const scratch = { x: cx - 0.27 * P + Math.sin(beat * TAU * 2) * 0.05 * P, y: tableTop - 0.03 * P };
   const knob = { x: cx + 0.06 * P + Math.sin(beat * Math.PI) * 0.02 * P, y: tableTop - 0.045 * P - pulse * 0.015 * P };
-  const up = { x: cx + 0.3 * P, y: headY - 0.12 * P };
-  const hand2 = { x: knob.x + (up.x - knob.x) * lift, y: knob.y + (up.y - knob.y) * lift };
-  [[-1, scratch, 1], [1, hand2, 1 - lift]].forEach(([side, hand, bend]) => {
-    const sx = cx + side * 0.14 * P, ex = (sx + hand.x) / 2 + side * 0.07 * P, ey = (shoulderLY + hand.y) / 2 + 0.04 * P * bend;
+  const wave = Math.sin(beat * TAU) * 0.03 * P * drop;
+  const upR = { x: cx + 0.3 * P + wave, y: headY - 0.12 * P }, upL = { x: cx - 0.3 * P + wave, y: headY - 0.12 * P };
+  const hand2 = { x: knob.x + (upR.x - knob.x) * liftR, y: knob.y + (upR.y - knob.y) * liftR };
+  const hand1 = { x: scratch.x + (upL.x - scratch.x) * liftL, y: scratch.y + (upL.y - scratch.y) * liftL };
+  [[-1, hand1, 1 - liftL], [1, hand2, 1 - liftR]].forEach(([side, hand, bend]) => {
+    const sx = bx + side * 0.14 * P, ex = (sx + hand.x) / 2 + side * 0.07 * P, ey = (shoulderLY + hand.y) / 2 + 0.04 * P * bend;
     ctx.beginPath(); ctx.moveTo(sx, shoulderLY); ctx.lineTo(ex, ey); ctx.lineTo(hand.x, hand.y); ctx.stroke();
     ctx.beginPath(); ctx.arc(hand.x, hand.y, Math.max(1.5, 0.03 * P), 0, TAU); ctx.fill();
   });
@@ -598,13 +810,23 @@ function drawCrowd(ctx, scene, beat, t) {
       ctx.globalCompositeOperation = 'source-over';
     }
     if (person.arm) {
-      const sway = Math.sin(t * 2 + person.phase * 6) * s * 0.6;
+      const sway = Math.sin(beat * Math.PI + person.phase * 6) * s * 0.6, reach = 2.2 + 0.5 * Math.pow(1 - (beat % 1), 3); // arms wave and pump with the beat
+      const handX = person.x + person.arm * s * 1.3 + sway, handY = y - s * reach;
       ctx.strokeStyle = colours.shade; ctx.lineWidth = Math.max(2, s * 0.45); ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(person.x + person.arm * s * 0.7, y + s); ctx.lineTo(person.x + person.arm * s * 1.3 + sway, y - s * 2.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(person.x + person.arm * s * 0.7, y + s); ctx.lineTo(handX, handY); ctx.stroke();
+      if (person.stick) { // a glow stick
+        const colour = colours.lasers[person.phase < 0.5 ? 0 : 1];
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = colour; ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.9; ctx.lineWidth = Math.max(1.5, s * 0.22);
+        ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(handX + sway * 0.4, handY - s * 1.5); ctx.stroke();
+        ctx.globalAlpha = 0.18; ctx.lineWidth = Math.max(4, s * 0.8);
+        ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(handX + sway * 0.4, handY - s * 1.5); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
       if (person.phone) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 3 + person.phase * 9));
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(person.x + person.arm * s * 1.3 + sway - 1.5, y - s * 2.6, 3, 4);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(handX - 1.5, handY - s * 0.4, 3, 4);
         ctx.globalCompositeOperation = 'source-over';
       }
     }
