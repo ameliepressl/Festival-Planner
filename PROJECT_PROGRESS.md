@@ -727,6 +727,10 @@ Evacuation starts with the people currently on the map. Walking routes use the s
 
 Validation: all 389 tests passed, including nine new checks for individual dots, timetable changes, walkable ground, exit queues, overnight sets and read-only playback. In Chrome, reloaded the 20,000-visitor Munich demo, switched to Saturday at 1.5×, checked that all 20,000 exited, and returned to the original festival time.
 
-### Evacuation slider endpoint — 23 November 2026
+## Evacuation slider endpoint — 23 November 2026
 
-Seeking to the end now uses exactly 100% of the simulated evacuation time. Chrome previously rounded the fractional time and could leave one visitor on site. Verified the closing-time scenario in Chrome on the merge branch. Munich showed 20,000 exited and zero on site. Lisbon showed 5,000 waiting at unmeasured exits. The regression check and all 422 tests passed.
+Branch: `feature-visitor-simulation-merge` (fix owner: Vicky). Plan: [feature-plans/animated-visitor-simulation.md](feature-plans/animated-visitor-simulation.md). Pull request: [#42](https://github.com/ameliepressl/Festival-Planner/pull/42).
+
+Seeking to the end now uses exactly 100% of the simulated evacuation time. Chrome previously rounded the fractional time and could leave one visitor on site.
+
+Validation: 422/422 tests passed, including the endpoint regression check. In Chrome, Munich showed 20,000 exited and zero on site. Lisbon showed 5,000 waiting at unmeasured exits.
