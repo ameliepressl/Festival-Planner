@@ -28,6 +28,29 @@ function pinsToPlace(items, placements = {}) {
   })).filter((group) => group.items.length > 0);
 }
 
+// Kinds that come in large numbers share one button in "Pins to place" ("Toilets ×25").
+const PIN_BULK_LABELS = { toilets: 'Toilets', water: 'Free water', pitch: 'Food pitches' };
+const PIN_BULK_FROM = 4;
+
+// The buttons of "Pins to place": one per pin, except many open pins of one kind share a button.
+// A shared button places its first open pin (e.g. the toilets next to Stage A come first).
+//   → [{ category, title, colour, count, choices: [{ id, ids, label, symbol, count }] }]
+function pinChoices(items, placements = {}) {
+  return pinsToPlace(items, placements).map((group) => {
+    const choices = [];
+    for (const item of group.items) {
+      const same = group.items.filter((other) => other.kind === item.kind);
+      if (same.length >= PIN_BULK_FROM && PIN_BULK_LABELS[item.kind]) {
+        if (same[0] !== item) continue;
+        choices.push({ id: item.id, ids: same.map((other) => other.id), label: PIN_BULK_LABELS[item.kind], symbol: item.symbol, count: same.length });
+      } else {
+        choices.push({ id: item.id, ids: [item.id], label: item.name, symbol: item.symbol, count: 1 });
+      }
+    }
+    return { category: group.category, title: group.title, colour: group.colour, count: group.items.length, choices };
+  });
+}
+
 // After placing `placedId`: the next pin of the same category, otherwise the next one at all.
 function nextPinToPlace(items, placements = {}, placedId = null) {
   const open = items.filter((item) => !placements[item.id] && item.id !== placedId);
@@ -61,5 +84,5 @@ function fillMissingPins(placements = {}, suggested = {}) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { clearedPlacements, pinCounts, pinsToPlace, nextPinToPlace, pinSpot, fillMissingPins };
+  module.exports = { clearedPlacements, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins };
 }

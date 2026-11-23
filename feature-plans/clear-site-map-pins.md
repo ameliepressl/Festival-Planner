@@ -17,11 +17,13 @@ layout from scratch."* Until now an organiser could only move the suggested pins
       The button counts live: "Clear 77 pins" / "Clear 78 pins".
 - [x] **Pins to place** card: every pin still missing, grouped by category, with a progress bar
       ("12 of 78"). Pick a pin, click its spot on the map, and the next one of the same kind is ready.
+- [x] Many pins of one kind share one button ("Toilets ×25", "Free water ×20", "Food pitches ×20");
+      it places the toilets and water next to each stage first. Fewer than four keep their own names.
 - [x] While placing, a see-through pin follows the mouse; it turns into a red ✕ where the pin
       cannot stand (water, forest, outside the fence), and a click there explains why.
       Gate and emergency exits snap onto the fence.
 - [x] The dark hint bar shows the pin being placed and how many are left, with *Skip* and
-      *Done placing*; **Esc** stops too.
+      *Done placing*, and *All pins* jumps to the list (handy on narrow screens); **Esc** stops too.
 - [x] **Fill the rest for me** keeps every pin placed by hand and plans only the missing ones.
       The existing *Plan them* button now does the same instead of replacing hand-placed pins.
 - [x] The last pin: the layout check ring pops and a message gives the score.
@@ -29,7 +31,7 @@ layout from scratch."* Until now an organiser could only move the suggested pins
       **Discard changes** returns to the saved map, **Save changes** keeps the new layout.
 - [x] Viewers (no edit right) see the button disabled, like *Suggest layout*.
 - [x] **Rules in `rules/map-pin-rules.js`:** `clearedPlacements`, `pinCounts`, `pinsToPlace`,
-      `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`. Screen code only
+      `pinChoices`, `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`. Screen code only
       in `site-map/site-map-page.js`, styles in `site-map/site-map.css`.
 - [x] Cache versions raised in `index.html` for the changed page script and stylesheet.
 
@@ -48,14 +50,17 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 
 ## Tests
 
-`tests/clear-site-map-pins.test.js` (13 tests): clear with and without the gate; the saved object is never
+`tests/clear-site-map-pins.test.js` (15 tests): clear with and without the gate; the saved object is never
 changed; counts; pins grouped by category; next pin after placing and after Skip; normal spot; lake,
 forest and outside the fence refused with a message; gate and exits snap onto the fence and pass the
 layout check; nonsense input; "Fill the rest" keeps hand-placed pins; clear + Undo through the map draft;
-a cleared map still parses with fence, gate and no-go areas. No existing test was changed.
+a cleared map still parses with fence, gate and no-go areas; many pins of one kind share a button (stage
+toilets first) while a few keep their own names. No existing test was changed.
+Full suite: 498 tests, 498 pass, 0 fail.
 
 Browser check (Munich demo, port 8021, test storage cleared afterwards): dialog shows 77 pins with the gate
 kept, 78 without; after clearing only the gate is left and Stage A is ready; the preview pin follows the
 mouse and turns red over the lake; a click in the lake is refused with the message; Stage B is ready after
 Stage A; *Fill the rest* adds 76 pins and keeps both hand-placed ones (layout check 90 %); *Discard changes*
-restores all 78 saved pins; *Keep my pins* closes the dialog and returns focus. No console errors.
+restores all 78 saved pins; *Keep my pins* closes the dialog and returns focus; the grouped *Toilets ×25*
+button starts with "Toilets · Stage A". No console errors.

@@ -192,3 +192,5 @@
 @media(prefers-reduced-motion:reduce){.sm-tray,.sm-ring-done{animation:none}.sm-tray-progress i{transition:none}}
 .sm-hint .button.secondary{background:transparent}
 .sm-hint .button.secondary:hover{background:rgba(255,255,255,.12)}
+.sm-tray-pin b{font:700 11px var(--font-text);color:var(--muted);margin-left:2px}
+.sm-tray-pin.on b{color:#ffd9cf}

@@ -378,7 +378,7 @@
     const tray = view.querySelector('#sm-tray');
     if (!tray) return;
     const s = site();
-    const groups = pinsToPlace(items, s.placements);
+    const groups = pinChoices(items, s.placements);
     tray.hidden = groups.length === 0 || lineupProblem();
     if (tray.hidden) { tray.innerHTML = ''; return; }
     const { total, placed } = pinCounts(items, s.placements);
@@ -389,9 +389,9 @@
       <div class="sm-tray-progress" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
       <p class="sm-note">${current ? `Now placing <b>${escape(current.name)}</b>. Click its spot on the map${current.onFence ? '; it snaps to the fence' : ''}.`
         : 'Pick a pin, then click its spot on the map. The next one is ready right after.'}</p>
-      ${groups.map((group) => `<div class="sm-tray-group"><p class="sm-sub">${escape(group.title)} <small>${group.items.length}</small></p><div class="sm-tray-pins">
-        ${group.items.map((item) => `<button type="button" class="sm-tray-pin ${item.id === placing ? 'on' : ''}" data-place="${item.id}" aria-pressed="${item.id === placing}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} title="${escape(item.text)}">
-          <i>${escape(item.symbol)}</i>${escape(item.name)}</button>`).join('')}</div></div>`).join('')}
+      ${groups.map((group) => `<div class="sm-tray-group"><p class="sm-sub">${escape(group.title)} <small>${group.count}</small></p><div class="sm-tray-pins">
+        ${group.choices.map((choice) => { const on = choice.ids.includes(placing); return `<button type="button" class="sm-tray-pin ${on ? 'on' : ''}" data-place="${choice.id}" aria-pressed="${on}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} aria-label="Place ${escape(choice.label)}${choice.count > 1 ? `, ${choice.count} left` : ''}">
+          <i>${escape(choice.symbol)}</i>${escape(choice.label)}${choice.count > 1 ? `<b>×${choice.count}</b>` : ''}</button>`; }).join('')}</div></div>`).join('')}
       <div class="sm-tray-actions">
         <button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''}>Fill the rest for me</button>
         ${current ? '<button type="button" class="button secondary" data-tray="stop">Stop placing</button>' : ''}
@@ -453,7 +453,7 @@
       const item = placing ? findItem(placing, items) : null;
       const left = pinsToPlace(items, site().placements).reduce((sum, group) => sum + group.items.length, 0);
       hint.innerHTML = item
-        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
+        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="list">All pins</button> <button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
         : '<span>Pick a pin under “Pins to place”.</span>';
       return;
     }
@@ -821,6 +821,13 @@
     if (placeButton) { startPlacing(placeButton.dataset.place); return; }
     const trayAction = t.closest('[data-tray]')?.dataset.tray;
     if (trayAction === 'stop') { stopPlacing(); return; }
+    if (trayAction === 'list') {
+      // On narrow screens the list sits below the map: jump there and focus the pin being placed.
+      const tray = view.querySelector('#sm-tray');
+      tray?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      (tray?.querySelector('.sm-tray-pin.on') || tray?.querySelector('.sm-tray-pin'))?.focus({ preventScroll: true });
+      return;
+    }
     if (trayAction === 'skip') {
       const next = nextPinToPlace(items, site().placements, placing);
       if (next && next.id !== placing) startPlacing(next.id);

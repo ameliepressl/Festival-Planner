@@ -8,7 +8,7 @@ const map = require('../rules/site-map-rules.js');
 const capacity = require('../rules/capacity-rules.js');
 const draftRules = require('../rules/map-draft-rules.js');
 const {
-  clearedPlacements, pinCounts, pinsToPlace, nextPinToPlace, pinSpot, fillMissingPins
+  clearedPlacements, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins
 } = require('../rules/map-pin-rules.js');
 
 const items = map.layoutItems({ ...capacity.capacityNeeds(5000), stages: 2 });
@@ -130,4 +130,30 @@ test('a cleared map still parses and keeps its fence, gate position and no-go ar
   assert.equal(parsed.grid.cells, site.grid.cells);
   const rules = map.checkLayout(parsed, parsed.placements, items);
   assert.equal(rules.find((rule) => rule.id === 'all-placed').ok, false);
+});
+
+test('many pins of one kind share one button; the stage toilets come first', () => {
+  const big = map.layoutItems({ ...capacity.capacityNeeds(20000), stages: 3 });
+  const groups = pinChoices(big, {});
+  const facilities = groups.find((group) => group.category === 'facilities');
+  const toilets = facilities.choices.find((choice) => choice.label === 'Toilets');
+  assert.equal(toilets.count, big.filter((entry) => entry.kind === 'toilets').length);
+  assert.equal(toilets.id, 'toilets-a', 'the button places the toilets next to Stage A first');
+  assert.equal(facilities.count, big.filter((entry) => entry.category === 'facilities').length);
+  const stages = groups.find((group) => group.category === 'stages');
+  assert.deepEqual(stages.choices.map((choice) => [choice.id, choice.label, choice.count]),
+    big.filter((entry) => entry.kind === 'stage').map((entry) => [entry.id, entry.name, 1]), 'stages keep their own buttons');
+  const afterOne = pinChoices(big, { 'toilets-a': [1, 1] });
+  assert.equal(afterOne.find((group) => group.category === 'facilities').choices.find((choice) => choice.label === 'Toilets').id, 'toilets-b');
+});
+
+test('a few pins of a kind keep their own buttons with their full names', () => {
+  const big = map.layoutItems({ ...capacity.capacityNeeds(20000), stages: 3 });
+  const water = big.filter((entry) => entry.kind === 'water');
+  const placed = Object.fromEntries(water.slice(0, -3).map((entry) => [entry.id, [1, 1]]));   // 3 left
+  const choices = pinChoices(big, placed).find((group) => group.category === 'facilities').choices;
+  for (const entry of water.slice(-3)) {
+    assert.ok(choices.some((choice) => choice.id === entry.id && choice.label === entry.name && choice.count === 1), entry.name);
+  }
+  assert.equal(choices.some((choice) => choice.label === 'Free water'), false);
 });
