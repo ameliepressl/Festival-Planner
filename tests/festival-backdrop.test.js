@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { BACKDROP_MOODS, backdropMoodForGenre, festivalMood, festivalScene, festivalBackdrop } = require('../rules/backdrop-rules.js');
+const { BACKDROP_MOODS, BACKDROP_LANDMARKS, backdropMoodForGenre, festivalMood, festivalScene, festivalLandmark, festivalBackdrop } = require('../rules/backdrop-rules.js');
 
 const ROOT = path.join(__dirname, '..');
 const artists = genres => genres.map((genre, i) => ({ id: `a${i}`, name: `Artist ${i}`, genre }));
@@ -41,6 +41,20 @@ test('the landscape comes from the venue', () => {
   };
   for (const [venue, scene] of Object.entries(expected)) assert.equal(festivalScene(venue), scene, venue);
   assert.equal(festivalScene(undefined), 'city');
+});
+
+test('well-known cities get their landmark; other places get none', () => {
+  const expected = {
+    'Champ de Mars, Paris': 'eiffel', 'Hyde Park, London': 'bigben', 'Parque Tejo, Lisbon': 'bridge',
+    'Open-air festival site, Munich': 'frauenkirche', 'Olympiapark München': 'frauenkirche', 'Tempelhof, Berlin': 'fernsehturm',
+    'Circo Massimo, Roma': 'colosseum', 'Parc del Fòrum, Barcelona': 'sagrada', 'Randalls Island, New York': 'empire',
+    'Sydney Harbour': 'opera', 'Donauinsel, Wien': 'riesenrad', 'NDSM Amsterdam': 'canals', 'Dubai Media City': 'burj',
+    'Nova SBE, Carcavelos': '', 'Parisian Café, Porto': '', 'Jerome Park': '', '': ''
+  };
+  for (const [venue, landmark] of Object.entries(expected)) assert.equal(festivalLandmark(venue), landmark, venue);
+  assert.equal(festivalScene('Sydney Harbour'), 'coast');
+  assert.equal(festivalBackdrop({ venue: 'Paris' }).landmark, 'eiffel');
+  assert.notEqual(festivalBackdrop({ venue: 'Paris' }).key, festivalBackdrop({ venue: 'Lyon' }).key);
 });
 
 test('every mood has two laser colours and a sensible tempo; one festival always gets the same stage', () => {
@@ -90,6 +104,19 @@ test('every mood and landscape draws whole frames at any time, with only real nu
     const numbers = canvas.calls.flat().filter(value => typeof value === 'number');
     assert.ok(canvas.calls.length > 300, `${genre}/${place}/${t}`);
     assert.ok(numbers.every(Number.isFinite), `${genre}/${place}/${t}: no NaN or Infinity`);
+  }
+});
+
+test('every landmark draws whole frames, also in a small window', () => {
+  const cities = { eiffel: 'Paris', bigben: 'London', bridge: 'Lisbon', frauenkirche: 'Munich', fernsehturm: 'Berlin', colosseum: 'Rome',
+    sagrada: 'Barcelona', empire: 'New York', opera: 'Sydney', riesenrad: 'Wien', canals: 'Amsterdam', burj: 'Dubai' };
+  assert.deepEqual(Object.keys(cities).sort(), BACKDROP_LANDMARKS.map(([kind]) => kind).sort(), 'every landmark is tested');
+  for (const [kind, city] of Object.entries(cities)) for (const [W, H] of [[1100, 300], [320, 160]]) for (const t of [0, 2.7, 61]) {
+    const scene = sceneFor('Pop', city, W, H);
+    assert.equal(scene.landmark.kind, kind);
+    const canvas = recordingCanvas();
+    stage.drawStageFrame(canvas, scene, t);
+    assert.ok(canvas.calls.flat().filter(v => typeof v === 'number').every(Number.isFinite), `${kind} ${W}x${H} t=${t}`);
   }
 });
 

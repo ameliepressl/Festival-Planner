@@ -53,17 +53,44 @@ function festivalMood(artists = [], bookings = []) {
 
 const BACKDROP_SCENE_WORDS = [
   ['mountains', ['munich', 'münchen', 'muenchen', 'zurich', 'zürich', 'zuerich', 'alps', 'alpen', 'alpine', 'innsbruck', 'salzburg', 'geneva', 'genf', 'bern', 'mountain', 'berg', 'ski', 'tirol', 'tyrol', 'dolomit']],
-  ['coast', ['lisbon', 'lisboa', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'nice', 'marseille', 'sylt', 'strand', 'meer', 'see', 'lake']],
+  ['coast', ['sydney', 'san francisco', 'lisbon', 'lisboa', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'nice', 'marseille', 'sylt', 'strand', 'meer', 'see', 'lake']],
   ['field', ['park', 'field', 'farm', 'forest', 'wood', 'meadow', 'wiese', 'countryside', 'valley', 'garden', 'green']]
 ];
 
-// The landscape for a venue: mountains, coast, field (hills) or city (the default).
-function festivalScene(venue) {
+// Does the venue name one of these words? Short words must stand alone ("sea" is not "Seattle");
+// with wholeWords, every word must ("Parisian" is not "Paris").
+function venueMatch(venue, table, wholeWords = false) {
   const text = String(venue || '').toLowerCase();
   const words = text.split(/[^a-z0-9äöüßéèêáàâíóúçãõñ&-]+/).filter(Boolean);
-  const has = word => word.includes(' ') ? text.includes(word) : words.includes(word) || (word.length > 4 && text.includes(word));
-  const match = BACKDROP_SCENE_WORDS.find(([, list]) => list.some(has));
-  return match ? match[0] : 'city';
+  const phrase = ` ${words.join(' ')} `;
+  const has = word => word.includes(' ') ? phrase.includes(` ${word} `)
+    : words.includes(word) || (!wholeWords && word.length > 4 && text.includes(word));
+  const match = table.find(([, list]) => list.some(has));
+  return match ? match[0] : '';
+}
+
+// The landscape for a venue: mountains, coast, field (hills) or city (the default).
+function festivalScene(venue) {
+  return venueMatch(venue, BACKDROP_SCENE_WORDS) || 'city';
+}
+
+// A famous landmark for well-known cities, drawn next to the stage ('' = none).
+const BACKDROP_LANDMARKS = [
+  ['eiffel', ['paris']],
+  ['bigben', ['london']],
+  ['bridge', ['lisbon', 'lisboa', 'san francisco']],
+  ['frauenkirche', ['munich', 'münchen', 'muenchen']],
+  ['fernsehturm', ['berlin']],
+  ['colosseum', ['rome', 'roma', 'rom']],
+  ['sagrada', ['barcelona']],
+  ['empire', ['new york', 'nyc', 'manhattan', 'brooklyn']],
+  ['opera', ['sydney']],
+  ['riesenrad', ['vienna', 'wien']],
+  ['canals', ['amsterdam']],
+  ['burj', ['dubai']]
+];
+function festivalLandmark(venue) {
+  return venueMatch(venue, BACKDROP_LANDMARKS, true);
 }
 
 // A small seeded random generator, so one festival always gets the same picture.
@@ -87,11 +114,12 @@ function backdropRandom(seed) {
 function festivalBackdrop({ name = '', venue = '', artists = [], bookings = [] } = {}) {
   const mood = festivalMood(artists, bookings);
   const scene = festivalScene(venue);
+  const landmark = festivalLandmark(venue);
   const seed = backdropSeed(`${name}|${venue}`);
   const colours = BACKDROP_MOODS[mood];
-  return { mood, scene, seed, label: colours.label, bpm: colours.bpm, colours, key: `${mood}|${scene}|${seed}` };
+  return { mood, scene, landmark, seed, label: colours.label, bpm: colours.bpm, colours, key: `${mood}|${scene}|${landmark}|${seed}` };
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { BACKDROP_MOODS, backdropMoodForGenre, festivalMood, festivalScene, backdropSeed, backdropRandom, festivalBackdrop };
+  module.exports = { BACKDROP_MOODS, BACKDROP_LANDMARKS, backdropMoodForGenre, festivalMood, festivalScene, festivalLandmark, backdropSeed, backdropRandom, festivalBackdrop };
 }

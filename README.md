@@ -150,7 +150,8 @@ direct request (`migrations/006`, applied on 22 November 2026).
 ### Plan the programme
 - **Overview** — an animated live stage with the festival's name: lasers, confetti and a crowd
   moving to the beat. Its colours and tempo follow the lineup's main genre, and its landscape
-  follows the venue (coast, mountains, park or city). Below it: festival facts, projected finances,
+  follows the venue (coast, mountains, park or city). Well-known cities add their landmark (Paris:
+  Eiffel Tower; London: Big Ben and London Eye; Lisbon: the bridge; and 9 more). Below it: festival facts, projected finances,
   tasks needing attention and a readiness score. Failed planning checks become linked issues on the task board;
   fixing their source clears them. Festival details and team management are in Settings.
 - **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed

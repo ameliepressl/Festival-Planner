@@ -34,6 +34,20 @@ the live demo and shows at a glance what kind of festival it is.
         - Alpine places (Munich, Zurich, …) → mountains
         - parks and fields → hills
         - everything else → skyline
+      - **Landmark for well-known cities** (whole words only, so "Parisian" is not Paris), lit up
+        like at night and partly animated:
+        - Paris: Eiffel Tower with its sparkle and a sweeping searchlight
+        - London: Big Ben with a moving clock and the turning London Eye
+        - Lisbon and San Francisco: the red suspension bridge with deck lights
+        - Munich: Frauenkirche
+        - Berlin: TV tower with a blinking light, and the Brandenburg Gate
+        - Rome: Colosseum
+        - Barcelona: Sagrada Família
+        - New York: Empire State Building, with a top that changes colour to the beat
+        - Sydney: Opera House
+        - Vienna: the turning Riesenrad
+        - Amsterdam: canal houses
+        - Dubai: Burj Khalifa
       - **Tempo per mood:** neon 128 BPM, ember 140, gold 92, heat 100, dusk 84, candy 120, sunset 112.
       - The same festival always gets the same stage (seeded by name and venue).
 - [x] **Screen:** Overview, for every role (it only shows what is already visible). Drawn in code
@@ -55,9 +69,9 @@ the live demo and shows at a glance what kind of festival it is.
 
 ## Tests
 
-- `tests/festival-backdrop.test.js` (14 tests):
-  - rules: genre → mood, mood from bookings/catalogue/fallback, venue → landscape, tempo and laser colours, same festival → same stage;
-  - drawing: every mood × landscape at 6 points in time draws whole frames with only finite numbers; a frame depends only on the time; confetti bursts and ends; a small window still works;
+- `tests/festival-backdrop.test.js` (16 tests):
+  - rules: city → landmark (whole words), genre → mood, mood from bookings/catalogue/fallback, venue → landscape, tempo and laser colours, same festival → same stage;
+  - drawing: every landmark (also in a small window) and every mood × landscape at several points in time draws whole frames with only finite numbers; a frame depends only on the time; confetti bursts and ends; a small window still works;
   - Overview banner: title, caption and mood; retina size; one animation only; "reduce motion" draws once; plain-text names; hidden when rules are missing or fail; script order.
 - Frames of all four landscapes and three points in time were rendered with a real canvas (@napi-rs/canvas, outside the repo) and looked at.
 - Not yet: the banner inside the real page in a browser (laptop and phone width).
