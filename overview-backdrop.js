@@ -282,16 +282,22 @@ function drawLandmark(ctx, scene, t, beat) {
     ctx.globalAlpha = 0.85; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(ex, ey, R, 0, Math.PI * 2); ctx.stroke();
     for (let i = 0; i < 32; i++) { const a = t * 0.08 + i * Math.PI / 16; ctx.fillStyle = i % 2 ? laserA : laserB; ctx.globalAlpha = 0.9; ctx.fillRect(ex + Math.cos(a) * R - 2, ey + Math.sin(a) * R - 2, 4, 4); }
   } else if (m.kind === 'bridge') {
-    const deck = gy - H * 0.015, xa = m.left + 10, xb = Math.max(W - 12, xa + 120), th = Math.min(H * 0.36, m.height * 0.62), mid = (xa + xb) / 2;
+    // A suspension bridge entirely to the right of the stage: two towers, a deck above the crowd, piers down to the ground.
+    const deck = gy - H * 0.1, xa = m.left + m.width * 0.24, xb = m.left + m.width * 0.82, th = Math.min(H * 0.3, m.height * 0.5), mid = (xa + xb) / 2;
     const cableY = x => { const k = (x - mid) / ((xb - xa) / 2); return deck - th + (th - 8) * (1 - k * k); };
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.95; ctx.strokeStyle = '#d2412f'; ctx.lineWidth = 1;
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.95; ctx.fillStyle = '#6e2018';
+    [xa, xb].forEach(x => { ctx.fillRect(x - 6, deck, 4, gy - deck); ctx.fillRect(x + 2, deck, 4, gy - deck); }); // piers
+    ctx.strokeStyle = '#d2412f'; ctx.lineWidth = 1;
     ctx.beginPath(); for (let x = xa + 8; x < xb; x += 9) { ctx.moveTo(x, cableY(x)); ctx.lineTo(x, deck); } ctx.stroke(); // hangers
-    ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo(mid, deck - th + (th - 8) * 2, xb, deck - th);
-    ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo(xa - 50, deck - th * 0.35, xa - 110, deck); ctx.stroke();
+    ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo(mid, deck - th + (th - 8) * 2, xb, deck - th); // main cable
+    ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo((xa + m.left) / 2, deck - th * 0.45, m.left, deck); // back stays
+    ctx.moveTo(xb, deck - th); ctx.quadraticCurveTo((xb + W) / 2, deck - th * 0.45, W, deck);
+    ctx.stroke();
     ctx.fillStyle = '#b8352a'; [xa, xb].forEach(x => { ctx.fillRect(x - 5, deck - th - 4, 3, th + 4); ctx.fillRect(x + 2, deck - th - 4, 3, th + 4); [0.1, 0.45, 0.8].forEach(k => ctx.fillRect(x - 5, deck - th + th * k, 10, 3)); });
-    ctx.fillStyle = '#7d2219'; ctx.fillRect(xa - 120, deck, W, 5);
+    ctx.fillStyle = '#7d2219'; ctx.fillRect(m.left, deck, W - m.left, 5);
     ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffe2a8';
-    for (let x = xa - 110; x < W; x += 16) { ctx.globalAlpha = 0.45 + 0.4 * blinking(t, 1.3, x); ctx.fillRect(x, deck + 1, 2, 2); }
+    for (let x = m.left; x < W; x += 16) { ctx.globalAlpha = 0.45 + 0.4 * blinking(t, 1.3, x); ctx.fillRect(x, deck + 1, 2, 2); }
   } else if (m.kind === 'frauenkirche') {
     const u = Math.min(m.height * 0.82, m.width * 1.5), x0 = m.x;
     landmarkPath(ctx, [[-0.3, 0], [-0.3, 0.27], [0, 0.4], [0.3, 0.27], [0.3, 0]], x0, gy, u);
