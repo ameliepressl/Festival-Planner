@@ -228,6 +228,12 @@ function blinking(t, speed, phase = 0) { return Math.sin(t * speed + phase) > 0 
 function drawLandmark(ctx, scene, t, beat) {
   const m = scene.landmark, { W, H, colours } = scene, gy = m.ground;
   const [laserA, laserB] = colours.lasers;
+  if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
+    ctx.save();
+    if (typeof drawCityLandmark === 'function') drawCityLandmark(ctx, scene, t, beat);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   if (m.kind === 'eiffel') {
     const u = Math.min(m.height, m.width * 2.4), x0 = m.x;

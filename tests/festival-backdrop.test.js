@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { BACKDROP_MOODS, BACKDROP_LANDMARKS, backdropMoodForGenre, festivalMood, festivalScene, festivalLandmark, festivalBackdrop } = require('../rules/backdrop-rules.js');
+const { BACKDROP_MOODS, BACKDROP_LANDMARKS, BACKDROP_LANDMARK_STYLES, BACKDROP_CITY_LANDMARKS, backdropMoodForGenre, festivalMood, festivalScene, festivalLandmark, festivalBackdrop } = require('../rules/backdrop-rules.js');
 
 const ROOT = path.join(__dirname, '..');
 const artists = genres => genres.map((genre, i) => ({ id: `a${i}`, name: `Artist ${i}`, genre }));
@@ -74,6 +74,7 @@ test('every mood has two laser colours and a sensible tempo; one festival always
 function loadStage() {
   const ctx = vm.createContext({ console, Math });
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'rules/backdrop-rules.js'), 'utf8'), ctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'overview-backdrop-cities.js'), 'utf8'), ctx);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'overview-backdrop.js'), 'utf8'), ctx);
   return ctx;
 }
@@ -108,16 +109,38 @@ test('every mood and landscape draws whole frames at any time, with only real nu
 });
 
 test('every landmark draws whole frames, also in a small window', () => {
-  const cities = { eiffel: 'Paris', bigben: 'London', bridge: 'Lisbon', frauenkirche: 'Munich', fernsehturm: 'Berlin', colosseum: 'Rome',
+  const classic = { eiffel: 'Paris', bigben: 'London', bridge: 'Lisbon', frauenkirche: 'Munich', fernsehturm: 'Berlin', colosseum: 'Rome',
     sagrada: 'Barcelona', empire: 'New York', opera: 'Sydney', riesenrad: 'Wien', canals: 'Amsterdam', burj: 'Dubai' };
+  const cities = { ...classic, ...Object.fromEntries(BACKDROP_CITY_LANDMARKS.map(([kind, words]) => [kind, words[0]])) };
   assert.deepEqual(Object.keys(cities).sort(), BACKDROP_LANDMARKS.map(([kind]) => kind).sort(), 'every landmark is tested');
   for (const [kind, city] of Object.entries(cities)) for (const [W, H] of [[1100, 300], [320, 160]]) for (const t of [0, 2.7, 61]) {
     const scene = sceneFor('Pop', city, W, H);
-    assert.equal(scene.landmark.kind, kind);
+    assert.equal(scene.landmark.kind, kind, city);
     const canvas = recordingCanvas();
     stage.drawStageFrame(canvas, scene, t);
     assert.ok(canvas.calls.flat().filter(v => typeof v === 'number').every(Number.isFinite), `${kind} ${W}x${H} t=${t}`);
   }
+});
+
+test('100 more cities: every one has a shape, no word names two cities, each is found in a venue name', () => {
+  assert.equal(BACKDROP_CITY_LANDMARKS.length, 100);
+  const shapes = new Set(['needle', 'spires', 'dome', 'onion', 'castle', 'skyline', 'pagoda', 'pyramid', 'temple', 'arch', 'peak']);
+  const seen = new Map();
+  for (const [kind, words] of BACKDROP_LANDMARKS) for (const word of words) {
+    assert.ok(!seen.has(word), `${word} names both ${seen.get(word)} and ${kind}`);
+    seen.set(word, kind);
+  }
+  for (const [kind, words, style] of BACKDROP_CITY_LANDMARKS) {
+    assert.ok(shapes.has(style.shape), kind);
+    assert.ok(style.light && style.dark, `${kind} has colours`);
+    assert.equal(BACKDROP_LANDMARK_STYLES[kind], style);
+    for (const word of words) assert.equal(festivalLandmark(`Festival Park, ${word[0].toUpperCase()}${word.slice(1)}`), kind, word);
+  }
+  assert.equal(festivalLandmark('Tokyo Dome'), 'tokyo');
+  assert.equal(festivalLandmark('Xi\'an'), 'xian');
+  assert.equal(festivalLandmark('Seoul Forest'), 'seoul');
+  assert.equal(festivalLandmark('Tokyoland'), '', 'whole words only');
+  assert.equal(festivalLandmark('Nova SBE, Carcavelos'), '');
 });
 
 test('a frame depends only on the time: same time, same picture; later, a different one', () => {
@@ -213,7 +236,8 @@ test('the page loads the stage, its rules and its styles before the Overview', (
   const at = s => html.indexOf(s);
   assert.ok(at('id="overview-backdrop"') > -1 && at('id="overview-backdrop"') < at('class="checklist-hero overview-hero"'));
   assert.ok(at('<canvas id="overview-backdrop-canvas">') > -1);
-  assert.ok(at('rules/backdrop-rules.js') > -1 && at('rules/backdrop-rules.js') < at('overview-backdrop.js?'));
+  assert.ok(at('rules/backdrop-rules.js') > -1 && at('rules/backdrop-rules.js') < at('overview-backdrop-cities.js?'));
+  assert.ok(at('overview-backdrop-cities.js?') < at('overview-backdrop.js?'));
   assert.ok(at('overview-backdrop.js?') < at('overview.js?'));
   assert.ok(at('overview-backdrop.css') > -1);
 });

@@ -785,7 +785,7 @@ Branch: `feature-festival-backdrop` (owner: Amelie). Plan: `feature-plans/festiv
 An animated live stage above the Overview (`<canvas>`): lasers, light cones, haze, an aurora sky, an
 LED-wall equalizer, confetti every 8 beats and a crowd bouncing to the beat. The festival name is set
 in poster style and glows to the beat. Colours and tempo follow the lineup's main genre, and the
-landscape follows the venue; 12 well-known cities add their lit-up landmark (Eiffel Tower, Big Ben + London Eye, Lisbon bridge, Frauenkirche, TV tower + Brandenburg Gate, Colosseum, Sagrada Família, Empire State, Opera House, Riesenrad, canal houses, Burj Khalifa). Decorative only: nothing saved or sent, no photos. It pauses off screen
+landscape follows the venue; 112 well-known cities add their lit-up landmark (12 hand-drawn: Eiffel Tower, Big Ben + London Eye, Lisbon bridge, Frauenkirche, TV tower + Brandenburg Gate, Colosseum, Sagrada Família, Empire State, Opera House, Riesenrad, canal houses, Burj Khalifa; 100 more share 11 shapes with their own colours: towers, cathedrals, domes, onion domes, castles, skylines, pagodas, pyramids, Parthenon, arches, mountains). Decorative only: nothing saved or sent, no photos. It pauses off screen
 and stands still with "reduce motion". The first still SVG version was replaced at Amelie's request.
 New files: `rules/backdrop-rules.js`, `overview-backdrop.js`, `overview-backdrop.css`.
 Validation: 529/529 tests passed (16 in `tests/festival-backdrop.test.js`).
