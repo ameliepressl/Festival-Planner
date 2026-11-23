@@ -134,8 +134,28 @@ function drawStageFrame(ctx, scene, t) {
     if (ctx.globalAlpha > 0) ctx.fillRect(x, y, p.size, p.size);
   });
 
+  // Ground fog banks drifting slowly, lit by the stage.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) {
+    const fx = ((i * 0.31 + t * 0.012) % 1.4 - 0.2) * W, fy = H * (0.66 + 0.03 * i), fr = W * (0.22 + 0.04 * i);
+    const fog = ctx.createRadialGradient(fx, fy, 0, fx, fy, fr);
+    fog.addColorStop(0, i % 2 ? laserA : laserB); fog.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.translate(fx, fy); ctx.scale(1, 0.22); ctx.translate(-fx, -fy);
+    ctx.globalAlpha = 0.09 + 0.05 * pulse; ctx.fillStyle = fog; ctx.fillRect(fx - fr, fy - fr, fr * 2, fr * 2);
+    ctx.restore();
+  }
+
   drawStage(ctx, scene, beat, pulse);
   drawConfetti(ctx, scene, beat);
+
+  // Lens flares: streaks of light from the stage lamps, brightest on the beat.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const x = stage.x + stage.w * (0.12 + i * 0.152), y = stage.top + 14, len = stage.w * (0.12 + 0.1 * pulse);
+    const streak = ctx.createLinearGradient(x - len, y, x + len, y);
+    streak.addColorStop(0, 'rgba(0,0,0,0)'); streak.addColorStop(0.5, i % 2 ? laserA : laserB); streak.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.1 + 0.4 * pulse; ctx.fillStyle = streak; ctx.fillRect(x - len, y - 1, len * 2, 2);
+  }
 
   // Light spilling from the stage over the crowd, so the crowd stands out as silhouettes.
   ctx.globalCompositeOperation = 'lighter';
@@ -155,6 +175,11 @@ function drawStageFrame(ctx, scene, t) {
   const shadeLeft = ctx.createLinearGradient(0, 0, W * 0.55, 0);
   shadeLeft.addColorStop(0, 'rgba(0,0,0,0.45)'); shadeLeft.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = 1; ctx.fillStyle = shadeLeft; ctx.fillRect(0, 0, W, H);
+
+  // Like a camera lens: the corners fall off into darkness.
+  const vignette = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.75);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H);
 }
 
 function drawBeam(ctx, x, y, angle, length, width, colour, alpha) {
@@ -240,6 +265,12 @@ function drawLandmark(ctx, scene, t, beat) {
   const soilTop = scene.horizon + (scene.land.kind === 'coast' ? H * 0.12 : 0), soil = ctx.createLinearGradient(0, soilTop, 0, H);
   soil.addColorStop(0, 'rgba(5,3,10,0)'); soil.addColorStop(0.45, colours.shade); soil.addColorStop(1, '#05030a');
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, soilTop, W, H - soilTop);
+  ctx.restore();
+  // Floodlights at the foot of the landmark.
+  ctx.save();
+  const lx = m.left + m.width / 2, lr = Math.max(80, m.width * 0.6), foot = ctx.createRadialGradient(lx, gy, 0, lx, gy, lr);
+  foot.addColorStop(0, 'rgba(255,210,140,.4)'); foot.addColorStop(1, 'rgba(255,210,140,0)');
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55; ctx.fillStyle = foot; ctx.fillRect(m.left - 40, gy - lr, m.width + 80, lr + (H - gy));
   ctx.restore();
   if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
     ctx.save();
@@ -559,6 +590,13 @@ function drawCrowd(ctx, scene, beat, t) {
     ctx.globalAlpha = person.shade; ctx.fillStyle = colours.shade;
     ctx.beginPath(); ctx.arc(person.x, y, s, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(person.x - s * 1.1, y + s * 0.7, s * 2.2, H - y);
+    const near = Math.max(0, 1 - Math.abs(person.x - scene.stage.cx) / (scene.W * 0.45)); // lit from behind by the stage
+    if (near > 0.05) {
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = near * near * (0.1 + 0.28 * Math.pow(1 - (beat % 1), 3)) * person.shade;
+      ctx.strokeStyle = '#ffe9c8'; ctx.lineWidth = Math.max(0.8, s * 0.18);
+      ctx.beginPath(); ctx.arc(person.x, y, s, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    }
     if (person.arm) {
       const sway = Math.sin(t * 2 + person.phase * 6) * s * 0.6;
       ctx.strokeStyle = colours.shade; ctx.lineWidth = Math.max(2, s * 0.45); ctx.lineCap = 'round';
