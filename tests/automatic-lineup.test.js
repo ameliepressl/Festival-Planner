@@ -71,6 +71,7 @@ function screen({allowed=true, failure=false}={}) {
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../rules/festival-rules.js'),'utf8'),ctx);
  vm.runInContext(`let state=normalizePlan(null);let lineupLoadProblem=''; let saves=0; let messages=[];
  state.event={name:'Test',venue:'',startDate:'2027-03-20',endDate:'2027-03-21',startMinutes:840,endMinutes:1380};
+ state.artists.push({...state.artists[0],id:'second',name:'Second',fee:20});
  const canFestival=()=>allowed;const writable=()=>allowed&&!state.final;
  const toast=m=>messages.push(m);const render=()=>{};const euros=n=>String(n);const escapeHtml=s=>String(s);
  function save(next){if(failure)return false;state=next;saves++;return true;}`,ctx);
@@ -80,7 +81,7 @@ function screen({allowed=true, failure=false}={}) {
 }
 test('preview/cancel never save, apply saves once and a second apply does nothing',()=>{
  const s=screen();s.preview();assert.equal(s.run('saves'),0);s.$('#auto-plan-cancel').onclick();assert.equal(s.run('state.bookings.length'),0);
- s.preview();s.$('#auto-plan-apply').onclick();assert.equal(s.run('saves'),1);assert.equal(s.run('state.bookings.filter(isPerformance).length'),1);
+ s.preview();s.$('#auto-plan-apply').onclick();assert.equal(s.run('saves'),1);assert.equal(s.run('state.bookings.filter(isPerformance).length'),2);
  s.$('#auto-plan-apply').onclick();assert.equal(s.run('saves'),1);
 });
 test('changing inputs invalidates preview and changed state requires a new preview',()=>{
@@ -107,7 +108,7 @@ test('re-planning replaces performances only after apply and keeps standalone bl
  s.run(`state.bookings.push({id:'fixed',type:'block',title:'Break',date:state.event.startDate,stage:'A',start:840,duration:30,notes:''})`);
  s.$('#auto-plan-replace').checked=true;s.preview();assert.equal(s.run('saves'),1);
  s.$('#auto-plan-apply').onclick();assert.equal(s.run('saves'),2);
- assert.equal(s.run(`state.bookings.filter(isPerformance).length===1 && state.bookings.some(b=>b.id==='fixed')`),true);
+ assert.equal(s.run(`state.bookings.filter(isPerformance).length===2 && state.bookings.some(b=>b.id==='fixed')`),true);
 });
 
 test('realistic suggestions leave arrival/exit time, alternate stages and avoid overlaps when capacity permits',()=>{
@@ -139,7 +140,7 @@ test('opening suggestion generates it immediately without saving or extra contro
 
 test('simplified suggestion keeps confirmed performances and their details on apply',()=>{
  const s=screen();
- s.run(`state.bookings=[{id:'confirmed-head',artistId:state.artists[0].id,date:state.event.endDate,stage:'A',start:1305,duration:60,fee:0,status:'confirmed',changeover:0,notes:'Keep this'}]`);
+ s.run(`state.event.startDate=state.event.endDate; state.artists=state.artists.slice(0,1);state.bookings=[{id:'confirmed-head',artistId:state.artists[0].id,date:state.event.endDate,stage:'A',start:1305,duration:60,fee:0,status:'confirmed',changeover:0,notes:'Keep this'}]`);
  s.$('#auto-plan-lineup').onclick();
  assert.equal(s.run('state.bookings[0].notes'),'Keep this');
  assert.equal(s.$('#auto-plan-apply').disabled,true);
@@ -153,11 +154,40 @@ test('organiser can choose the lowest-fee headliner independently of price',()=>
  assert.match(r(`automaticLineup(plan,{realistic:true,headlinerId:'not-in-festival'}).problem`),/Choose a headliner/);
 });
 test('headliner dropdown recalculates immediately and remembers selection when used',()=>{
- const s=screen();s.run(`state.artists.push({...state.artists[0],id:'second',name:'Second',fee:20})`);
- s.$('#auto-plan-lineup').onclick();s.$('#auto-plan-headliner').value='second';s.$('#auto-plan-headliner').handlers.change();
+ const s=screen();s.run(`state.artists.push({...state.artists[0],id:'third',name:'Third',fee:30})`);
+ s.$('#auto-plan-lineup').onclick();s.$('#auto-plan-headliner').value='third';s.$('#auto-plan-headliner').onchange();
  assert.equal(s.run('saves'),0);assert.equal(s.$('#auto-plan-apply').disabled,false);
- s.$('#auto-plan-apply').onclick();assert.equal(s.run('state.lineupHeadlinerId'),'second');
- assert.equal(s.run(`const head=state.bookings.find(b=>b.artistId==='second');head.date===state.event.endDate && head.start+head.duration===1365`),true);
+ s.$('#auto-plan-apply').onclick();assert.equal(s.run('state.lineupHeadlinerId'),'third');
+ assert.equal(s.run('Object.keys(state.lineupHeadliners).length'),2);
+ assert.equal(s.run(`const head=state.bookings.find(b=>b.artistId==='third');head.date===state.event.endDate && head.start+head.duration===1365`),true);
+});
+
+test('daily choices close every day and reject missing or repeated headliners',()=>{
+ const r=setup(10);
+ assert.equal(r(`const dates=eventDays(plan.event); const choices={[dates[0]]:'a0',[dates[1]]:'a1'};
+ const output=automaticLineup(plan,{realistic:true,headliners:choices});
+ const combined={...plan,bookings:output.bookings};
+ !output.problem && !planProblems(combined).length && dates.every(date=>{
+   const head=combined.bookings.find(b=>b.id===output.headlinerBookings[date]);
+   return head.date===date && head.artistId===choices[date] && head.start+head.duration===1365
+     && combined.bookings.filter(b=>isPerformance(b)&&b.date===date).every(b=>b.start+b.duration<=head.start+head.duration);
+ })`),true);
+ assert.match(r(`automaticLineup(plan,{headliners:{[dates[0]]:'a0'}}).problem`),/each festival day/);
+ assert.match(r(`automaticLineup(plan,{headliners:{[dates[0]]:'a0',[dates[1]]:'a0'}}).problem`),/different headliner/);
+});
+
+test('a tentative move transfers the linked changeover and rejects a confirmed, blocked or closed drop',()=>{
+ const r=setup(4);
+ assert.equal(r(`const date=plan.event.startDate; const nextDay=plan.event.endDate;
+ const tentative={id:'set',artistId:'a0',date,stage:'A',start:900,duration:60,fee:100,changeover:15,status:'tentative',notes:'Keep'};
+ plan.bookings=performanceEntriesForPlan(tentative,plan).concat({id:'fixed',artistId:'a1',date:nextDay,stage:'B',start:1050,duration:60,fee:101,changeover:0,status:'confirmed',notes:''});
+ const next=moveTentativePerformance(plan,'set',{date:nextDay,stage:'B',start:1200});
+ next.bookings.some(b=>b.id==='set'&&b.date===nextDay&&b.stage==='B'&&b.notes==='Keep') &&
+ next.bookings.some(b=>b.linkedTo==='set'&&b.date===nextDay&&b.stage==='B'&&b.start===1260) &&
+ !planProblems(next).length && plan.bookings[0].date===date`),true);
+ assert.throws(()=>r(`moveTentativePerformance(plan,'fixed',{date,stage:'A',start:1000})`),/tentative/);
+ assert.throws(()=>r(`moveTentativePerformance(plan,'set',{date:nextDay,stage:'B',start:1050})`),/booked/);
+ assert.throws(()=>r(`moveTentativePerformance(plan,'set',{date:nextDay,stage:'B',start:1350})`),/available/);
 });
 
 test('compact suggestion groups every day/stage and exposes complete names and times',()=>{
