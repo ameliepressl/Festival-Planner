@@ -107,6 +107,7 @@ function fakeDatabase(initialData = {}, withVersions = true) {
   db.row = () => ({ id: FESTIVAL, owner_id: USER, data: clone(db.data), updated_at: 't' + db.updatedAt, ...(db.withVersions ? { section_versions: clone(db.versions) } : {}) });
   db.save = (args) => {
     db.calls.push(clone(args));
+    if (db.offline) return { data: null, error: { message: 'offline' } };
     const before = 't' + db.updatedAt;
     const keys = [...Object.keys(args.changes), ...args.removed];
     const clash = args.expected ? keys.filter(key => (db.versions[key] || 0) !== (args.expected[key] || 0)).sort() : [];
@@ -175,7 +176,7 @@ function accountScreen({ database = fakeDatabase(), seed = {}, versions = { ...d
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'rules/finance-rules.js'), 'utf8'), context);
   const source = fs.readFileSync(path.join(ROOT, 'account/account.js'), 'utf8');
   const hook = `window.accountTest = {
-    start, saveNow, readyToLeave, signOut, keepMyVersion, useTheirVersion,
+    start, saveNow, readyToLeave, signOut, keepMyVersion, useTheirVersion, showConflictNotice, showNotice,
     initialize(versions) {
       ready = false; currentUser = { id: '${USER}', username: 'Owner' }; access = OWNER_ACCESS;
       const stored = readMeta();
@@ -316,6 +317,60 @@ test('opening a festival before migration 007 is run still works (the versions c
   const ui = accountScreen({ database }); ui.withoutVersionsColumn();
   ui.api.resetForStartup(); await ui.api.start(); await settle();
   assert.equal(ui.api.state().ready, true, 'the festival opened');
+});
+
+test('a teammate\'s other save while a conflict waits does not replace the conflict bar (bug found in the browser test)', async () => {
+  const database = fakeDatabase({ [FINANCE]: '{"a":1}', [VENDORS]: '{"v":1}' }); database.versions[FINANCE] = 1; database.versions[VENDORS] = 1;
+  const ui = accountScreen({ database });
+  database.teammateSaves(FINANCE, '{"a":2}');
+  ui.storage.setItem(FINANCE, '{"a":1,"mine":true}');
+  await ui.api.saveNow();                                   // conflict bar is shown
+  ui.storage.setItem(VENDORS, '{"v":2}');                   // then a change in another section is saved ...
+  await ui.api.saveNow();                                   // ... which also tells us "a teammate saved too"
+  const notice = ui.notice();
+  assert.ok(notice.shown);
+  assert.match(notice.text, /Not saved/, 'the conflict text stays');
+  assert.doesNotMatch(notice.text, /yours are saved/);
+  assert.ok(notice.keep && notice.theirs, 'Keep mine and Use theirs stay within reach');
+  assert.equal(ui.status(), 'conflict');
+});
+
+test('any other bar shown while a conflict waits still offers the two choices, and not a useless Reload', async () => {
+  const database = fakeDatabase({ [FINANCE]: '{"a":1}', [VENDORS]: '{"v":1}' }); database.versions[FINANCE] = 1; database.versions[VENDORS] = 1;
+  const ui = accountScreen({ database });
+  database.teammateSaves(FINANCE, '{"a":2}');
+  ui.storage.setItem(FINANCE, '{"a":1,"mine":true}');
+  await ui.api.saveNow();
+  ui.api.showNotice('Something else happened.');
+  assert.equal(ui.notice().text, 'Something else happened.');
+  assert.ok(ui.notice().keep && ui.notice().theirs);
+  assert.equal(ui.node('#account-notice-reload').hidden, true);
+  // Use theirs while the connection is down: the error is shown, the choices remain.
+  ui.storage.setItem(VENDORS, '{"v":2}');
+  database.offline = true;
+  await ui.api.useTheirVersion();
+  assert.match(ui.notice().text, /not saved yet/i);
+  assert.ok(ui.notice().keep && ui.notice().theirs, 'the person can try again');
+  assert.equal(ui.storage.getItem(FINANCE), '{"a":1,"mine":true}', 'the held edit is still here');
+});
+
+test('without a waiting conflict a general bar looks as before (Reload offered, no choices)', async () => {
+  const ui = accountScreen({ database: fakeDatabase({ [FINANCE]: '{"a":1}' }) });
+  ui.api.showNotice('A teammate changed this festival. Reload to see the latest version.');
+  assert.ok(ui.notice().shown);
+  assert.equal(ui.node('#account-notice-reload').hidden, false);
+  assert.equal(ui.notice().keep, false); assert.equal(ui.notice().theirs, false);
+});
+
+test('a closed conflict bar can be opened again', async () => {
+  const database = fakeDatabase({ [FINANCE]: '{"a":1}' }); database.versions[FINANCE] = 1;
+  const ui = accountScreen({ database });
+  database.teammateSaves(FINANCE, '{"a":2}');
+  ui.storage.setItem(FINANCE, '{"a":1,"mine":true}');
+  await ui.api.saveNow();
+  ui.node('#account-notice').hidden = true;                 // closed with the x
+  ui.api.showConflictNotice();                              // what a click on the sidebar status does
+  assert.ok(ui.notice().shown && ui.notice().keep && ui.notice().theirs);
 });
 
 // --- Part 3: the two-browser test, step by step -------------------------------------------------
