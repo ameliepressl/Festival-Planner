@@ -9,8 +9,17 @@ the live demo and shows at a glance what kind of festival it is.
 
 ## What
 
-- [x] A banner above the Overview with a generated "festival poster": sky, landscape, a stage
-      with swaying light beams and a crowd, plus a short caption (venue · mood).
+- [x] A banner above the Overview with an **animated live stage** on a `<canvas>`. It shows:
+      - lasers that sweep to the beat and change pattern every 16 beats
+      - light cones, haze and an aurora sky with twinkling stars
+      - an LED wall with an equalizer
+      - confetti bursts every 8 beats
+      - a crowd that bounces to the beat, with raised arms and phone lights
+      - moving waves (coast) and flickering windows (city)
+
+      The festival name sits on top in poster style, glowing to the beat, with venue · dates · mood.
+      **Changed on 23 November at Amelie's request:** the first version was a still SVG poster;
+      she wanted animation ("take more risk").
 - [x] **Rules in `rules/backdrop-rules.js`:**
       - **Mood from the lineup.** The most common genre among the booked performances (or, with nothing booked, the artists in the catalogue) chooses the colours:
         - electronic → neon
@@ -25,11 +34,13 @@ the live demo and shows at a glance what kind of festival it is.
         - Alpine places (Munich, Zurich, …) → mountains
         - parks and fields → hills
         - everything else → skyline
-      - The same festival always gets the same picture (seeded by name and venue).
+      - **Tempo per mood:** neon 128 BPM, ember 140, gold 92, heat 100, dusk 84, candy 120, sunset 112.
+      - The same festival always gets the same stage (seeded by name and venue).
 - [x] **Screen:** Overview, for every role (it only shows what is already visible). Drawn in code
-      as SVG: no photos, no outside service, nothing saved or sent. User text never goes into the
-      SVG; the caption uses `textContent`. Decorative (`aria-hidden`); the beams stand still with
-      "reduce motion".
+      (`overview-backdrop.js`): no photos, no outside service, nothing saved or sent. Name and venue
+      are shown with `textContent`. Decorative (`aria-hidden`). Each frame is a pure function of
+      the time. The animation pauses when the banner is off screen or the tab is hidden; with
+      "reduce motion" it stands still. Sharp on retina (up to 2× pixels).
 
 ## Out of scope
 
@@ -44,9 +55,9 @@ the live demo and shows at a glance what kind of festival it is.
 
 ## Tests
 
-- `tests/festival-backdrop.test.js` (10 tests): every library genre's mood; mood from bookings,
-  catalogue and fallback; landscape from the venue (incl. both demos); same festival → same
-  picture; every mood × landscape draws a complete SVG without user text; the Overview banner
-  (caption, redraw only on change, plain-text venue, hidden when rules are missing or fail).
-- All 28 mood × landscape pictures were rendered to PNG (rsvg) and looked at.
-- Not yet: the banner inside the real page in a browser.
+- `tests/festival-backdrop.test.js` (14 tests):
+  - rules: genre → mood, mood from bookings/catalogue/fallback, venue → landscape, tempo and laser colours, same festival → same stage;
+  - drawing: every mood × landscape at 6 points in time draws whole frames with only finite numbers; a frame depends only on the time; confetti bursts and ends; a small window still works;
+  - Overview banner: title, caption and mood; retina size; one animation only; "reduce motion" draws once; plain-text names; hidden when rules are missing or fail; script order.
+- Frames of all four landscapes and three points in time were rendered with a real canvas (@napi-rs/canvas, outside the repo) and looked at.
+- Not yet: the banner inside the real page in a browser (laptop and phone width).

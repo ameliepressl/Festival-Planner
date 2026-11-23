@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="compact.css?v=project-restore-control" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="notifications.css" />
-    <link rel="stylesheet" href="overview-backdrop.css?v=backdrop-1" />
+    <link rel="stylesheet" href="overview-backdrop.css?v=backdrop-live-1" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Loaded last: fonts, colours, buttons and the frame (sidebar, header) for every page. -->
     <link rel="stylesheet" href="design.css?v=design-1" />
@@ -175,8 +175,8 @@
 
       <main id="overview-view">
         <figure class="overview-backdrop" id="overview-backdrop" aria-hidden="true" hidden>
-          <div id="overview-backdrop-art"></div>
-          <figcaption id="overview-backdrop-caption"></figcaption>
+          <canvas id="overview-backdrop-canvas"></canvas>
+          <figcaption class="overview-backdrop-text"><span id="overview-backdrop-title"></span><span id="overview-backdrop-caption"></span></figcaption>
         </figure>
         <section class="checklist-hero overview-hero" aria-labelledby="overview-title">
           <div class="overview-hero-text">
@@ -887,8 +887,8 @@
     <script src="finance/finance-page.js?v=zero-finance-start-1"></script>
     <script src="rules/demo-festival.js?v=fun-open"></script>
     <script src="demo/demo-loader.js?v=demo-label"></script>
-    <script src="rules/backdrop-rules.js?v=backdrop-1"></script>
-    <script src="overview-backdrop.js?v=backdrop-1"></script>
+    <script src="rules/backdrop-rules.js?v=backdrop-live-1"></script>
+    <script src="overview-backdrop.js?v=backdrop-live-1"></script>
     <script src="overview.js?v=backdrop-1"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js?v=technical-audit-1"></script>

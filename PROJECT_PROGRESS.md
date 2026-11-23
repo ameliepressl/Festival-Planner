@@ -782,9 +782,10 @@ Validation: **491/491 tests passed**, including eight new regression checks. An 
 
 Branch: `feature-festival-backdrop` (owner: Amelie). Plan: `feature-plans/festival-backdrop.md`.
 
-A banner above the Overview draws a "festival poster" in code: the colours follow the lineup's main
-genre (neon, ember, gold, heat, dusk, candy, sunset) and the landscape follows the venue (coast,
-mountains, park, city), with a stage, swaying light beams and a crowd. Decorative only: nothing is
-saved or sent, no photos, user text never goes into the SVG. New files: `rules/backdrop-rules.js`,
-`overview-backdrop.js`, `overview-backdrop.css`; `overview.js` calls it after rendering.
-Validation: 523/523 tests passed (10 new).
+An animated live stage above the Overview (`<canvas>`): lasers, light cones, haze, an aurora sky, an
+LED-wall equalizer, confetti every 8 beats and a crowd bouncing to the beat. The festival name is set
+in poster style and glows to the beat. Colours and tempo follow the lineup's main genre, and the
+landscape follows the venue. Decorative only: nothing saved or sent, no photos. It pauses off screen
+and stands still with "reduce motion". The first still SVG version was replaced at Amelie's request.
+New files: `rules/backdrop-rules.js`, `overview-backdrop.js`, `overview-backdrop.css`.
+Validation: 527/527 tests passed (14 in `tests/festival-backdrop.test.js`).

@@ -148,8 +148,9 @@ direct request (`migrations/006`, applied on 22 November 2026).
 ## ✨ Features
 
 ### Plan the programme
-- **Overview** — a festival backdrop drawn from the venue and the lineup's main genre (coast,
-  mountains, park or city; neon, rock, gold, pop and more), festival facts, projected finances,
+- **Overview** — an animated live stage with the festival's name: lasers, confetti and a crowd
+  moving to the beat. Its colours and tempo follow the lineup's main genre, and its landscape
+  follows the venue (coast, mountains, park or city). Below it: festival facts, projected finances,
   tasks needing attention and a readiness score. Failed planning checks become linked issues on the task board;
   fixing their source clears them. Festival details and team management are in Settings.
 - **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed
