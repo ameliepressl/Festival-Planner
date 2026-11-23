@@ -1,5 +1,5 @@
 // Compact, read-only timetable using the same minute positions as the full calendar.
-function lineupSuggestionMarkup(plan, headlinerId) {
+function lineupSuggestionMarkup(plan, headlinerBookings) {
   return eventDays(plan.event).map(date=>{
     const hours=dayHours(date,plan.event), span=hours.end-hours.start;
     const position=minute=>100*(minute-hours.start)/span;
@@ -17,7 +17,7 @@ function lineupSuggestionMarkup(plan, headlinerId) {
           ${closed(hours.start,h.start)}${closed(h.end,hours.end)}
           ${entries.map(b=>{
             const performance=isPerformance(b), name=entryName(b,plan), end=b.start+entryDuration(b,plan);
-            const headline=performance&&b.artistId===headlinerId;
+            const headline=performance&&b.id===headlinerBookings[date];
             const description=`${name}${headline?' · Headliner':''} · ${timeText(b.start)}–${timeText(end)}${end>1440?' (+1 day)':''}${performance?' · '+bookingStatus(b):''}`;
             return `<span tabindex="0" role="img" aria-label="${escapeHtml(description)}" class="suggest-set ${performance?'':'suggest-block'} ${headline?'suggest-headliner':''}" style="left:${position(b.start)}%;width:${100*(end-b.start)/span}%">${performance?`<strong>${escapeHtml(name)}</strong>`:''}</span>`;
           }).join('')}</div></div>`;
@@ -29,6 +29,7 @@ function lineupSuggestionMarkup(plan, headlinerId) {
 (function () {
   const button = $('#auto-plan-lineup'), dialog = $('#auto-plan-dialog');
   let preview = null, source = null, base = null;
+  let headlinerFields = [];
   const previewArea=$('#auto-plan-preview'), detail=$('#auto-plan-tooltip');
   let activeBar=null;
   function hideDetail() {
@@ -72,17 +73,43 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     button.disabled = !canFestival('lineup') || state.final || Boolean(lineupLoadProblem);
   }
   document.querySelector('[data-section="Lineup planner"]').addEventListener('click', updateAccess);
+  function showHeadlinerFields() {
+    const dates = eventDays(state.event);
+    const confirmed = state.bookings.filter(b => isPerformance(b) && b.status === 'confirmed');
+    const booked = new Set(confirmed.map(b => b.artistId));
+    const selections = new Map(), used = new Set();
+    function select(date, id) {
+      if (!id || selections.has(date) || used.has(id) || !state.artists.some(artist => artist.id === id)) return;
+      if (booked.has(id) && !confirmed.some(b => b.artistId === id && b.date === date)) return;
+      selections.set(date, id);
+      used.add(id);
+    }
+    dates.forEach(date => select(date, state.lineupHeadliners?.[date]));
+    select(dates.at(-1), state.lineupHeadlinerId);
+    dates.forEach(date => {
+      const closing = confirmed.filter(b => b.date === date).sort((a,b) => b.start + b.duration - a.start - a.duration)[0];
+      select(date, closing?.artistId);
+    });
+    dates.forEach(date => select(date, state.artists.find(a => !used.has(a.id) && !booked.has(a.id))?.id));
+    const options = '<option value="">Choose an artist</option>' +
+      state.artists.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('');
+    headlinerFields = dates.map((date, index) => [date, index === dates.length - 1 ? 'auto-plan-headliner' : 'auto-plan-headliner-' + index]);
+    $('#auto-plan-headliners').innerHTML = headlinerFields.map(([date, id]) =>
+      `<label>Headliner · ${escapeHtml(dateText(date))}<select id="${id}" required>${options}</select></label>`).join('');
+    for (const [date, id] of headlinerFields) {
+      const field = $('#' + id);
+      field.value = selections.get(date) || '';
+      field.onchange = suggest;
+    }
+  }
   button.onclick = () => {
     if (!writable()) return;
-    const chosen=$('#auto-plan-headliner').value;
-    $('#auto-plan-headliner').innerHTML=state.artists.map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('');
-    $('#auto-plan-headliner').value=state.artists.some(a=>a.id===chosen)?chosen:state.artists.some(a=>a.id===state.lineupHeadlinerId)?state.lineupHeadlinerId:(state.artists[0]?.id||'');
+    showHeadlinerFields();
     dialog.showModal();
     suggest();
   };
   $('#auto-plan-changeover').addEventListener('input', invalidate);
   $('#auto-plan-changeover').addEventListener('change', suggest);
-  $('#auto-plan-headliner').addEventListener('change',suggest);
   $('#auto-plan-cancel').onclick = () => dialog.close();
   dialog.addEventListener('close', () => { invalidate(); button.focus(); updateAccess(); });
   $('#auto-plan-form').onsubmit = event => { event.preventDefault(); suggest(); };
@@ -94,10 +121,11 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     base={...state,bookings:state.bookings.filter(b=>isPerformance(b)?confirmedIds.has(b.id):!b.linkedTo||confirmedIds.has(b.linkedTo))};
     const replaced=state.bookings.filter(b=>isPerformance(b)&&!confirmedIds.has(b.id)).length;
     $('#auto-plan-context').textContent=replaced ? `Using this suggestion replaces ${replaced} tentative performances. Confirmed performances and calendar blocks stay.` : 'Confirmed performances and calendar blocks stay. New performances are tentative.';
-    const result = automaticLineup(base, {changeover:raw === '' ? NaN : Number(raw),realistic:true,headlinerId:$('#auto-plan-headliner').value});
+    const headliners = Object.fromEntries(headlinerFields.map(([date, id]) => [date, $('#' + id).value]));
+    const result = automaticLineup(base, {changeover:raw === '' ? NaN : Number(raw),realistic:true,headliners});
     $('#auto-plan-message').textContent = result.problem;
     if (result.problem) return;
-    preview = result; source = JSON.stringify(state);
+    preview = { ...result, headliners }; source = JSON.stringify(state);
     const sets = result.bookings.filter(isPerformance);
     const addedFee = sets.reduce((sum,b) => sum+b.fee,0);
     // Same budget rule as manual booking: going over is allowed, and shown before applying.
@@ -105,7 +133,7 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     const budgetText = remaining >= 0 ? `${euros(remaining)} budget remaining` : `${euros(-remaining)} over the ${euros(state.settings.budget)} artist budget`;
     $('#auto-plan-message').textContent = `${sets.length} suggested performances · ${euros(addedFee)} artist fees · ${budgetText}${result.skipped.length?' · '+result.skipped.length+' not scheduled':''}`;
     $('#auto-plan-timing').textContent=result.notice || '';
-    $('#auto-plan-preview').innerHTML = lineupSuggestionMarkup({...base,bookings:base.bookings.concat(result.bookings)},$('#auto-plan-headliner').value) + (result.skipped.length ? '<h3>Not scheduled</h3><ul>'+result.skipped.map(x => `<li><strong>${escapeHtml(artist(x.artistId).name)}</strong> — ${escapeHtml(x.reason)}</li>`).join('')+'</ul>' : '');
+    $('#auto-plan-preview').innerHTML = lineupSuggestionMarkup({...base,bookings:base.bookings.concat(result.bookings)},result.headlinerBookings) + (result.skipped.length ? '<h3>Not scheduled</h3><ul>'+result.skipped.map(x => `<li><strong>${escapeHtml(artist(x.artistId).name)}</strong> — ${escapeHtml(x.reason)}</li>`).join('')+'</ul>' : '');
     $('#auto-plan-apply').textContent = result.skipped.length ? 'Use partial lineup' : 'Use this lineup';
     $('#auto-plan-apply').disabled = !sets.length;
   };
@@ -114,7 +142,7 @@ function lineupSuggestionMarkup(plan, headlinerId) {
     if (JSON.stringify(state) !== source) {
       invalidate(); $('#auto-plan-message').textContent = 'The festival changed. Preview the lineup again before applying.'; return;
     }
-    const next = {...state, lineupHeadlinerId:$('#auto-plan-headliner').value, bookings:base.bookings.concat(preview.bookings)};
+    const next = {...state, lineupHeadliners:preview.headliners, lineupHeadlinerId:preview.headliners[eventDays(state.event).at(-1)], bookings:base.bookings.concat(preview.bookings)};
     const problems = planProblems(next);
     if (problems.length) { $('#auto-plan-message').textContent = problems[0]; return; }
     const apply = () => {

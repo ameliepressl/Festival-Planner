@@ -33,7 +33,7 @@ function loadedLineupProblem(plan) {
   for (const booking of plan.bookings) {
     if (!(validId(booking.id) || (booking.type === 'block' && validId(booking.linkedTo) && booking.id === `changeover-${booking.linkedTo}`)) || ids.has(booking.id)) return 'A saved appointment identifier is invalid or duplicated.';
     ids.add(booking.id);
-    if (!dates.includes(booking.date) || !stageIds.includes(booking.stage) || !Number.isInteger(booking.start) || booking.start < 0 || booking.start > 1439 || !Number.isInteger(booking.duration) || booking.duration < 1 || booking.duration > 1440 || !validText(booking.notes, 2000, true)) return 'A saved appointment has invalid dates, stage, time or notes.';
+    if (!dates.includes(booking.date) || !stageIds.includes(booking.stage) || !Number.isInteger(booking.start) || booking.start < 0 || booking.start >= 2880 || !Number.isInteger(booking.duration) || booking.duration < 1 || booking.duration > 1440 || !validText(booking.notes, 2000, true)) return 'A saved appointment has invalid dates, stage, time or notes.';
     if (booking.type === 'block') {
       if (!validText(booking.title, booking.linkedTo ? 120 : 100)) return 'A saved calendar block has an invalid title.';
       if (booking.linkedTo !== undefined && (!validId(booking.linkedTo) || !plan.bookings.some(parent => parent.id === booking.linkedTo && isPerformance(parent)))) return 'A saved changeover refers to a missing performance.';
@@ -176,7 +176,7 @@ function calendarMarkup(day, publicOnly = false) {
   const bounds = calendarBounds(), height = bounds.end - bounds.start;
   const entries = state.bookings.filter(b => b.date === day && (!publicOnly || (isPerformance(b) && b.status === 'confirmed')));
   const scale = 324 / height;
-  const canBook = canFestival('lineup') && !state.final;
+  const canBook = canFestival('lineup') && !state.final && !lineupLoadProblem;
   return `<div class="calendar-grid" data-calendar-day="${day}" style="--calendar-minutes:${height};--print-stages:${stages().length};--print-scale:${scale};grid-template-columns:56px repeat(${stages().length},minmax(145px,1fr))">
     <div class="calendar-corner">TIME</div>
     ${stages().map(s => `<div class="calendar-stage"><strong>${escapeHtml(stageName(s))}</strong></div>`).join('')}
@@ -188,7 +188,7 @@ function calendarMarkup(day, publicOnly = false) {
         ${entries.filter(b => b.stage === s).map(b => {
           const duration = Number(entryDuration(b)), name = entryName(b), performance = isPerformance(b);
           if (!Number.isFinite(b.start) || !Number.isFinite(duration) || duration <= 0) return '';
-          return `<button class="vertical-performance ${performance?(bookingStatus(b)):'calendar-block'} ${duration<40?'compact-appointment':''}" data-booking="${escapeHtml(b.id)}" style="--minute-offset:${b.start-bounds.start};--set-duration:${duration};top:${b.start-bounds.start}px;height:${duration}px;background:${!performance?'#dfe2df':i%2?'#b7e4dc':'#f5c8be'}" aria-label="${escapeHtml(name)} · ${timeText(b.start)}–${timeText(b.start+duration)}${!publicOnly&&performance?' · '+(bookingStatus(b)):''}"><strong>${escapeHtml(name)}</strong><span>${timeText(b.start)}–${timeText(b.start+duration)}</span></button>`;
+          return `<button class="vertical-performance ${performance?(bookingStatus(b)):'calendar-block'} ${duration<40?'compact-appointment':''}" data-booking="${escapeHtml(b.id)}"${!publicOnly && canBook && performance && bookingStatus(b) === 'tentative' ? ' draggable="true"' : ''} style="--minute-offset:${b.start-bounds.start};--set-duration:${duration};top:${b.start-bounds.start}px;height:${duration}px;background:${!performance?'#dfe2df':i%2?'#b7e4dc':'#f5c8be'}" aria-label="${escapeHtml(name)} · ${timeText(b.start)}–${timeText(b.start+duration)}${!publicOnly&&performance?' · '+(bookingStatus(b)):''}"><strong>${escapeHtml(name)}</strong><span>${timeText(b.start)}–${timeText(b.start+duration)}</span></button>`;
         }).join('')}
       </div>`;
     }).join('')}
@@ -273,6 +273,60 @@ function render() {
     window.dispatchEvent(new window.Event('festival-plan-updated'));
   }
 }
+const lineupCalendar = $('#calendar');
+let draggedPerformance = null;
+function clearPerformanceDrag() {
+  draggedPerformance = null;
+  lineupCalendar.querySelectorAll('.lineup-drop-target').forEach(track => track.classList.remove('lineup-drop-target'));
+}
+lineupCalendar.ondragstart = event => {
+  const card = event.target.closest('button[data-booking][draggable="true"]');
+  if (!card || !writable()) { event.preventDefault(); return; }
+  const booking = state.bookings.find(b => b.id === card.dataset.booking);
+  if (!booking || !isPerformance(booking) || bookingStatus(booking) !== 'tentative') { event.preventDefault(); return; }
+  const rect = card.getBoundingClientRect();
+  draggedPerformance = { booking, offset: (event.clientY - rect.top) / rect.height * entryDuration(booking) };
+  event.dataTransfer.setData('text/plain', booking.id);
+  event.dataTransfer.effectAllowed = 'move';
+  hidePerformanceDetails();
+};
+lineupCalendar.ondragover = event => {
+  const track = event.target.closest('.vertical-track');
+  if (!draggedPerformance || !track) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  lineupCalendar.querySelectorAll('.lineup-drop-target').forEach(target => target.classList.toggle('lineup-drop-target', target === track));
+  track.classList.add('lineup-drop-target');
+};
+lineupCalendar.ondragleave = event => {
+  const track = event.target.closest('.vertical-track');
+  if (track && !track.contains(event.relatedTarget)) track.classList.remove('lineup-drop-target');
+};
+lineupCalendar.ondragend = clearPerformanceDrag;
+lineupCalendar.ondrop = event => {
+  const track = event.target.closest('.vertical-track');
+  const drag = draggedPerformance;
+  clearPerformanceDrag();
+  if (!drag || !track) return;
+  event.preventDefault();
+  if (!writable() || !state.bookings.includes(drag.booking)) return;
+  if (typeof window.isFestivalContextCurrent === 'function' && !window.isFestivalContextCurrent()) {
+    toast('Reload the current festival before moving a performance.');
+    return;
+  }
+  const bounds = calendarBounds(), rect = track.getBoundingClientRect();
+  const minute = bounds.start + (event.clientY - rect.top) / rect.height * (bounds.end - bounds.start) - drag.offset;
+  const start = Math.round(minute / 5) * 5;
+  const date = track.closest('[data-calendar-day]').dataset.calendarDay;
+  try {
+    const next = moveTentativePerformance(state, drag.booking.id, { date, stage: track.dataset.stage, start });
+    if (next === state || !save(next)) return;
+    currentDay = date;
+    render();
+    toast('Tentative performance moved to ' + timeText(start) + '.');
+  } catch (error) { toast(error.message); }
+};
+
 // Empty-stage clicks map one CSS pixel to one minute. Header + buttons provide a keyboard alternative.
 $('#calendar').onclick = event => {
   if (event.target.closest('button') || state.final || !canFestival('lineup')) return;

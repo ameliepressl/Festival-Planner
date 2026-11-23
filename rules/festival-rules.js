@@ -136,6 +136,19 @@ function performanceEntriesForPlan(b, plan) {
   return entries;
 }
 function buildPerformanceEntries(b) { return performanceEntriesForPlan(b, state); }
+
+function moveTentativePerformance(plan, id, { date, stage, start }) {
+  const original = plan.bookings.find(booking => booking.id === id);
+  if (plan.final || !original || !isPerformance(original) || bookingStatus(original) !== 'tentative') {
+    throw new Error('Only tentative performances in an editable lineup can be dragged.');
+  }
+  if (original.date === date && original.stage === stage && original.start === start) return plan;
+  const moved = { ...original, date, stage, start };
+  const problem = bookingProblem(moved, id, plan);
+  if (problem) throw new Error(problem);
+  return { ...plan, bookings: plan.bookings.filter(b => b.id !== id && b.linkedTo !== id)
+    .concat(performanceEntriesForPlan(moved, plan)) };
+}
 function bookingProblem(b, ignoreId, plan, skipLinkedId = null) {
   if (!b || !Number.isInteger(b.start) || b.start < 0 || b.start >= 2880 || !Number.isInteger(entryDuration(b, plan)) || entryDuration(b, plan) < 1 || entryDuration(b, plan) > 1440) return 'Enter a valid start time and duration.';
   if (!eventDays(plan.event).includes(b.date) || !planStages(plan).includes(b.stage)) return 'Choose a valid festival day and stage.';
@@ -285,17 +298,21 @@ function parsePlanBackup(text) {
 }
 
 // Pure automatic planner: work on a copy; applying the result belongs to the screen.
-function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId } = {}) {
-  if (realistic) return realisticLineup(plan, {changeover,headlinerId});
+function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId, headliners } = {}) {
+  if (realistic) return realisticLineup(plan, {changeover,headlinerId,headliners});
   const result = { bookings: [], skipped: [], problem: '' };
   const fail = message => ({ ...result, problem: message });
   if (plan.final) return fail('Reopen the final plan before automatically planning.');
   const problems = planProblems(plan);
   if (problems.length) return fail(problems[0]);
   if (!Number.isInteger(changeover) || changeover < 15 || changeover > 1440) return fail('Enter a whole changeover time from 15 to 1440 minutes.');
-  const headliner = headlinerId === undefined ? [...plan.artists].sort((a,b) => b.fee-a.fee || a.id.localeCompare(b.id))[0] : plan.artists.find(a=>a.id===headlinerId);
-  if (!headliner) return fail('Choose a headliner from This festival.');
   const trial = clonePlanValue(plan), dates = eventDays(plan.event), stageIds = planStages(plan);
+  const legacyId = headlinerId ?? [...plan.artists].sort((a,b) => b.fee-a.fee || a.id.localeCompare(b.id))[0]?.id;
+  const selections = headliners ? dates.map(date => [date, headliners[date]]) : [[dates.at(-1), legacyId]];
+  const dailyHeadliners = selections.map(([date, id]) => [date, plan.artists.find(artist => artist.id === id)]);
+  if (dailyHeadliners.some(([, artist]) => !artist)) return fail(headliners ? 'Choose a headliner for each festival day from This festival.' : 'Choose a headliner from This festival.');
+  const headlineArtists = new Set(selections.map(([, id]) => id));
+  if (headlineArtists.size !== selections.length) return fail('Choose a different headliner for each festival day.');
   const booked = new Set(plan.bookings.filter(isPerformance).map(b => b.artistId));
   // The artist budget is not a hard limit here either (brief: "Flexible budget"): the screen
   // shows the total and asks before a suggestion creates or increases an overrun.
@@ -316,23 +333,28 @@ function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId
     do { id = 'auto-' + serial++; } while (trial.bookings.some(b => b.id === id));
     return { id, artistId:a.id, date, stage, start, duration:a.duration, fee:a.fee, changeover, status:'tentative', notes:'' };
   }
-  const lastDay = dates.at(-1);
-  let headline;
-  if (booked.has(headliner.id)) {
-    headline = plan.bookings.filter(b => isPerformance(b) && b.artistId === headliner.id).sort((a,b) => b.date.localeCompare(a.date) || (b.start+b.duration)-(a.start+a.duration))[0];
-    if (headline.date !== lastDay || plan.bookings.some(b => isPerformance(b) && b.date === lastDay && b.start+b.duration > headline.start+headline.duration)) return fail('The existing headliner is not the closing performance. Move it to the end first.');
-  } else {
-    const candidates = stageIds.map(stage => {
-      const h = stageHours(lastDay, stage, plan.event);
-      return {...make(headliner, lastDay, stage, h.end - headliner.duration), changeover:0};
-    }).sort((a,b) => (b.start+b.duration)-(a.start+a.duration));
-    headline = candidates.find(b => fits(b) && !plan.bookings.some(x => isPerformance(x) && x.date === lastDay && x.start+x.duration > b.start+b.duration));
-    if (!headline) return fail('No closing slot fits the headliner and changeover. Free a final slot or reduce the changeover.');
-    const entries = performanceEntriesForPlan(headline, trial);
-    trial.bookings.push(...entries); result.bookings.push(...entries);
+  const closing = new Map();
+  for (const [date, headliner] of dailyHeadliners) {
+    let headline;
+    if (booked.has(headliner.id)) {
+      headline = plan.bookings.filter(b => isPerformance(b) && b.artistId === headliner.id && b.date === date)
+        .sort((a,b) => b.start + b.duration - a.start - a.duration)[0];
+      if (!headline || plan.bookings.some(b => isPerformance(b) && b.date === date && b.start+b.duration > headline.start+headline.duration)) return fail(`The existing headliner is not the closing performance on ${dateText(date)}. Choose another artist or adjust the timetable.`);
+    } else {
+      const candidates = stageIds.map(stage => {
+        const h = stageHours(date, stage, plan.event);
+        return {...make(headliner, date, stage, h.end - headliner.duration), changeover:0};
+      }).sort((a,b) => (b.start+b.duration)-(a.start+a.duration));
+      headline = candidates.find(b => fits(b) && !plan.bookings.some(x => isPerformance(x) && x.date === date && x.start+x.duration > b.start+b.duration));
+      if (!headline) return fail(`No closing slot fits the headliner and changeover on ${dateText(date)}. Free a closing slot or choose another artist.`);
+      const entries = performanceEntriesForPlan(headline, trial);
+      trial.bookings.push(...entries); result.bookings.push(...entries);
+    }
+    closing.set(date, headline);
   }
+  result.headlinerBookings = Object.fromEntries([...closing].map(([date, booking]) => [date, booking.id]));
   // Try different genres first when a run blocks placement; repeat until no artist can be added.
-  let pending = plan.artists.filter(a => a.id !== headliner.id && !booked.has(a.id)).sort((a,b) => a.fee-b.fee || a.id.localeCompare(b.id));
+  let pending = plan.artists.filter(a => !headlineArtists.has(a.id) && !booked.has(a.id)).sort((a,b) => a.fee-b.fee || a.id.localeCompare(b.id));
   while (pending.length) {
     let progress = false;
     for (const a of [...pending]) {
@@ -343,7 +365,8 @@ function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId
         const starts = [...new Set([h.start, ...entries.map(b => b.start + entryDuration(b,trial) + (isPerformance(b) ? Math.max(changeover,b.changeover || 0) : 0))])].sort((a,b)=>a-b);
         for (const start of starts) {
           const b = make(a,date,stage,start);
-          if (date === lastDay && start+a.duration > headline.start+headline.duration) continue;
+          const headline = closing.get(date);
+          if (headline && start+a.duration > headline.start+headline.duration) continue;
           if (fits(b)) {
             slots.push({ b, dayLoad:trial.bookings.filter(x => isPerformance(x) && x.date === date).length,
               stageLoad:entries.filter(isPerformance).length });
@@ -363,7 +386,8 @@ function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId
   // it at opening. Existing appointments are fixed anchors; genre order stays intact.
   for (const date of dates) for (const stage of stageIds) {
     const hours = stageHours(date,stage,plan.event);
-    const end = date === lastDay ? Math.min(hours.end, headline.start+headline.duration) : hours.end;
+    const headline = closing.get(date);
+    const end = headline ? Math.min(hours.end, headline.start+headline.duration) : hours.end;
     const fixed = plan.bookings.filter(b => b.date===date && b.stage===stage)
       .map(b => ({start:b.start,end:b.start+entryDuration(b,plan)+(isPerformance(b)?Math.max(changeover,b.changeover||0):0)}))
       .sort((a,b)=>a.start-b.start);
@@ -386,7 +410,7 @@ function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId
       if (slack<0) continue;
       let position=window.start;
       sequence.forEach((b,i)=>{
-        b.start=sequence.length===1 ? (b.artistId===headliner.id ? window.end-b.duration : Math.round(window.start+slack/2)) : Math.round(position);
+        b.start=sequence.length===1 ? (b.id===headline?.id ? window.end-b.duration : Math.round(window.start+slack/2)) : Math.round(position);
         if(b===last&&finalWindow)b.changeover=0;
         position+=b.duration+b.changeover+(sequence.length>1?slack/(sequence.length-1):0);
         // The linked block moves together with its performance.
@@ -402,7 +426,7 @@ function automaticLineup(plan, { changeover = 15, realistic = false, headlinerId
 
 // Use a padded music window and, when capacity permits, one shared running order
 // across stages. The compact allocator remains the capacity/genre assignment step.
-function realisticLineup(plan, {changeover=15,headlinerId}={}) {
+function realisticLineup(plan, {changeover=15,headlinerId,headliners}={}) {
   const padded=clonePlanValue(plan);
   padded.event.dayHours={...padded.event.dayHours};
   let usePadding=true;
@@ -419,24 +443,24 @@ function realisticLineup(plan, {changeover=15,headlinerId}={}) {
   }
   // Fixed existing appointments can occupy the arrival/exit window; never move them.
   if(usePadding&&planProblems(padded).length)usePadding=false;
-  let result=automaticLineup(usePadding?padded:plan,{changeover,headlinerId});
+  let result=automaticLineup(usePadding?padded:plan,{changeover,headlinerId,headliners});
   // If the padded window loses artists, first try the full window so availability
   // wins over a preference. Explain the reduced arrival/exit buffer in the review.
   if(usePadding&&(result.problem||result.skipped.length)) {
-    const full=automaticLineup(plan,{changeover,headlinerId});
+    const full=automaticLineup(plan,{changeover,headlinerId,headliners});
     if(!full.problem&&(result.problem||full.skipped.length<result.skipped.length)){result=full;usePadding=false;}
   }
   if(result.problem)return result;
   const event=usePadding?padded.event:plan.event;
-  const headliner=headlinerId===undefined ? [...plan.artists].sort((a,b)=>b.fee-a.fee||a.id.localeCompare(b.id))[0] : plan.artists.find(a=>a.id===headlinerId);
   for(const date of eventDays(plan.event)) {
+    const headlineId = result.headlinerBookings[date];
     const generated=result.bookings.filter(isPerformance).filter(b=>b.date===date);
     if(!generated.length)continue;
     // Merge each stage's genre-safe order, preferring a different stage each time.
     const queues=planStages(plan).map(stage=>generated.filter(b=>b.stage===stage).sort((a,b)=>a.start-b.start));
     const order=[];let previous='';
     while(queues.some(q=>q.length)) {
-      const available=queues.filter(q=>q.length&&!(q[0].artistId===headliner.id&&queues.some(other=>other.some(b=>b.artistId!==headliner.id))));
+      const available=queues.filter(q=>q.length&&!(q[0].id===headlineId&&queues.some(other=>other.some(b=>b.id!==headlineId))));
       const queue=available.sort((a,b)=>(a[0].stage===previous)-(b[0].stage===previous)||b.length-a.length||a[0].stage.localeCompare(b[0].stage))[0];
       if(!queue)break;
       const b=queue.shift();order.push(b);previous=b.stage;
@@ -446,7 +470,7 @@ function realisticLineup(plan, {changeover=15,headlinerId}={}) {
     const spare=h.end-h.start-duration-changeover*(order.length-1);
     if(spare<0)continue; // Stage parallelism is needed; keep the valid allocation.
     const gap=changeover+(order.length>1?spare/(order.length-1):0);
-    let cursor=order.length===1?(order[0].artistId===headliner.id?h.end-order[0].duration:h.start+spare/2):h.start;
+    let cursor=order.length===1?(order[0].id===headlineId?h.end-order[0].duration:h.start+spare/2):h.start;
     const replacements=order.map((b,i)=>{
       const start=i===order.length-1 ? h.end-b.duration : Math.max(h.start,Math.round(cursor/5)*5);cursor+=b.duration+gap;
       return {...b,start,changeover:i===order.length-1?0:changeover};
@@ -458,7 +482,7 @@ function realisticLineup(plan, {changeover=15,headlinerId}={}) {
     const fitsHours=replacements.every(b=>!availabilityProblem(b,event,trial));
     const noOverlap=performances.every((b,i)=>!i||b.start>=performances[i-1].start+performances[i-1].duration+changeover);
     // Shifting a day's order must also respect other days, blocks and saved data rules.
-    const closingSet=trial.bookings.filter(b=>isPerformance(b)&&b.artistId===headliner.id&&b.date===eventDays(plan.event).at(-1))[0];
+    const closingSet=trial.bookings.find(b=>b.id===headlineId);
     const headlineLast=!closingSet||date!==closingSet.date||performances.every(b=>b.start+b.duration<=closingSet.start+closingSet.duration);
     if(fitsHours&&noOverlap&&headlineLast&&!planProblems(trial).length) {
       result.bookings=result.bookings.filter(b=>!ids.has(b.id)&&!ids.has(b.linkedTo)).concat(replacements.flatMap(b=>performanceEntriesForPlan(b,plan)));
