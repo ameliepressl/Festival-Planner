@@ -15,6 +15,14 @@ layout from scratch."* Until now an organiser could only move the suggested pins
       festival size, crowd measurements) and that nothing is saved yet.
 - [x] **Keep the main entrance** is ticked by default, because everything else is planned around the gate.
       The button counts live: "Clear 77 pins" / "Clear 78 pins".
+- [x] **Everything on the map itself** (feedback: the side panel felt far away and clumsy):
+      - **Drag any pin** to move it, without switching to *Move pins* first; a short click still selects it.
+        Dropped on water, forest or outside the fence, it springs back with a message; gate and exits snap to the fence.
+      - A **pin menu** opens right at the clicked pin: name, **Move** (pick up, click the new spot) and
+        **Remove**. It stays inside the map, follows zoom and pan, and closes with ×, Esc or a click on empty ground.
+      - The **Pins to place** dock sits directly under the map. **Drag a pin from the dock onto the map**
+        (or click it, then click the map), and **drag a pin from the map onto the dock** to take it off
+        ("Drop here to take the pin off the map").
 - [x] **One pin at a time** (team feedback after the first try): click a pin, then **Move to another spot**
       (picks it up; the next click on the map puts it down) or **Remove from map**. **Delete** removes the
       selected pin too, but never while typing in a field. A removed pin waits under *Pins to place* and
@@ -44,7 +52,6 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 ## Out of scope
 
 - Several undo steps (the draft keeps one step, as before).
-- Dragging pins from the card onto the map (click to place works with mouse, touch and keyboard focus).
 - Changing the layout rules or *Suggest layout*.
 
 ## Done when

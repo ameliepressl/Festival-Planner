@@ -9,7 +9,7 @@
   const view = document.querySelector('#site-map-view');
   const SELECTED_KEY = 'festival-architect-site-map-selected';
   const MODES = {
-    explore: { label: 'Explore', hint: 'Click a pin to see its details · drag to move around · scroll or use + / − to zoom.' },
+    explore: { label: 'Explore', hint: 'Click a pin for its options · drag a pin to move it · drag the map to look around · scroll or + / − to zoom.' },
     move: { label: 'Move pins', hint: 'Drag a pin to a new spot. The layout check updates when you let go.' },
     border: { label: 'Draw fence', hint: 'Click the corners of the festival ground one after another, then press “Done”.' },
     entrance: { label: 'Set gate', hint: 'Click the spot on the fence where the main entrance should be.' },
@@ -40,6 +40,8 @@
   let draftBorder = null;
   let placing = null; // the pin that the next click on the map places (mode "place")
   let ghost = null;   // preview under the mouse while placing: { at, ok }
+  let chipDrag = null; // a pin dragged from "Pins to place" onto the map
+  let suppressChipClick = false;
   let box = null;    // the visible part of the map (zoom and pan)
   let pointer = null; // what the mouse is doing right now
   let busy = false;
@@ -185,12 +187,13 @@
               <canvas id="sm-visitors-canvas" hidden aria-hidden="true"></canvas>
               <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
               <div class="sm-scale" id="sm-scale"></div>
+              <div class="sm-pop" id="sm-pop" role="group" aria-label="Pin options" hidden></div>
             </div>
+            <section class="sm-dock" id="sm-tray" aria-labelledby="sm-tray-title" hidden></section>
           </div>
           <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </div>
         <aside class="sm-side">
-          <section class="sm-card sm-tray" id="sm-tray" aria-labelledby="sm-tray-title" hidden></section>
           <section class="sm-card" id="sm-details" aria-live="polite"></section>
         </aside>
       </div>
@@ -244,6 +247,7 @@
     const s = site();
     view.querySelector('#sm-svg').setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`);
     simulation?.paint();
+    positionPopover();
     // A scale bar of a round number of metres, about a fifth of the visible width.
     const metres = box.w * metresPerUnit(s) / 5;
     const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000].find((n) => n >= metres) || 5000;
@@ -282,6 +286,7 @@
         ${MapDrawing.object(item, u, angle(item, at), vendor)}
         ${MapDrawing.pin(item, r, colourOf(item.category), label, item.id === selectedId)}</g>`;
     }).join('');
+    renderPopover();
   }
 
   function drawEdit() {
@@ -337,9 +342,9 @@
     drawAll();
     if (pickUp) {
       startPlacing(id);
-      mapMessage(`Click the new spot for ${item.name}. Esc puts it under “Pins to place”.`);
+      mapMessage(`Click the new spot for ${item.name}. Esc leaves it under “Pins to place”.`);
     } else {
-      mapMessage(`${item.name} removed from the map. Place it again from “Pins to place”, or use Undo change.`);
+      mapMessage(`${item.name} taken off the map. It waits under the map in “Pins to place”; Undo change puts it back.`);
       view.querySelector(`#sm-tray [data-place="${id}"]`)?.focus({ preventScroll: true });
     }
   }
@@ -392,7 +397,9 @@
     mapMessage(`${added} ${added === 1 ? 'pin' : 'pins'} added; your ${before} placed ${before === 1 ? 'pin stays' : 'pins stay'} where you put them. Layout check: ${score}%.`);
   }
 
-  // The list on the right: every pin still waiting for a place, by category, with progress.
+  // The dock under the map: every pin still waiting for a place, by category, with progress.
+  // Pins are dragged from here onto the map (or clicked, then placed with a click), and dragged
+  // back here to take them off the map.
   function renderTray() {
     const tray = view.querySelector('#sm-tray');
     if (!tray) return;
@@ -402,27 +409,89 @@
     if (tray.hidden) { tray.innerHTML = ''; return; }
     const { total, placed } = pinCounts(items, s.placements);
     const locked = !editable() || busy;
+    const current = placing ? findItem(placing, items) : null;
+    const head = `<div class="sm-dock-head">
+        <h2 id="sm-tray-title">Pins to place</h2>
+        <span class="sm-dock-count">${placed} of ${total} on the map</span>
+        <div class="sm-tray-progress ${groups.length ? '' : 'done'}" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
+        ${groups.length ? `<button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''} title="Keeps every pin you placed and plans only the missing ones">Fill the rest for me</button>` : ''}
+      </div>`;
+    const drop = '<div class="sm-dock-drop" aria-hidden="true">Drop here to take the pin off the map</div>';
     if (!groups.length) {
-      tray.innerHTML = `
-      <div class="sm-tray-head"><h2 id="sm-tray-title">Pins to place</h2><span>${placed} of ${total}</span></div>
-      <div class="sm-tray-progress done" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:100%"></i></div>
-      <p class="sm-note"><b>Every facility is on the map.</b> To change one, click its pin and choose <b>Move to another spot</b> or <b>Remove from map</b>; it then waits here until you place it again. <b>Clear all pins</b> starts over.</p>`;
+      tray.innerHTML = `${head}<p class="sm-dock-empty"><b>✓ Every facility is on the map.</b> Drag a pin to move it. To take one off, drag it here or click it and choose <b>Remove</b>.</p>${drop}`;
       return;
     }
-    const current = placing ? findItem(placing, items) : null;
-    tray.innerHTML = `
-      <div class="sm-tray-head"><h2 id="sm-tray-title">Pins to place</h2><span>${placed} of ${total}</span></div>
-      <div class="sm-tray-progress" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
-      <p class="sm-note">${current ? `Now placing <b>${escape(current.name)}</b>. Click its spot on the map${current.onFence ? '; it snaps to the fence' : ''}.`
-        : 'Pick a pin, then click its spot on the map. The next one is ready right after.'}</p>
-      ${groups.map((group) => `<div class="sm-tray-group"><p class="sm-sub">${escape(group.title)} <small>${group.count}</small></p><div class="sm-tray-pins">
+    tray.innerHTML = `${head}
+      <p class="sm-dock-help">${current ? `Placing <b>${escape(current.name)}</b>: click its spot on the map${current.onFence ? ' (it snaps to the fence)' : ''}.`
+        : '<b>Drag a pin onto the map</b>, or click it and then click the map.'}</p>
+      <div class="sm-dock-groups">${groups.map((group) => `<div class="sm-tray-group"><span class="sm-dock-label">${escape(group.title)} <small>${group.count}</small></span><div class="sm-tray-pins">
         ${group.choices.map((choice) => { const on = choice.ids.includes(placing); return `<button type="button" class="sm-tray-pin ${on ? 'on' : ''}" data-place="${choice.id}" aria-pressed="${on}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} aria-label="Place ${escape(choice.label)}${choice.count > 1 ? `, ${choice.count} left` : ''}">
-          <i>${escape(choice.symbol)}</i>${escape(choice.label)}${choice.count > 1 ? `<b>×${choice.count}</b>` : ''}</button>`; }).join('')}</div></div>`).join('')}
-      <div class="sm-tray-actions">
-        <button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''}>Fill the rest for me</button>
-        ${current ? '<button type="button" class="button secondary" data-tray="stop">Stop placing</button>' : ''}
-      </div>
-      <small class="sm-note">“Fill the rest” keeps every pin you placed and plans only the missing ones.</small>`;
+          <i>${escape(choice.symbol)}</i>${escape(choice.label)}${choice.count > 1 ? `<b>×${choice.count}</b>` : ''}</button>`; }).join('')}</div></div>`).join('')}</div>
+      ${drop}`;
+  }
+
+  // The small menu next to the selected pin, right on the map.
+  function renderPopover() {
+    const pop = view.querySelector('#sm-pop');
+    if (!pop) return;
+    const s = site();
+    const item = selectedId && s.placements[selectedId] && mode !== 'place' && !pointer?.drag ? findItem(selectedId, items) : null;
+    if (!item || !active.includes(item.category)) { pop.hidden = true; return; }
+    const at = s.placements[item.id];
+    const vendor = item.kind === 'pitch' ? vendorOnPitch(vendors(), item.id) : null;
+    pop.innerHTML = `<div class="sm-pop-title"><i style="--marker:${colourOf(item.category)}"></i><b>${escape(vendor ? `${item.name}: ${vendor.name}` : item.name)}</b>
+        <button type="button" class="sm-pop-close" data-pop="close" aria-label="Close pin options">×</button></div>
+      ${editable() ? `<div class="sm-pop-actions">
+        <button type="button" data-pin="move" ${busy ? 'disabled' : ''} title="Pick the pin up, then click its new spot">↔ Move</button>
+        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="Take the pin off the map (Delete key)">✕ Remove</button>
+      </div><small>or drag the pin to a new spot</small>` : '<small>View only</small>'}`;
+    pop.hidden = false;
+    positionPopover(at);
+  }
+
+  function positionPopover(at = site().placements[selectedId]) {
+    const pop = view.querySelector('#sm-pop');
+    const svg = view.querySelector('#sm-svg');
+    if (!pop || pop.hidden || !at || !svg?.getScreenCTM) return;
+    const ctm = svg.getScreenCTM();
+    const frame = view.querySelector('.sm-map-viewport').getBoundingClientRect();
+    if (!ctm) return;
+    const pinTop = at[1] - (box.w / 58) * 2.6;  // the pin is drawn above its point
+    const x = at[0] * ctm.a + ctm.e - frame.left;
+    let y = pinTop * ctm.d + ctm.f - frame.top - 12;   // a gap, so the menu never covers the pin itself
+    const below = y < pop.offsetHeight + 12;
+    if (below) y = at[1] * ctm.d + ctm.f - frame.top + 14;
+    const inside = x > 0 && x < frame.width && y > -20 && y < frame.height + 20;
+    pop.classList.toggle('below', below);
+    pop.style.visibility = inside ? '' : 'hidden';
+    // Keep the whole menu inside the map; the little arrow still points at the pin.
+    const half = pop.offsetWidth / 2;
+    const left = Math.min(frame.width - half - 6, Math.max(half + 6, x));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${y}px`;
+    pop.style.setProperty('--arrow', `${Math.min(half - 10, Math.max(10 - half, x - left))}px`);
+  }
+
+  function deselect() {
+    if (!selectedId) return;
+    selectedId = null;
+    drawObjects(); renderDetails();
+  }
+
+  // Screen point → map point, or null when the point is not over the map.
+  function mapPointAt(clientX, clientY) {
+    const svg = view.querySelector('#sm-svg');
+    const rect = svg?.getBoundingClientRect();
+    if (!rect || clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
+    const point = svg.createSVGPoint();
+    point.x = clientX; point.y = clientY;
+    const p = point.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.round(p.x), Math.round(p.y)];
+  }
+
+  function overDock(clientX, clientY) {
+    const rect = view.querySelector('#sm-tray')?.getBoundingClientRect();
+    return Boolean(rect) && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   }
 
   // The confirmation for "Clear all pins": what goes, what stays, and that it can be undone.
@@ -479,7 +548,7 @@
       const item = placing ? findItem(placing, items) : null;
       const left = pinsToPlace(items, site().placements).reduce((sum, group) => sum + group.items.length, 0);
       hint.innerHTML = item
-        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="list">All pins</button> <button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
+        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
         : '<span>Pick a pin under “Pins to place”.</span>';
       return;
     }
@@ -668,7 +737,7 @@
     if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
     view.querySelectorAll('[data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-pressed', b.dataset.mode === mode); });
-    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions(); renderTray();
+    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions(); renderTray(); renderPopover();
   }
 
   function select(id) {
@@ -791,8 +860,22 @@
         pointer = null; return;
       }
       if (mode === 'paint' || mode === 'erase') { pointer.paint = mode === 'paint' ? '1' : '0'; paintAt(p, pointer.paint); return; }
-      if (mode === 'move' && pointer.itemId) { pointer.drag = true; select(pointer.itemId); pointer.el = view.querySelector(`.fa-item[data-id="${pointer.itemId}"]`); }
+      // A pin can be dragged straight away (not only in "Move pins"); a short click still selects it.
+      if (pointer.itemId && editable() && !busy) {
+        pointer.origin = s.placements[pointer.itemId];
+        if (mode === 'move') startPinDrag();
+        else pointer.canDrag = true;
+      }
     });
+
+    function startPinDrag() {
+      pointer.drag = true;
+      pointer.canDrag = false;
+      select(pointer.itemId);
+      pointer.el = view.querySelector(`.fa-item[data-id="${pointer.itemId}"]`);
+      view.querySelector('#sm-pop').hidden = true;
+      view.querySelector('#sm-tray')?.classList.add('dropping');
+    }
 
     svg.addEventListener('pointermove', (event) => {
       if (!pointer && mode === 'place' && placing) {
@@ -807,7 +890,14 @@
       const dy = event.clientY - pointer.start[1];
       if (Math.hypot(dx, dy) > 4) pointer.moved = true;
       if (pointer.paint) { paintAt(toMap(event), pointer.paint); return; }
-      if (pointer.drag) { const p = toMap(event); site().placements[pointer.itemId] = p; pointer.el.setAttribute('transform', `translate(${p[0]} ${p[1]})`); return; }
+      if (pointer.canDrag && pointer.moved) startPinDrag();
+      if (pointer.drag) {
+        const p = toMap(event);
+        site().placements[pointer.itemId] = p;
+        pointer.el?.setAttribute('transform', `translate(${p[0]} ${p[1]})`);
+        view.querySelector('#sm-tray')?.classList.toggle('hot', overDock(event.clientX, event.clientY));
+        return;
+      }
       if (pointer.moved) {
         const scale = pointer.startBox.w / svg.clientWidth;
         box = { ...box, x: pointer.startBox.x - dx * scale, y: pointer.startBox.y - dy * scale };
@@ -815,14 +905,39 @@
       }
     });
 
-    const finish = () => {
+    const finish = (event) => {
       if (!pointer) return;
       if (pointer.paint) { save(); drawObjects(); renderScore(); renderDetails(); renderCrowd(); }
-      else if (pointer.drag) { save(); drawAll(); }
+      else if (pointer.drag) { const done = pointer; pointer = null; finishPinDrag(done, event); return; }
       else if (!pointer.moved && pointer.itemId) select(pointer.itemId);
       else if (!pointer.moved && mode === 'place' && placing && editable() && !busy) { const at = pointer.at; pointer = null; placeAt(at); return; }
+      else if (!pointer.moved && mode === 'explore') deselect();
       pointer = null;
     };
+
+    // A dragged pin: dropped on the dock = off the map; on a bad spot = back where it was.
+    function finishPinDrag(done, event) {
+      const tray = view.querySelector('#sm-tray');
+      tray?.classList.remove('dropping', 'hot');
+      const s = site();
+      const item = findItem(done.itemId, items);
+      if (event && overDock(event.clientX, event.clientY)) {
+        s.placements[done.itemId] = done.origin;
+        removePin(done.itemId);
+        return;
+      }
+      const spot = pinSpot(s, item, s.placements[done.itemId]);
+      if (!spot.ok) {
+        s.placements[done.itemId] = done.origin;
+        drawAll();
+        mapMessage(item.onFence ? `${spot.problem} The pin went back to where it was.`
+          : `${item.name} cannot stand on water, forest or outside the fence, so it went back to where it was.`);
+        return;
+      }
+      s.placements[done.itemId] = spot.at;
+      if (done.itemId === 'entrance') s.entrance = spot.at;
+      save(); drawAll();
+    }
     svg.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawEdit(); } });
     svg.addEventListener('pointerup', finish);
     svg.addEventListener('pointercancel', finish);
@@ -849,10 +964,14 @@
     }
     if (t.closest('#sm-suggest')) { if (editable() && !busy) suggest(); return; }
     if (t.closest('#sm-clear-pins')) { if (editable() && !busy) openClearDialog(); return; }
+    if (t.closest('[data-pop="close"]')) { deselect(); return; }
     const pinAction = t.closest('[data-pin]')?.dataset.pin;
     if (pinAction && selectedId) { removePin(selectedId, { pickUp: pinAction === 'move' }); return; }
     const placeButton = t.closest('[data-place]');
-    if (placeButton) { startPlacing(placeButton.dataset.place); return; }
+    if (placeButton) {
+      if (suppressChipClick) { suppressChipClick = false; return; }
+      startPlacing(placeButton.dataset.place); return;
+    }
     const trayAction = t.closest('[data-tray]')?.dataset.tray;
     if (trayAction === 'stop') { stopPlacing(); return; }
     if (trayAction === 'list') {
@@ -958,10 +1077,46 @@
       }
     }
   });
+  // Dragging a pin from "Pins to place" onto the map. A click without moving just picks it.
+  view.addEventListener('pointerdown', (event) => {
+    const chip = event.target.closest('#sm-tray [data-place]');
+    if (!chip || chip.disabled || event.button > 0) return;
+    chipDrag = { id: chip.dataset.place, start: [event.clientX, event.clientY], moved: false };
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!chipDrag) return;
+    if (!chipDrag.moved) {
+      if (Math.hypot(event.clientX - chipDrag.start[0], event.clientY - chipDrag.start[1]) < 6) return;
+      chipDrag.moved = true;
+      startPlacing(chipDrag.id);
+      chipDrag.id = placing;
+      document.body.classList.add('sm-dragging-pin');
+    }
+    const p = mapPointAt(event.clientX, event.clientY);
+    if (p && placing) {
+      const spot = pinSpot(site(), findItem(placing, items), p);
+      ghost = { at: spot.ok ? spot.at : p, ok: spot.ok };
+    } else ghost = null;
+    drawEdit();
+  });
+  document.addEventListener('pointerup', (event) => {
+    if (!chipDrag) return;
+    const drag = chipDrag;
+    chipDrag = null;
+    if (!drag.moved) return;
+    document.body.classList.remove('sm-dragging-pin');
+    suppressChipClick = true;
+    setTimeout(() => { suppressChipClick = false; }, 0);
+    const p = mapPointAt(event.clientX, event.clientY);
+    if (p && placing) placeAt(p);
+    else { ghost = null; drawEdit(); }
+  });
+
   // Esc stops placing pins; Delete removes the selected pin (not while a dialog is open).
   document.addEventListener('keydown', (event) => {
     if (view.classList.contains('hidden') || view.querySelector('dialog[open]')) return;
     if (event.key === 'Escape' && mode === 'place') stopPlacing();
+    else if (event.key === 'Escape' && selectedId) deselect();
     // Delete removes the selected pin, unless the person is typing in a field.
     const typing = event.target?.closest?.('input, textarea, select, [contenteditable="true"]');
     if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && !typing && !event.target?.closest?.('.fa-item')) {
