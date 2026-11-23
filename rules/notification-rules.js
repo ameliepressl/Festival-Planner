@@ -18,7 +18,7 @@ const NOTIFICATION_SEEN_MAX = 2000;
 const NOTIFICATION_ORDER = { overdue: 0, dueSoon: 1, new: 2 };
 // In the browser task-rules.js is loaded first; the tests load it with require.
 const notificationTasks = typeof module !== 'undefined' && typeof require === 'function'
-  ? require('./task-rules.js') : { assigneeOf };
+  ? require('./task-rules.js') : { assigneeOf, assignerOf };
 
 function notificationSeenKey(festivalId, userId) {
   const valid = (value) => typeof value === 'string' && value.length > 0 && value.length <= NOTIFICATION_ID_MAX && !value.includes(':');
@@ -59,7 +59,9 @@ function myAssignedSteps({ steps = [], assignments, people = [], myUserId }) {
 
 // One notification per subtask of mine, the most urgent reason first:
 //   overdue (not done, due date passed) → due soon (not done, due within 7 days) → new (not seen yet).
-// Returns { items: [{ kind, stepId, title, end, days, unread }], unread }.
+// Returns { items: [{ kind, stepId, title, end, days, unread, isNew, from }], unread }.
+//   from = who gave me the task: { name, isMe }, or null when unknown (older assignments,
+//   or that person has left the team).
 function notificationsFor({ steps, assignments, people, myUserId, seen = emptySeen(), today }) {
   const known = new Set(seen.assigned);
   const deadlinesRead = seen.readOn === today;
@@ -73,11 +75,20 @@ function notificationsFor({ steps, assignments, people, myUserId, seen = emptySe
     else if (isNew && step.status !== 'done') kind = 'new';
     if (!kind) continue;
     const unread = isNew || (kind !== 'new' && !deadlinesRead);
-    items.push({ kind, stepId: step.id, title: String(step.title || 'Untitled task'), end: step.end, days, unread, isNew });
+    items.push({ kind, stepId: step.id, title: String(step.title || 'Untitled task'), end: step.end, days, unread, isNew,
+      from: assignedFrom(step, assignments, people, myUserId) });
   }
   items.sort((a, b) => NOTIFICATION_ORDER[a.kind] - NOTIFICATION_ORDER[b.kind]
     || (a.days ?? 0) - (b.days ?? 0) || a.title.localeCompare(b.title));
   return { items, unread: items.filter((item) => item.unread).length };
+}
+
+// Who gave me this subtask, as far as the team still knows them.
+function assignedFrom(step, assignments, people, myUserId) {
+  const giver = notificationTasks.assignerOf(step, assignments);
+  const person = giver ? people.find((entry) => entry.userId === giver) : null;
+  if (!person) return null;
+  return { name: String(person.username || 'Teammate'), isMe: giver === myUserId };
 }
 
 // "Mark all as read": remember my current subtasks and today. Deadlines come back tomorrow.
@@ -104,7 +115,16 @@ function notificationText(item) {
     if (item.days === 1) return `${title} is due tomorrow`;
     return `${title} is due in ${item.days} days`;
   }
+  if (item.from?.isMe) return `You assigned yourself ${title}`;
+  if (item.from) return `${item.from.name} assigned you ${title}`;
   return `You were assigned ${title}`;
+}
+
+// Who a task came from, under a deadline notification ("From Amelie"); '' when unknown.
+// New-task sentences already name the person.
+function notificationSource(item) {
+  if (!item.from || item.kind === 'new') return '';
+  return item.from.isMe ? 'Assigned by you' : `From ${item.from.name}`;
 }
 
 // The text of an empty list. Owner and Admins also learn where tasks are assigned,
@@ -120,6 +140,6 @@ if (typeof module !== 'undefined') {
   module.exports = {
     NOTIFICATION_SEEN_PREFIX, NOTIFICATION_DUE_SOON_DAYS, notificationSeenKey, emptySeen, parseSeen, daysUntilDue,
     myAssignedSteps, notificationsFor, markAllRead, notificationBadge, notificationText,
-    notificationEmptyText
+    notificationEmptyText, notificationSource
   };
 }

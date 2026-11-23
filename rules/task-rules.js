@@ -5,6 +5,10 @@
 //   { groups: { taskId: userId }, steps: { subtaskId: userId or '' } }
 // A subtask listed in `steps` has its own person ('' = nobody); every other subtask belongs to
 // the person of its task group. Someone who is no longer on the team counts as nobody.
+//
+// Optional, for notifications ("Amelie assigned you …", feature-plans/notifications.md):
+//   assignedBy: { groups: { taskId: userId }, steps: { subtaskId: userId } }
+// It is part of the same saved key, so only Owner and Admins can write it (migrations/004).
 
 const TASK_ASSIGNMENTS_KEY = 'festival-task-assignments-v1';
 const TASK_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,7 +36,53 @@ function parseAssignments(text) {
       if (TASK_USER_ID.test(userId) || (allowNobody && userId === '')) result[part][id] = userId;
     }
   }
+  const by = parseAssigners(saved.assignedBy, result);
+  if (by) result.assignedBy = by;
   return result;
+}
+
+// Who handed out each assignment; only for assignments that exist and name a person.
+function parseAssigners(saved, assignments) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return null;
+  const by = { groups: {}, steps: {} };
+  let found = false;
+  for (const part of ['groups', 'steps']) {
+    const entries = saved[part];
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) continue;
+    for (const [id, userId] of Object.entries(entries)) {
+      if (!assignments[part][id] || typeof userId !== 'string' || !TASK_USER_ID.test(userId)) continue;
+      by[part][id] = userId;
+      found = true;
+    }
+  }
+  return found ? by : null;
+}
+
+// Before saving: remembers who handed out each assignment. A new or changed assignment is
+// recorded as given by `byUserId`; an unchanged one keeps who gave it before; nobody = no record.
+function withAssigners(previous, next, byUserId) {
+  const result = { groups: { ...next.groups }, steps: { ...next.steps } };
+  const before = previous?.assignedBy || emptyAssignments();
+  const by = { groups: {}, steps: {} };
+  let found = false;
+  for (const part of ['groups', 'steps']) {
+    for (const [id, userId] of Object.entries(result[part])) {
+      if (!userId) continue;
+      const unchanged = previous?.[part]?.[id] === userId;
+      const giver = unchanged ? before[part]?.[id] : byUserId;
+      if (typeof giver === 'string' && TASK_USER_ID.test(giver)) { by[part][id] = giver; found = true; }
+    }
+  }
+  if (found) result.assignedBy = by;
+  return result;
+}
+
+// Who gave a subtask to its person: the subtask's own record, otherwise its group's. null = unknown.
+function assignerOf(step, assignments) {
+  const by = assignments?.assignedBy;
+  if (!by) return null;
+  const own = Object.prototype.hasOwnProperty.call(assignments.steps, step.id);
+  return (own ? by.steps[step.id] : by.groups[step.taskId]) || null;
 }
 
 // Everyone who can be given tasks: the festival creator first, then the team, each once.
@@ -126,6 +176,7 @@ function canAssignTasks(role) {
 if (typeof module !== 'undefined') {
   module.exports = {
     TASK_ASSIGNMENTS_KEY, emptyAssignments, parseAssignments, assignablePeople, assigneeOf, groupAssignee,
-    withGroupAssignee, withStepAssignee, matchesAssignee, teamProgress, canAssignTasks
+    withGroupAssignee, withStepAssignee, matchesAssignee, teamProgress, canAssignTasks,
+    withAssigners, assignerOf
   };
 }
