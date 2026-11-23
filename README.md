@@ -164,6 +164,10 @@ These are the active rules in the [current product brief](product-brief/festival
 - **Project tasks** — a task board and editable Gantt timeline with suggested dates relative
   to the festival, assignments, filters and deadlines. Add or delete suggested/custom tasks;
   timeline edits use Save or Cancel. A fresh project starts with fresh task progress.
+- **Notifications** — a bell in the top bar tells you when a task was assigned to you, and which
+  of your tasks are due within 7 days or overdue. One click opens the task under *My tasks*;
+  "Mark all as read" clears the counter, and open deadlines come back the next day.
+  Notifications appear when you open the app (no e-mails yet; see the [plan](feature-plans/notifications.md)).
 
 ### Design the ground
 - **Site map** — a realistic aerial view with a clickable pin for every facility: stages,
@@ -266,6 +270,7 @@ overview.js                   overview and team roster
 readiness.js                  shared planning checks and linked issue cards
 artist-library/               searchable artist catalogue and optional photos
 work-board.js · gantt-*.js    task board and Gantt chart
+notifications.js              the bell: new tasks, due soon and overdue
 festival-countdown.js         days until the festival
 site-map/                     site map and the aerial drawing
 vendors/                      vendors
@@ -312,6 +317,8 @@ database reads and writes.
 `supabase-config.js` contains the public project URL and **publishable** key, intended for
 browser use. Secret/service-role keys, database passwords and access tokens must never be
 committed. New saved plan sections use a `festival-` key so account sync includes them.
+Data that belongs to one person in one browser uses an `fa-` key and is never synced, e.g. which
+notifications you have read (only task numbers, per festival and person).
 
 **Text from users is always shown as text.** Names, notes, task titles, stage names, own stands and own
 finance lines are escaped before they go into the page, and saved data is checked again when it is
