@@ -48,6 +48,38 @@ function suggestedProject(template, event, planningStart) {
   return plan;
 }
 
+function projectAreaName(plan, title, exceptId) {
+  const name = typeof title === 'string' ? title.trim() : '';
+  if (!name || name.length > 160) throw new Error('Enter a work area name of up to 160 characters.');
+  if (plan.some(area => String(area.id) !== exceptId && area.title.trim().toLowerCase() === name.toLowerCase())) {
+    throw new Error('A work area with this name already exists.');
+  }
+  return name;
+}
+
+function createProjectArea(plan, title, id) {
+  return { id, title: projectAreaName(plan, title), tasks: [] };
+}
+
+function changeProjectArea(plan, areaId, { title, destinationId, deleteTasks = false }) {
+  const id = String(areaId);
+  const area = plan.find(item => String(item.id) === id);
+  if (!area) throw new Error('This work area no longer exists.');
+  if (title !== undefined) {
+    const name = projectAreaName(plan, title, id);
+    return plan.map(item => item === area ? { ...item, title: name } : item);
+  }
+
+  const remaining = plan.filter(item => item !== area);
+  if (destinationId) {
+    const destination = remaining.find(item => String(item.id) === String(destinationId));
+    if (!destination) throw new Error('Choose another work area to receive the tasks.');
+    return remaining.map(item => item === destination ? { ...item, tasks: [...item.tasks, ...area.tasks] } : item);
+  }
+  if (area.tasks.length && !deleteTasks) throw new Error('Choose whether to move or delete this area’s tasks.');
+  return remaining;
+}
+
 function removeProjectEntry(plan, { stepId, taskId }) {
   const next = JSON.parse(JSON.stringify(plan));
   let found = false;
@@ -132,6 +164,55 @@ function cleanProjectTracking(plan, statuses = {}, assignments = { groups: {}, s
     assignments: { groups: keep(assignments.groups, ids.groups), steps: keep(assignments.steps, ids.steps) } };
 }
 
+function captureProjectDeletion(before, after) {
+  const areaIds = new Set(after.map(area => String(area.id)));
+  const { groups, steps } = projectTaskIds(after);
+  return before.flatMap((area, position) => {
+    const tasks = area.tasks.flatMap(group => {
+      const subtasks = group.subtasks.filter(step => !steps.has(String(step.id)));
+      return subtasks.length || !groups.has(String(group.id)) ? [{ ...group, subtasks }] : [];
+    });
+    return tasks.length || !areaIds.has(String(area.id)) ? [{ ...area, tasks, position }] : [];
+  });
+}
+
+// Recover deleted rows by their stable IDs. Current rows keep their names, dates and order.
+function restoreProjectDeletion(current, deleted) {
+  const plan = JSON.parse(JSON.stringify(current));
+  const areas = new Map(plan.map(area => [String(area.id), area]));
+  const groups = new Map(plan.flatMap(area => area.tasks.map(group => [String(group.id), group])));
+  const { steps } = projectTaskIds(plan);
+  const names = new Set(plan.map(area => area.title.trim().toLowerCase()));
+  for (const { position, tasks, ...previousArea } of deleted) {
+    const areaId = String(previousArea.id);
+    let area = areas.get(areaId);
+    if (!area) {
+      let name = previousArea.title;
+      for (let i = 1; names.has(name.trim().toLowerCase()); i++) {
+        const suffix = i === 1 ? ' (restored)' : ` (restored ${i})`;
+        name = previousArea.title.slice(0, 160 - suffix.length).trimEnd() + suffix;
+      }
+      names.add(name.trim().toLowerCase());
+      area = { ...previousArea, title: name, tasks: [] };
+      plan.splice(position, 0, area);
+      areas.set(areaId, area);
+    }
+    for (const oldGroup of tasks) {
+      const missing = oldGroup.subtasks.filter(step => !steps.has(String(step.id)));
+      const groupId = String(oldGroup.id);
+      const group = groups.get(groupId);
+      if (group) group.subtasks.push(...missing);
+      else if (missing.length || !oldGroup.subtasks.length) {
+        const restored = { ...oldGroup, subtasks: missing };
+        area.tasks.push(restored);
+        groups.set(groupId, restored);
+      }
+      missing.forEach(step => steps.add(String(step.id)));
+    }
+  }
+  return plan;
+}
+
 // Render one manageable window, rather than building a cell for every day between
 // an accidentally mistyped task year and the festival. All task dates stay saved.
 function projectTimelineWindow({ openingDate, closingDate, ranges = [], requestedStart }) {
@@ -163,7 +244,7 @@ function projectTimelineWindow({ openingDate, closingDate, ranges = [], requeste
 
 if (typeof module !== 'undefined') module.exports = {
   PROJECT_SETUP_KEY, PROJECT_STATUS_KEY, projectToday, validProjectDate,
-  shiftProjectDay, suggestedProject, removeProjectEntry, editProjectEntry,
-  assignmentsAfterProjectMove, cleanProjectTracking, projectTaskIds,
+  shiftProjectDay, suggestedProject, createProjectArea, changeProjectArea, removeProjectEntry, editProjectEntry,
+  assignmentsAfterProjectMove, cleanProjectTracking, projectTaskIds, captureProjectDeletion, restoreProjectDeletion,
   PROJECT_TIMELINE_DAYS, projectTimelineWindow
 };

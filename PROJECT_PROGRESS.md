@@ -763,3 +763,17 @@ Validation: **470/470 tests pass**, including 16 new creation, persistence, fina
 Main integration: saved the finance work in local commit `836ceff` and merged `origin/main` at `03407d0` (notification sender feature) without conflicts. Combined validation: **479/479 tests pass**; browser reload shows the saved forecast and notifications without console errors. Status: committed locally for Kira's review and up to date with that main; not pushed.
 
 Published `codex/zero-finance-start`, then brought in the next main update at `3048eb7` (sender fallback for older notifications), again without conflicts. **483/483 tests pass** after this update; the reloaded app retains the saved finance figures and has no console errors. The feature branch is for team review; it has not been merged into `main`.
+
+## Project tasks improvements — 23 November 2026
+
+Owner: Vicky · Branch: `feature-project-tasks-improvement` · Plan: [project-tasks-improvement.md](feature-plans/project-tasks-improvement.md).
+
+Festival owners and Admins can assign or unassign a subtask through Edit task on the board. One save applies the owner and task details, and the timeline shows the same assignment. Users with project editing access can create a work area from the Work area dropdown in Add new task or from the row at the bottom of the timeline in edit mode. Both flows require the first task group, subtask, and dates. Timeline additions stay in the draft until Save changes.
+
+Manage work areas sits to the right of the shared Task board and Timeline switch. The switch uses the same segmented style as the timeline controls. Festival owners and Admins can rename areas or delete them after choosing whether to move or delete their tasks. Moving keeps task dates, owners, and progress. In timeline edit mode, these changes stay in the draft.
+
+In timeline edit mode, Clear all tasks opens a confirmation for festival owners and Admins. The draft keeps its work areas. Save changes removes the task groups, subtasks, assignments and progress from the project. Cancel restores the saved plan.
+
+After a saved bulk deletion, Restore last deletion appears beside the view switch and Manage work areas for festival owners and Admins. It recovers the last cleared tasks or deleted work area, including saved dates, progress and assignments. It keeps newer work and consumes the recovery record after one successful restore.
+
+Validation: **491/491 tests passed**, including eight new regression checks. An isolated browser preview confirmed saving a task and its owner together, creating an area from both views, clearing with Cancel and Save, and persistence after reload. The timeline dialog requires a subtask, and the saved task appears on the board. Editor and Viewer controls matched their existing roles. The board dialog fit at 390 px. Browser checks also covered the fixed position of Manage work areas, an area rename, moving and deleting tasks, cancelling a draft deletion, and reloading. Recovery checks covered restoring a deleted area after reload, keeping a newer task, recovering completion and ownership, and restoring after Clear all tasks. No console errors appeared during the verified flows.

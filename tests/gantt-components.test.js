@@ -109,6 +109,15 @@ function screen({ start = '2027-01-01', end = '2027-01-02', role = 'Admin', save
   const document = { activeElement: body, createElement: tag => new Element(tag), createTextNode: value => new Text(value),
     querySelector: selector => body.querySelector(selector), querySelectorAll: selector => body.querySelectorAll(selector) };
   function add(parent, tag, id, classes = '', text = '') { const element = new Element(tag); if (id) element.id = id; element.className = classes; if (text) element.textContent = text; parent.append(element); return element; }
+  for (const id of ['gantt-clear-dialog']) {
+    const dialog = add(body, 'dialog', id);
+    dialog.showModal = () => { dialog.open = true; };
+    dialog.close = () => { dialog.open = false; };
+    const form = add(dialog, 'form');
+    add(form, 'p', null, 'hero-copy');
+    add(form, 'p').setAttribute('role', 'alert');
+    add(form, 'button').setAttribute('data-cancel', '');
+  }
   const chart = add(body, 'div', 'gantt-view');
   const heading = add(chart, 'div', null, 'gantt-heading'); add(heading, 'span', null, 'gantt-count');
   const toolbar = add(chart, 'div', null, 'gantt-controls');
@@ -283,4 +292,238 @@ test('missing, duplicate or selector-unsafe saved task identifiers stay unchange
     assert.throws(() => ui.window.addBoardSubtask({}), /kept unchanged/);
     assert.equal(ui.storage.get('festival-gantt-project-v1'), before);
   }
+});
+
+test('board creation saves a custom area and its first subtask together and reloads larger plans', () => {
+  const ui = screen({ role: 'Editor' });
+  const details = { newAreaName: '  Comms  ', parentName: 'Signs', title: 'Print signs',
+    start: '2027-03-01', end: '2027-03-03' };
+  ui.controls.failWrites = true;
+  assert.throws(() => ui.window.addBoardSubtask(details), /Could not save/);
+  assert.equal(ui.window.getSavedGanttPlan().length, 13);
+  ui.controls.failWrites = false;
+  const id = ui.window.addBoardSubtask(details);
+  const saved = JSON.parse(ui.storage.get('festival-gantt-project-v1'));
+  assert.equal(saved.length, 14);
+  assert.equal(saved.at(-1).title, 'Comms');
+  assert.equal(saved.at(-1).tasks[0].subtasks[0].id, id);
+  assert.throws(() => ui.window.addBoardSubtask({ ...details, newAreaName: 'comms' }), /already exists/);
+  const reloaded = screen({ alterSaved: plan => plan.push(saved.at(-1)) });
+  assert.equal(reloaded.window.getProjectDataProblem(), '');
+  assert.match(reloaded.chart.querySelector('.gantt-count').textContent, /^14 areas/);
+  assert.throws(() => screen({ role: 'Viewer' }).window.addBoardSubtask(details), /cannot add tasks/);
+});
+
+test('editing a board task saves its owner with the other edits and enforces assignment permission', () => {
+  const ui = screen();
+  const ownerId = ui.window.taskAssignments.people()[0].userId;
+  const details = {stepId: '1.1.1', areaId: '1', taskId: '1.1', title: 'Renamed step',
+    start: '2027-01-01', end: '2027-01-02', ownerId};
+  assert.throws(() => ui.window.updateBoardSubtask({ ...details, ownerId: 'unknown' }), /festival team/);
+  assert.throws(() => ui.window.updateBoardSubtask({ ...details, stepId: 'unknown' }), /no longer exists/);
+  ui.controls.stale = true;
+  assert.throws(() => ui.window.updateBoardSubtask(details), /different festival/);
+  ui.controls.stale = false;
+  ui.controls.failWrites = true;
+  assert.throws(() => ui.window.updateBoardSubtask(details), /previous task is kept/);
+  assert.equal(ui.window.getSavedGanttPlan()[0].tasks[0].subtasks[0].title, 'Original step');
+  assert.equal(ui.window.taskAssignments.read().steps['1.1.1'], undefined);
+  ui.controls.failWrites = false;
+  ui.window.updateBoardSubtask(details);
+  assert.equal(ui.window.getSavedGanttPlan()[0].tasks[0].subtasks[0].title, 'Renamed step');
+  assert.equal(ui.window.taskAssignments.read().steps['1.1.1'], ownerId);
+  ui.window.updateBoardSubtask({ ...details, ownerId: '' });
+  assert.equal(ui.window.taskAssignments.read().steps['1.1.1'], undefined);
+
+  const editor = screen({ role: 'Editor' });
+  assert.throws(() => editor.window.updateBoardSubtask(details), /creator and Admins/);
+  editor.window.updateBoardSubtask({ ...details, ownerId: undefined });
+  assert.equal(editor.window.getSavedGanttPlan()[0].tasks[0].subtasks[0].title, 'Renamed step');
+  assert.throws(() => screen({ role: 'Viewer' }).window.updateBoardSubtask(details), /cannot edit tasks/);
+});
+
+test('timeline add-area row requires a dated first subtask and uses the timeline draft', () => {
+  const ui = screen({ role: 'Editor' });
+  const find = selector => ui.document.querySelector(selector);
+  const row = find('.gantt-add-area-row');
+  const details = { newAreaName: 'Visitor information', parentName: 'Signage', title: 'Draft the signs',
+    start: '2027-03-01', end: '2027-03-03' };
+  let opened = 0;
+  ui.window.openTimelineAreaDialog = () => { opened++; };
+  assert.equal(row.hidden, true);
+  assert.throws(() => ui.window.addTimelineWorkArea(details), /edit mode/);
+  find('#gantt-edit').onclick();
+  assert.equal(row.hidden, false);
+  find('#gantt-add-area-row').onclick();
+  assert.equal(opened, 1);
+  assert.throws(() => ui.window.addTimelineWorkArea({ ...details, parentName: '' }), /task group name/);
+  assert.throws(() => ui.window.addTimelineWorkArea({ ...details, title: '' }), /task name/);
+  assert.throws(() => ui.window.addTimelineWorkArea({ ...details, end: '2027-02-28' }), /valid dates/);
+  assert.equal(ui.window.hasUnsavedProjectChanges(), false);
+  ui.window.addTimelineWorkArea(details);
+  assert.match(find('.gantt-count').textContent, /^14 areas, 2 tasks, 2 subtasks/);
+  assert.equal(ui.window.getSavedGanttPlan().length, 13);
+  find('#inline-cancel').onclick();
+  assert.equal(row.hidden, true);
+  assert.match(find('.gantt-count').textContent, /^13 areas/);
+  find('#gantt-edit').onclick();
+  ui.window.addTimelineWorkArea(details);
+  find('#inline-save').onclick();
+  const area = JSON.parse(ui.storage.get('festival-gantt-project-v1')).at(-1);
+  assert.equal(area.title, 'Visitor information');
+  assert.equal(area.tasks[0].title, 'Signage');
+  assert.equal(area.tasks[0].subtasks[0].title, 'Draft the signs');
+  assert.equal(area.tasks[0].subtasks[0].end, details.end);
+  assert.equal(row.hidden, true);
+  assert.throws(() => screen({ role: 'Viewer' }).window.addTimelineWorkArea(details), /edit mode/);
+});
+
+test('Admin area management renames, moves and deletes through the shared project save', () => {
+  const ui = screen();
+  const planKey = 'festival-gantt-project-v1';
+  const statusKey = 'festival-work-board-status-v1';
+  const ownerKey = 'festival-task-assignments-v1';
+  ui.storage.set(statusKey, '{"1.1.1":"done"}');
+  const person = ui.window.taskAssignments.people()[0];
+  ui.storage.set(ownerKey, JSON.stringify({ groups: {}, steps: { '1.1.1': person.userId } }));
+  const old = ui.storage.get(planKey);
+  assert.throws(() => ui.window.manageProjectArea('1', { title: '  AREA 2 ' }), /already exists/);
+  assert.throws(() => ui.window.manageProjectArea('1', {}), /move or delete/);
+  assert.throws(() => ui.window.manageProjectArea('1', { destinationId: '1' }), /another work area/);
+  assert.equal(ui.storage.get(planKey), old);
+  ui.window.manageProjectArea('1', { title: 'Production' });
+  assert.equal(ui.window.getSavedGanttPlan()[0].title, 'Production');
+  ui.window.manageProjectArea('1', { destinationId: '2' });
+  const moved = ui.window.getSavedGanttPlan()[0];
+  assert.equal(moved.id, '2');
+  assert.equal(moved.tasks[0].subtasks[0].id, '1.1.1');
+  assert.equal(JSON.parse(ui.storage.get(statusKey))['1.1.1'], 'done');
+  assert.equal(JSON.parse(ui.storage.get(ownerKey)).steps['1.1.1'], person.userId);
+  ui.controls.failWrites = true;
+  assert.throws(() => ui.window.manageProjectArea('2', { deleteTasks: true }), /previous project is kept/);
+  assert.equal(ui.window.getSavedGanttPlan()[0].id, '2');
+  ui.controls.failWrites = false;
+  ui.window.manageProjectArea('2', { deleteTasks: true });
+  assert.deepEqual(JSON.parse(ui.storage.get(statusKey)), {});
+  assert.deepEqual(ui.window.taskAssignments.read(), { groups: {}, steps: {} });
+  assert.equal(ui.window.getProjectDeletionSummary().subtasks, 1);
+  for (const role of ['Editor', 'Viewer']) {
+    assert.throws(() => screen({ role }).window.manageProjectArea('1', { title: 'Production' }), /creator and Admins/);
+  }
+});
+
+test('area management participates in timeline drafts and allows an empty plan to reload', () => {
+  const ui = screen({ alterSaved: plan => plan.splice(1) });
+  const find = selector => ui.document.querySelector(selector);
+  assert.equal(ui.window.getProjectDataProblem(), '');
+  find('#gantt-edit').onclick();
+  ui.window.manageProjectArea('1', { deleteTasks: true });
+  assert.equal(ui.window.getProjectAreasForManagement().areas.length, 0);
+  assert.equal(ui.window.getSavedGanttPlan().length, 1);
+  find('#inline-cancel').onclick();
+  assert.equal(ui.window.getProjectAreasForManagement().areas.length, 1);
+  ui.window.manageProjectArea('1', { deleteTasks: true });
+  assert.equal(ui.storage.get('festival-gantt-project-v1'), '[]');
+  const reloaded = screen({ alterSaved: plan => { plan.length = 0; } });
+  assert.equal(reloaded.window.getProjectDataProblem(), '');
+  assert.match(reloaded.chart.querySelector('.gantt-count').textContent, /^0 areas/);
+  reloaded.window.addBoardSubtask({ newAreaName: 'New plan', taskId: '', parentName: 'First group', title: 'First step',
+    start: '2027-03-20', end: '2027-03-21' });
+  assert.equal(reloaded.window.getSavedGanttPlan()[0].title, 'New plan');
+});
+
+test('restoring the last saved clear recovers dates, progress and assignment without replacing newer work', () => {
+  const ui = screen();
+  const find = selector => ui.document.querySelector(selector);
+  const projectKey = 'festival-gantt-project-v1';
+  const ownerKey = 'festival-task-assignments-v1';
+  const statusKey = 'festival-work-board-status-v1';
+  const userId = ui.window.taskAssignments.people()[0].userId;
+  const giver = '22222222-2222-4222-8222-222222222222';
+  ui.storage.set(ownerKey, JSON.stringify({ groups: { '1.1': userId }, steps: {},
+    assignedBy: { groups: { '1.1': giver }, steps: {} } }));
+  ui.storage.set(statusKey, JSON.stringify({ '1.1.1': { status: 'done', completedAt: 1234, completedBy: userId } }));
+  find('#gantt-edit').onclick();
+  find('#gantt-clear-dialog form').onsubmit({ preventDefault() {} });
+  assert.equal(ui.window.getProjectDeletionSummary(), null);
+  find('#inline-save').onclick();
+  assert.equal(ui.window.getProjectDeletionSummary().subtasks, 1);
+  ui.window.manageProjectArea('1', { title: 'New area title' });
+  const newId = ui.window.addBoardSubtask({ areaId: '1', taskId: '', parentName: 'New group', title: 'New step',
+    start: '2027-03-20', end: '2027-03-21' });
+  ui.storage.set(statusKey, JSON.stringify({ [newId]: 'progress' }));
+  const saved = JSON.parse(ui.storage.get(projectKey));
+  const reloaded = screen({ alterSaved: plan => plan.splice(0, plan.length, ...saved) });
+  reloaded.storage.set(ownerKey, ui.storage.get(ownerKey));
+  reloaded.storage.set(statusKey, ui.storage.get(statusKey));
+  reloaded.document.querySelector('#gantt-edit').onclick();
+  assert.throws(() => reloaded.window.restoreLastProjectDeletion(), /timeline draft/);
+  reloaded.document.querySelector('#inline-cancel').onclick();
+  reloaded.controls.failWrites = true;
+  assert.throws(() => reloaded.window.restoreLastProjectDeletion(), /retry/);
+  assert.equal(reloaded.window.getProjectDeletionSummary().subtasks, 1);
+  reloaded.controls.failWrites = false;
+  reloaded.window.restoreLastProjectDeletion();
+  const area = reloaded.window.getSavedGanttPlan()[0];
+  assert.equal(area.title, 'New area title');
+  assert.deepEqual(Array.from(area.tasks, group => group.subtasks[0].title), ['New step', 'Original step']);
+  assert.equal(area.tasks[1].subtasks[0].start, '2027-01-01');
+  assert.deepEqual(JSON.parse(reloaded.storage.get(statusKey)), {
+    [newId]: 'progress', '1.1.1': { status: 'done', completedAt: 1234, completedBy: userId }
+  });
+  const owners = reloaded.window.taskAssignments.read();
+  assert.equal(owners.steps['1.1.1'], userId);
+  assert.equal(owners.assignedBy.steps['1.1.1'], giver);
+  assert.equal(reloaded.window.getProjectDeletionSummary(), null);
+  assert.throws(() => reloaded.window.restoreLastProjectDeletion(), /no saved deletion/);
+});
+
+test('only the most recent saved deletion can be restored, and moved groups stay where they are', () => {
+  const ui = screen();
+  ui.window.manageProjectArea('13', { deleteTasks: true });
+  ui.window.manageProjectArea('1', { destinationId: '2' });
+  assert.equal(ui.window.getProjectDeletionSummary().subtasks, 0);
+  ui.window.restoreLastProjectDeletion();
+  const plan = ui.window.getSavedGanttPlan();
+  assert.equal(plan.find(area => area.id === '1').tasks.length, 0);
+  assert.equal(plan.find(area => area.id === '2').tasks[0].id, '1.1');
+  assert.equal(plan.some(area => area.id === '13'), false);
+  for (const role of ['Editor', 'Viewer']) {
+    const viewer = screen({ role });
+    viewer.storage.set('festival-task-assignments-v1', ui.storage.get('festival-task-assignments-v1'));
+    assert.equal(viewer.window.getProjectDeletionSummary(), null);
+    assert.throws(() => viewer.window.restoreLastProjectDeletion(), /creator and Admins/);
+  }
+});
+
+test('timeline clearing is an Admin-only draft operation', () => {
+  const ui = screen();
+  const find = selector => ui.document.querySelector(selector);
+  const submit = id => find(id).querySelector('form').onsubmit({ preventDefault() {} });
+  find('#gantt-edit').onclick();
+  assert.equal(find('#gantt-add-area'), null);
+  find('#gantt-clear-tasks').onclick();
+  assert.equal(find('#gantt-clear-dialog').open, true);
+  submit('#gantt-clear-dialog');
+  assert.equal(ui.window.getSavedGanttPlan()[0].tasks.length, 1);
+  find('#inline-cancel').onclick();
+  assert.match(find('.gantt-count').textContent, /^13 areas, 1 tasks/);
+  ui.storage.set('festival-work-board-status-v1', '{"1.1.1":"done"}');
+  ui.storage.set('festival-task-assignments-v1', JSON.stringify({ groups: {},
+    steps: { '1.1.1': ui.window.taskAssignments.people()[0].userId } }));
+  find('#gantt-edit').onclick();
+  find('#gantt-clear-tasks').onclick();
+  submit('#gantt-clear-dialog');
+  find('#inline-save').onclick();
+  assert.equal(ui.window.getSavedGanttPlan().length, 13);
+  assert.ok(ui.window.getSavedGanttPlan().every(area => area.tasks.length === 0));
+  assert.deepEqual(JSON.parse(ui.storage.get('festival-work-board-status-v1')), {});
+  assert.deepEqual(ui.window.taskAssignments.read(), { groups: {}, steps: {} });
+  assert.equal(ui.window.getProjectDeletionSummary().subtasks, 1);
+  const editor = screen({ role: 'Editor' });
+  editor.document.querySelector('#gantt-edit').onclick();
+  assert.equal(editor.document.querySelector('#gantt-clear-tasks').hidden, true);
+  editor.document.querySelector('#gantt-clear-dialog form').onsubmit({ preventDefault() {} });
+  assert.match(editor.document.querySelector('#gantt-clear-dialog [role="alert"]').textContent, /creator and Admins/);
+  assert.match(editor.document.querySelector('.gantt-count').textContent, /^13 areas, 1 tasks/);
 });

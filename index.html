@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="vendors/vendors.css?v=custom-vendors" />
     <link rel="stylesheet" href="finance/finance.css?v=finance-scenarios" />
     <link rel="stylesheet" href="account/account.css?v=forgot-password" />
-    <link rel="stylesheet" href="compact.css?v=suggestion-hover" />
+    <link rel="stylesheet" href="compact.css?v=project-restore-control" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="notifications.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
@@ -295,7 +295,15 @@
       <div class="checklist-view hidden" id="task-board-view">
         <section class="checklist-hero">
           <h1>Project tasks</h1>
-          <p class="hero-copy">Every preparation task, on the board or on the timeline.</p><div class="project-view-switch" role="group" aria-label="Project tasks view"><button type="button" class="button secondary" id="project-board-view" aria-pressed="true">Task board</button><button type="button" class="button secondary" id="project-timeline-view" aria-pressed="false">Timeline</button></div>
+          <p class="hero-copy">Every preparation task, on the board or on the timeline.</p>
+          <div class="project-view-controls">
+            <div class="project-view-switch gantt-segmented" role="group" aria-label="Project tasks view">
+              <button type="button" id="project-board-view" aria-pressed="true">Task board</button>
+              <button type="button" id="project-timeline-view" aria-pressed="false">Timeline</button>
+            </div>
+            <button type="button" class="button secondary" id="manage-project-areas" aria-haspopup="dialog" hidden>Manage work areas</button>
+            <button type="button" class="button secondary" id="project-area-restore" aria-haspopup="dialog" hidden>Restore last deletion</button>
+          </div>
           <button type="button" class="gantt-preview-card" id="open-gantt" aria-label="Open Gantt chart"><span class="gantt-preview-heading"><span>Project timeline <small>13 work areas · project overview</small></span><span class="gantt-preview-link">Open Gantt chart</span></span><span class="gantt-preview-chart" id="gantt-preview-chart" aria-hidden="true"></span></button>
           <section class="work-board-overview" id="open-board-page" aria-labelledby="task-overview-title">
             <div class="gantt-preview-heading">
@@ -330,15 +338,51 @@
         <div class="work-board-columns" id="work-board-columns" tabindex="0" role="region" aria-label="Task board status columns"></div>
       </section>
 
+      <dialog id="project-areas-dialog" aria-labelledby="project-areas-title">
+        <form>
+          <h2 id="project-areas-title">Manage work areas</h2>
+          <p class="hero-copy" id="project-areas-help"></p>
+          <p id="project-areas-empty" hidden>No work areas yet. Create one when adding a task.</p>
+          <div class="form-grid" id="project-area-fields">
+            <label>Work area<select name="area" autofocus></select></label>
+            <label id="project-area-name">Work area name<input name="areaName" maxlength="160" required></label>
+            <label id="project-area-destination" hidden>Tasks in this area<select name="destination" disabled></select></label>
+          </div>
+          <p class="field-help" id="project-area-delete-help" hidden></p>
+          <p class="form-message" role="alert"></p>
+          <p class="field-help" id="project-area-status" role="status"></p>
+          <div class="overview-dialog-actions">
+            <button type="button" class="button danger" id="project-area-delete">Delete work area</button>
+            <button type="button" class="button secondary" id="project-areas-close">Close</button>
+            <button type="submit" class="button primary" id="project-area-rename">Rename</button>
+            <button type="submit" class="button danger" id="project-area-confirm" hidden>Delete area</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="project-restore-dialog" aria-labelledby="project-restore-title" aria-describedby="project-area-recovery-help">
+        <form>
+          <h2 id="project-restore-title">Restore last deletion</h2>
+          <p class="hero-copy" id="project-area-recovery-help"></p>
+          <p class="form-message" role="alert"></p>
+          <div class="overview-dialog-actions">
+            <button type="button" class="button secondary" data-cancel autofocus>Cancel</button>
+            <button type="submit" class="button primary">Restore</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog id="board-create-dialog" aria-labelledby="board-create-title">
         <form id="board-create-form">
           <h2 id="board-create-title">Add new task</h2>
           <p class="hero-copy">Choose where this subtask belongs and set its dates on the project timeline.</p>
           <div class="form-grid">
             <label>Work area<select name="area" required></select></label>
+            <label id="board-area-name" hidden>New work area name<input name="areaName" maxlength="160" disabled></label>
             <label>Task group<select name="parent" required></select></label>
             <label id="board-parent-name" hidden>New task group name<input name="parentName" maxlength="160" disabled></label>
             <label>Subtask name<input name="title" maxlength="160" required></label>
+            <label id="board-edit-owner" hidden>Owner<select name="owner" disabled></select></label>
             <label>Start date<input type="date" name="start" required></label>
             <label>Due date<input type="date" name="end" required></label>
           </div>
@@ -347,6 +391,18 @@
             <button type="button" class="button danger" id="board-edit-delete" hidden>Delete task</button>
             <button type="button" class="button secondary" id="board-create-cancel">Cancel</button>
             <button type="submit" class="button primary" id="board-create-save">Create task</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="gantt-clear-dialog" aria-labelledby="gantt-clear-title" aria-describedby="gantt-clear-copy">
+        <form>
+          <h2 id="gantt-clear-title">Clear all tasks</h2>
+          <p class="hero-copy" id="gantt-clear-copy"></p>
+          <p class="form-message" role="alert"></p>
+          <div class="overview-dialog-actions">
+            <button type="button" class="button secondary" data-cancel autofocus>Cancel</button>
+            <button type="submit" class="button danger">Clear draft tasks</button>
           </div>
         </form>
       </dialog>
@@ -789,7 +845,7 @@
     <dialog id="double-dialog" class="confirm-dialog"><form method="dialog"><h2>Book this artist again?</h2><p id="double-warning"></p><div class="dialog-actions"><button class="button secondary" value="cancel">Keep editing</button><button class="button danger" id="confirm-double" value="confirm">Book again</button></div></form></dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="rules/access-rules.js"></script>
-    <script src="rules/project-rules.js"></script>
+    <script src="rules/project-rules.js?v=project-deletion-recovery"></script>
     <script src="rules/festival-rules.js?v=suggestion-budget"></script>
     <script src="rules/artist-library.js?v=artist-library-2"></script>
     <script src="app.js?v=suggestion-hover"></script>
@@ -800,14 +856,14 @@
     <script src="checkliste-festivalplanung/checklist-page.js?v=technical-audit-1"></script>
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js?v=technical-audit-1"></script>
-    <script src="rules/task-rules.js?v=notification-sender"></script>
+    <script src="rules/task-rules.js?v=project-deletion-recovery"></script>
     <script src="rules/notification-rules.js?v=sender-fallback"></script>
-    <script src="task-assignments.js?v=notification-sender"></script>
+    <script src="task-assignments.js?v=project-deletion-recovery"></script>
     <script src="gantt-defaults.js"></script>
-    <script src="gantt-editor.js?v=notification-sender"></script>
+    <script src="gantt-editor.js?v=project-restore-control"></script>
     <script src="gantt-placeholder.js?v=technical-audit-1"></script>
     <script src="gantt-schedule.js?v=technical-audit-1"></script>
-    <script src="work-board.js?v=notifications"></script>
+    <script src="work-board.js?v=project-restore-control"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js?v=custom-vendors"></script>
     <script src="rules/vendor-library.js?v=vendor-catalogue"></script>

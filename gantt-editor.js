@@ -43,7 +43,7 @@
       seen.add(id);
       return true;
     }
-    return Array.isArray(plan) && plan.length === 13 && plan.every(a => a && uniqueId(a.id, areas)
+    return Array.isArray(plan) && plan.every(a => a && uniqueId(a.id, areas)
       && typeof a.title === 'string' && Array.isArray(a.tasks) && a.tasks.every(t => t && uniqueId(t.id, groups)
         && typeof t.title === 'string' && Array.isArray(t.subtasks) && t.subtasks.every(s => s && uniqueId(s.id, steps)
           && typeof s.title === 'string' && s.title.trim() && validDate(s.start) && validDate(s.end) && s.start <= s.end)));
@@ -108,6 +108,7 @@
   let editing = false;
   const chart = document.querySelector('#gantt-view');
   let savedProject;
+  let pendingBulkDeletion = false;
 
   const projectProblem = () => window.getLineupDataProblem?.() || projectLoadProblem;
   window.getSavedGanttPlan = () => projectProblem() ? [] : cloneProject(editing ? savedProject : project);
@@ -169,24 +170,51 @@
       throw new Error('A different festival is open in another tab. Reload before saving project changes.');
     }
   }
-  function commitProject(plan, owners = null) {
+  function commitProject(plan, owners = null, { deletionSource, restore } = {}) {
     checkProjectSource();
     const previous = new Map();
     const wasCustomPlan = customPlan;
     const keys = [KEY, anchorKey, endAnchorKey, PROJECT_SETUP_KEY, PROJECT_STATUS_KEY, TASK_ASSIGNMENTS_KEY];
     keys.forEach(key => previous.set(key, localStorage.getItem(key)));
-    let statuses = {};
-    try { statuses = JSON.parse(localStorage.getItem(PROJECT_STATUS_KEY)) || {}; } catch {}
-    const cleaned = cleanProjectTracking(plan, statuses, owners || window.taskAssignments.read());
+    const storedAssignments = previous.get(TASK_ASSIGNMENTS_KEY);
+    const current = parseAssignments(storedAssignments);
     const mayAssign = canAssignTasks(window.festivalAccess?.role || 'Admin');
+    let statuses = {};
+    try { statuses = JSON.parse(previous.get(PROJECT_STATUS_KEY)) || {}; } catch {}
+    const savedStatuses = statuses;
+    const savedDeletion = readProjectDeletion(storedAssignments);
+    let deletion = savedDeletion;
+    if (deletionSource && mayAssign) {
+      const removed = captureProjectDeletion(deletionSource, plan);
+      if (removed.length) {
+        deletion = { areas: removed, startDate: state.event.startDate, endDate: state.event.endDate,
+          statuses: cleanProjectTracking(removed, statuses).statuses,
+          owners: deletedSubtaskOwners(removed, current) };
+      }
+    }
+    if (restore) {
+      const existingSteps = projectTaskIds(project).steps;
+      const restored = [...projectTaskIds(plan).steps].filter(id => !existingSteps.has(id));
+      const pickRestored = entries => Object.fromEntries(restored
+        .filter(id => Object.hasOwn(entries || {}, id)).map(id => [id, entries[id]]));
+      statuses = { ...statuses, ...pickRestored(restore.statuses) };
+      const restoredOwners = parseAssignments(JSON.stringify(restore.owners));
+      Object.assign(current.steps, pickRestored(restoredOwners.steps));
+      current.assignedBy ||= { groups: {}, steps: {} };
+      restored.forEach(id => { delete current.assignedBy.steps[id]; });
+      Object.assign(current.assignedBy.steps, pickRestored(restoredOwners.assignedBy?.steps));
+      deletion = null;
+    }
+    const cleaned = cleanProjectTracking(plan, statuses, owners || current);
     try {
       persistProject(plan);
-      if (JSON.stringify(statuses) !== JSON.stringify(cleaned.statuses)) localStorage.setItem(PROJECT_STATUS_KEY, JSON.stringify(cleaned.statuses));
-      // Also remembers who handed out each new assignment (shown in notifications).
-      const current = window.taskAssignments.read();
+      const nextStatuses = JSON.stringify(cleaned.statuses);
+      if (nextStatuses !== JSON.stringify(savedStatuses)) localStorage.setItem(PROJECT_STATUS_KEY, nextStatuses);
+      // Also remembers who handed out each assignment (shown in notifications).
       const assignments = withAssigners(current, cleaned.assignments, window.taskAssignments.myUserId?.());
-      if (mayAssign && JSON.stringify(current) !== JSON.stringify(assignments)) {
-        localStorage.setItem(TASK_ASSIGNMENTS_KEY, JSON.stringify(assignments));
+      const nextAssignments = encodeAssignments(assignments, deletion);
+      if (mayAssign && nextAssignments !== encodeAssignments(parseAssignments(storedAssignments), savedDeletion)) {
+        localStorage.setItem(TASK_ASSIGNMENTS_KEY, nextAssignments);
       }
     } catch (failure) {
       customPlan = wasCustomPlan;
@@ -211,36 +239,58 @@
     publishProject();
   };
 
-  window.addBoardSubtask = ({areaId, taskId, parentName, title, start, end}) => {
-    if (!canFestival('lineup')) throw new Error('Your role cannot add tasks.');
-    checkProjectSource();
-    if (editing) throw new Error('Save or cancel your timeline edits before adding a task here.');
-    if (!title.trim() || !validDate(start) || !validDate(end) || start > end) {
+  function prepareSubtask({areaId, newAreaName, taskId, parentName, title, start, end}) {
+    if (!title.trim() || title.trim().length > 160 || !validDate(start) || !validDate(end) || start > end) {
       throw new Error('Enter a task name and valid dates. The end date must be on or after the start date.');
     }
-    const next = structuredClone(project);
-    const area = next.find(entry => String(entry.id) === areaId);
+    const next = cloneProject(project);
+    const creatingArea = newAreaName !== undefined;
+    const area = creatingArea ? createProjectArea(next, newAreaName, crypto.randomUUID())
+      : next.find(entry => String(entry.id) === areaId);
+    if (creatingArea) next.push(area);
     if (!area) throw new Error('Choose a work area.');
     let task = area.tasks.find(entry => String(entry.id) === taskId);
     if (!taskId) {
-      if (!parentName.trim()) throw new Error('Enter a name for the new parent task.');
+      if (!parentName.trim() || parentName.trim().length > 160) throw new Error('Enter a task group name of up to 160 characters.');
       task = {id:crypto.randomUUID(),title:parentName.trim(),subtasks:[]};
       area.tasks.push(task);
     }
     if (!task) throw new Error('Choose a parent task.');
     const step = {id:crypto.randomUUID(),title:title.trim(),start,end};
     task.subtasks.push(step);
+    return { next, area, task, step };
+  }
+
+  function expandNewTask(area, task) {
+    window.ganttOutlineState['area-' + area.id] = true;
+    window.ganttOutlineState['task-' + task.id] = true;
+  }
+
+  window.addBoardSubtask = details => {
+    if (!canFestival('lineup')) throw new Error('Your role cannot add tasks.');
+    checkProjectSource();
+    if (editing) throw new Error('Save or cancel your timeline edits before adding a task here.');
+    const { next, area, task, step } = prepareSubtask(details);
     try { commitProject(next); }
     catch { throw new Error('Could not save the task in this browser.'); }
     project = next;
-    window.ganttOutlineState['area-'+area.id] = true;
-    window.ganttOutlineState['task-'+task.id] = true;
+    expandNewTask(area, task);
     refresh();
     publishProject();
     return step.id;
   };
 
-  window.updateBoardSubtask = ({stepId, areaId, taskId, parentName, title, start, end}) => {
+  window.addTimelineWorkArea = ({ newAreaName = '', parentName, title, start, end }) => {
+    if (!editing || !canFestival('lineup')) throw new Error('Open timeline edit mode to add a work area.');
+    checkProjectSource();
+    const { next, area, task, step } = prepareSubtask({ newAreaName, taskId: '', parentName, title, start, end });
+    project = next;
+    expandNewTask(area, task);
+    selectedRowKey = 'step-' + step.id;
+    refresh();
+  };
+
+  window.updateBoardSubtask = ({stepId, areaId, taskId, parentName, title, start, end, ownerId}) => {
     if (!canFestival('lineup')) throw new Error('Your role cannot edit tasks.');
     checkProjectSource();
     if (editing) throw new Error('Save or cancel your timeline edits before editing a task here.');
@@ -248,10 +298,22 @@
       stepId, areaId, taskId, parentName, title, start, end,
       newTaskId: taskId ? null : crypto.randomUUID()
     });
-    const owners = assignmentsAfterProjectMove(window.taskAssignments.read(), {
+    const assignment = window.taskAssignments;
+    let team;
+    if (ownerId !== undefined) {
+      if (!assignment.canAssign()) throw new Error('Only the festival creator and Admins can assign tasks.');
+      team = assignment.people();
+      if (ownerId && !team.some(person => person.userId === ownerId)) {
+        throw new Error('Choose someone on the festival team.');
+      }
+    }
+    let owners = assignmentsAfterProjectMove(assignment.read(), {
       stepId, sourceTaskId: updated.sourceTaskId, targetTaskId: updated.targetTaskId,
       mayAssign: canAssignTasks(window.festivalAccess?.role || 'Admin')
     });
+    if (ownerId !== undefined) {
+      owners = withStepAssignee(owners, { id: String(stepId), taskId: updated.targetTaskId }, ownerId, team);
+    }
     try { commitProject(updated.plan, owners); }
     catch { throw new Error('Could not save your changes in this browser. The previous task is kept.'); }
     project = updated.plan;
@@ -261,11 +323,66 @@
     publishProject();
     return stepId;
   };
+  window.getProjectAreasForManagement = () => ({
+    draft: editing,
+    areas: projectProblem() ? [] : project.map(area => ({
+      id: String(area.id), title: area.title, groups: area.tasks.length,
+      subtasks: area.tasks.reduce((total, group) => total + group.subtasks.length, 0)
+    }))
+  });
+
+  window.manageProjectArea = (areaId, changes) => {
+    if (!canFestival('team')) throw new Error('Only the festival creator and Admins can manage work areas.');
+    checkProjectSource();
+    const next = changeProjectArea(project, areaId, changes);
+    const deleting = changes.title === undefined;
+    if (!editing) {
+      try { commitProject(next, null, { deletionSource: deleting ? project : null }); }
+      catch { throw new Error('Could not save the work area changes. The previous project is kept.'); }
+    } else if (deleting) pendingBulkDeletion = true;
+    project = next;
+    refresh();
+    if (!editing) publishProject();
+  };
+
+  function recoverableDeletion() {
+    if (!canFestival('team') || projectProblem()) return null;
+    const deletion = readProjectDeletion(localStorage.getItem(TASK_ASSIGNMENTS_KEY));
+    if (!validPlan(deletion?.areas) || !deletion.areas.length
+      || !deletion.areas.every(area => Number.isSafeInteger(area.position) && area.position >= 0)
+      || !validProjectDate(deletion.startDate) || !validProjectDate(deletion.endDate)) return null;
+    return deletion;
+  }
+
+  window.getProjectDeletionSummary = () => {
+    const deletion = recoverableDeletion();
+    if (!deletion) return null;
+    const { steps } = projectTaskIds(deletion.areas);
+    return { draft: editing, subtasks: steps.size };
+  };
+
+  window.restoreLastProjectDeletion = () => {
+    if (!canFestival('team')) throw new Error('Only the festival creator and Admins can restore a deletion.');
+    checkProjectSource();
+    if (editing) throw new Error('Save or cancel the timeline draft before restoring a deletion.');
+    const deletion = recoverableDeletion();
+    if (!deletion) throw new Error('There is no saved deletion to restore.');
+    const areas = shiftProject(deletion.areas, deletion.startDate, deletion.endDate);
+    const next = restoreProjectDeletion(project, areas);
+    if (!validPlan(next)) throw new Error('The deleted rows could not be restored with the current project dates.');
+    try { commitProject(next, null, { restore: deletion }); }
+    catch { throw new Error('Could not restore the deletion. You can retry.'); }
+    project = next;
+    refresh();
+    publishProject();
+  };
+
   function renderProject(){
     tbody.replaceChildren();let count=0,steps=0;
     (window.getLineupDataProblem?.() ? [] : project).forEach((a,ai)=>{
+      const areaStyle = defaults.find(area => area.id === String(a.id))?.style || defaults[ai % defaults.length].style;
       function row(type,number,title,subtask,key){
-        const tr=document.createElement('tr');tr.className=type;tr.dataset.key=key;tr.setAttribute('style',defaults[ai].style);
+        const tr=document.createElement('tr');tr.className=type;tr.dataset.key=key;tr.setAttribute('style',areaStyle);
         const th=document.createElement('th');th.scope='row';if(type==='gantt-category')th.className='gantt-category-name';
         const span=document.createElement('span');span.className=type==='gantt-category'?'gantt-category-number':'gantt-outline-number';span.textContent=number;
         th.append(span,document.createTextNode(' '+title));tr.append(th,document.createElement('td'));
@@ -278,7 +395,7 @@
         t.subtasks.forEach((s,si)=>{steps++;row('gantt-subtask',`${ai+1}.${ti+1}.${si+1}`,s.title,s,'step-'+s.id);});
       });
     });
-    document.querySelector('.gantt-heading .gantt-count').textContent = projectProblem() ? 'Saved project unavailable' : `13 areas, ${count} tasks, ${steps} subtasks`;
+    document.querySelector('.gantt-heading .gantt-count').textContent = projectProblem() ? 'Saved project unavailable' : `${project.length} areas, ${count} tasks, ${steps} subtasks`;
     renderOwners();
   }
 
@@ -320,12 +437,57 @@
 
   const editButton=document.createElement('button');editButton.type='button';editButton.className='button primary';editButton.id='gantt-edit';editButton.textContent='Edit plan';editButton.hidden=!canFestival('lineup') || Boolean(projectProblem());document.querySelector('.gantt-controls').append(editButton);
   const toolbar=document.createElement('div');toolbar.className='gantt-inline-toolbar';toolbar.hidden=true;
-  toolbar.innerHTML='<span id="inline-dirty" role="status">No unsaved changes</span><button type="button" class="button secondary" id="inline-cancel">Cancel</button><button type="button" class="button primary" id="inline-save">Save changes</button><p id="inline-error" role="alert"></p>';
+  toolbar.innerHTML='<button type="button" class="button danger" id="gantt-clear-tasks" aria-haspopup="dialog">Clear all tasks</button><span id="inline-dirty" role="status">No unsaved changes</span><button type="button" class="button secondary" id="inline-cancel">Cancel</button><button type="button" class="button primary" id="inline-save">Save changes</button><p id="inline-error" role="alert"></p>';
   document.querySelector('.gantt-controls').append(toolbar);
+  const addAreaRow = document.createElement('div');
+  addAreaRow.className = 'gantt-add-area-row';
+  addAreaRow.hidden = true;
+  addAreaRow.innerHTML = '<button type="button" class="button secondary" id="gantt-add-area-row" aria-haspopup="dialog">+ Add work area</button>';
+  chart.querySelector('.gantt-scroll').append(addAreaRow);
+  addAreaRow.querySelector('button').onclick = () => {
+    if (editing && canFestival('lineup') && !projectProblem()) window.openTimelineAreaDialog();
+  };
+
+  const clearButton = toolbar.querySelector('#gantt-clear-tasks');
+  const clearDialog = document.querySelector('#gantt-clear-dialog');
+  const canClearTasks = () => canFestival('team') && !projectProblem();
+  const countSubtasks = () => project.reduce((total, area) => total +
+    area.tasks.reduce((sum, task) => sum + task.subtasks.length, 0), 0);
+
+  function clearDraftTasks() {
+    if (!editing || !canClearTasks()) throw new Error('Only the festival creator and Admins can clear all tasks.');
+    checkProjectSource();
+    project = project.map(area => ({ ...area, tasks: [] }));
+    pendingBulkDeletion = true;
+    draftAssignments = emptyAssignments();
+    selectedRowKey = null;
+    refresh();
+  }
+
+  clearButton.onclick = () => {
+    if (!editing || !canClearTasks() || !project.some(area => area.tasks.length)) return;
+    const count = countSubtasks();
+    clearDialog.querySelector('.hero-copy').textContent =
+      `Remove all task groups and ${count} subtasks from this festival? The work areas stay. Choose Save changes on the timeline to apply the removal to both views and clear task progress and assignments.`;
+    clearDialog.querySelector('[role="alert"]').textContent = '';
+    clearDialog.showModal();
+  };
+  if (clearDialog) {
+    clearDialog.querySelector('[data-cancel]').onclick = () => clearDialog.close();
+    clearDialog.querySelector('form').onsubmit = event => {
+      event.preventDefault();
+      try { clearDraftTasks(); }
+      catch (error) { clearDialog.querySelector('[role="alert"]').textContent = error.message; return; }
+      clearDialog.close();
+    };
+  }
+
   let selectedRowKey = null;
   let originalAssignments = null;
   function updateEditState() {
     if (!editing) return;
+    clearButton.hidden = !canClearTasks();
+    clearButton.disabled = !project.some(area => area.tasks.length);
     toolbar.querySelector('#inline-dirty').textContent = JSON.stringify(project) === JSON.stringify(savedProject) && JSON.stringify(draftAssignments) === JSON.stringify(originalAssignments) ? 'No unsaved changes' : 'Unsaved changes';
     chart.querySelectorAll('tbody tr').forEach(row => row.classList.toggle('gantt-selected-row', row.dataset.key === selectedRowKey));
   }
@@ -345,7 +507,9 @@
     updateEditState();
   });
   function refresh(){
-    editButton.hidden = editing || !canFestival('lineup') || Boolean(projectProblem());
+    const editable = canFestival('lineup') && !projectProblem();
+    editButton.hidden = editing || !editable;
+    addAreaRow.hidden = !editing || !editable;
     const scroller=chart.querySelector('.gantt-scroll');
     const top=scroller.scrollTop,left=scroller.scrollLeft;
     renderProject();window.initialiseGanttOutline();window.initialiseGanttTimeline();
@@ -527,12 +691,14 @@
   editButton.onclick=()=>{
     if (editing || !canFestival('lineup') || projectProblem()) return;
     selectedRowKey=null;savedProject=cloneProject(project);
+    pendingBulkDeletion = false;
     draftAssignments=JSON.parse(JSON.stringify(window.taskAssignments.read()));
     // Preserve effective owners from older group assignments as explicit subtask owners.
     project.forEach(area=>area.tasks.forEach(task=>task.subtasks.forEach(step=>{
       draftAssignments.steps[String(step.id)]=assigneeOf({id:String(step.id),taskId:String(task.id)},draftAssignments,window.taskAssignments.people()).userId||'';
     })));
     draftAssignments.groups={};originalAssignments=JSON.parse(JSON.stringify(draftAssignments));editing=true;chart.classList.add('gantt-editing');toolbar.hidden=false;editButton.hidden=true;message('');refresh();
+    window.dispatchEvent(new Event('gantt-edit-mode-changed'));
   };
   toolbar.querySelector('#inline-cancel').onclick=()=>{
     if (!editing) return;
@@ -541,7 +707,13 @@
   toolbar.querySelector('#inline-save').onclick=()=>{
     if (!editing || !canFestival('lineup')) return;
     if(invalid()){message('Each task needs at least one subtask. Enter all names and both dates, with the end on or after the start.');return;}
-    try{commitProject(project, window.taskAssignments.canAssign() ? draftAssignments : null);}catch(error){message(typeof window.isFestivalContextCurrent === 'function' && !window.isFestivalContextCurrent() ? error.message : 'Could not save: browser storage is unavailable or full.');return;}
+    try {
+      commitProject(project, window.taskAssignments.canAssign() ? draftAssignments : null,
+        { deletionSource: pendingBulkDeletion ? savedProject : null });
+    } catch (error) {
+      message(typeof window.isFestivalContextCurrent === 'function' && !window.isFestivalContextCurrent() ? error.message : 'Could not save: browser storage is unavailable or full.');
+      return;
+    }
     editing=false;chart.classList.remove('gantt-editing');toolbar.hidden=true;editButton.hidden=false;refresh();
     publishProject();
   };
@@ -552,6 +724,7 @@
     toolbar.hidden = true;
     editButton.hidden = false;
     refresh();
+    window.dispatchEvent(new Event('gantt-edit-mode-changed'));
   }
   window.hasUnsavedProjectChanges = () => editing && (
     JSON.stringify(project) !== JSON.stringify(savedProject)
