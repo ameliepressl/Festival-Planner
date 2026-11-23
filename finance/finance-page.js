@@ -233,7 +233,7 @@
     const be = model.breakEvenTickets;
     const beText = !hasForecast ? '—' : be === null ? 'Not possible' : be === 0 ? 'Covered' : `${number(be)} tickets`;
     const beNote = !hasForecast ? 'enter financial assumptions first' : be === null ? 'nothing is earned per ticket' : be === 0 ? 'sponsors and vendors cover all fixed costs'
-      : model.breakEvenReachable ? `${Math.round((be / input.visitors) * 100)}% of ${number(input.visitors)} visitors · or regular price €${model.breakEvenPrice}` : `more than the ${number(input.visitors)} expected visitors`;
+      : model.breakEvenReachable ? `${Math.round((be / input.visitors) * 100)}% of ${number(input.visitors)} visitors${model.breakEvenPrice === null ? '' : ` · or regular price €${model.breakEvenPrice}`}` : `more than the ${number(input.visitors)} expected visitors`;
     const safety = model.safetyMargin;
     const safetyText = safety === null ? '—' : `${safety}%`;
     const safetyNote = safety === null ? 'no tickets planned' : safety >= 0 ? `${number(model.ticketsSold - be)} tickets may fall away before a loss` : `${number(be - model.ticketsSold)} more tickets needed to break even`;

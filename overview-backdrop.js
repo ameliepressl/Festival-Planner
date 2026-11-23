@@ -1,0 +1,931 @@
+// Festival backdrop on the Overview (feature-plans/festival-backdrop.md).
+// An animated live stage on a <canvas>: lasers, light cones, haze, an LED wall, confetti and a
+// crowd that moves to the beat. Colours, tempo and landscape come from rules/backdrop-rules.js.
+// Decorative only: nothing is saved or sent. Each frame is a pure function of the time, so the
+// drawing can be tested without a browser.
+
+// --- Layout: everything that does not move, worked out once per size and festival ----------
+
+function buildStageScene(backdrop, W, H) {
+  const rnd = backdropRandom(backdrop.seed);
+  const r = (min, max) => min + rnd() * (max - min);
+  const horizon = H * 0.66;
+  const stageW = Math.min(W * 0.28, 340), cx = W * (backdrop.landmark ? 0.36 : 0.5); // a smaller stage; with a landmark it steps aside
+  const stage = { cx, x: cx - stageW / 2, w: stageW, top: H * 0.43, floor: H * 0.78 };
+
+  const stars = Array.from({ length: Math.round(W / 9) }, () => ({ x: r(0, W), y: r(0, H * 0.45), size: r(0.5, 1.6), phase: r(0, 6.3), speed: r(0.8, 2.4) }));
+  const aurora = [0, 1, 2].map(i => ({ x: W * (0.15 + i * 0.35), y: H * r(0.1, 0.3), radius: W * r(0.22, 0.34), speed: r(0.05, 0.12), phase: r(0, 6.3) }));
+  const sun = { x: rnd() < 0.5 || backdrop.landmark ? W * r(0.08, 0.22) : W * r(0.86, 0.95), y: horizon - H * r(0.12, 0.2), radius: H * r(0.08, 0.11) };
+
+  // The famous landmark stands to the right of the stage, on the ground of the landscape.
+  const ground = H * 0.84; // ground level: the landmark stands among the crowd, whose back row hides its feet
+  const zoneLeft = stage.x + stage.w + stageW * 0.15 + 30; // room for the speakers beside the stage
+  const landmark = backdrop.landmark ? { kind: backdrop.landmark, left: zoneLeft, right: W, x: (zoneLeft + W) / 2, ground,
+    width: W - zoneLeft, height: H * 0.7,
+    sparkles: Array.from({ length: 34 }, () => ({ y: r(0.04, 0.9), side: r(-0.85, 0.85), phase: r(0, 6.3) })),
+    houses: Array.from({ length: 8 }, () => ({ h: r(0.22, 0.38), step: rnd() < 0.5 })),
+    windows: Array.from({ length: 60 }, () => ({ x: r(-0.5, 0.5), y: r(0.05, 0.95), phase: r(0, 6.3) })) } : null;
+
+  // The landscape behind the stage.
+  const land = { kind: backdrop.scene, layers: [], windows: [], trees: [] };
+  if (backdrop.scene === 'mountains') {
+    [[horizon + 4, H * 0.26, 0.5, W / 9], [horizon + H * 0.08, H * 0.16, 0.85, W / 12]].forEach(([base, height, alpha, step]) => {
+      const points = [[0, base]];
+      for (let x = 0; x < W + step; x += r(step * 0.6, step * 1.3)) points.push([x, base - r(height * 0.35, height)], [x + r(step * 0.3, step * 0.6), base - r(height * 0.1, height * 0.4)]);
+      land.layers.push({ points, alpha });
+    });
+  } else if (backdrop.scene === 'field') {
+    [[horizon + 6, H * 0.08, 0.55], [horizon + H * 0.09, H * 0.06, 0.9]].forEach(([base, height, alpha]) => {
+      const points = [[0, base]];
+      for (let x = 0; x <= W + 40; x += 40) points.push([x, base - height * (0.5 + 0.5 * Math.sin(x / W * 6.3 + alpha * 7))]);
+      land.layers.push({ points, alpha });
+    });
+    for (let i = 0; i < 12; i++) land.trees.push({ x: rnd() < 0.5 ? r(0, stage.x - 20) : r(stage.x + stage.w + 20, W), h: r(H * 0.08, H * 0.15) });
+  } else if (backdrop.scene === 'city') {
+    for (let x = -10; x < W; ) {
+      const w = r(W * 0.025, W * 0.06), h = r(H * 0.12, H * 0.42);
+      land.layers.push({ x, w, h });
+      for (let i = 0; i < 6; i++) if (rnd() < 0.55) land.windows.push({ x: x + r(3, w - 7), y: horizon + H * 0.06 - h + r(6, h - 10), phase: r(0, 6.3) });
+      x += w + r(1, 8);
+    }
+    const ownSkyline = landmark && typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[landmark.kind] && BACKDROP_LANDMARK_STYLES[landmark.kind].shape === 'skyline';
+    if (ownSkyline) { land.layers = []; land.windows = []; } // the city's own skyline replaces the generic one, across the whole horizon
+  }
+
+  // The crowd in four rows, from far (small, pale) to near (big, dark); some hold up arms, phones or glow sticks.
+  const crowd = [];
+  [[H * 0.815, H * 0.022, 0.5, 9, 0.1], [H * 0.85, H * 0.03, 0.72, 12, 0.16], [H * 0.9, H * 0.04, 0.88, 14, 0.22], [H * 0.965, H * 0.058, 1, 20, 0.28]].forEach(([y, size, shade, gap, armChance]) => {
+    for (let x = -10; x < W + 10; x += r(gap * 0.8, gap * 1.3)) {
+      crowd.push({ x, y: y + r(-3, 3), size: size * r(0.8, 1.15), shade, phase: r(0, 1), arm: rnd() < armChance ? (rnd() < 0.5 ? -1 : 1) : 0, phone: rnd() < 0.08, stick: rnd() < 0.14 });
+    }
+  });
+
+  // Dark clouds drifting across the sky, and a few out-of-focus lights in front of the camera.
+  const clouds = Array.from({ length: 4 }, () => ({ x: r(0, 1.3), y: H * r(0.1, 0.4), size: W * r(0.1, 0.17), speed: r(0.004, 0.011),
+    puffs: Array.from({ length: 4 }, () => ({ dx: r(-0.6, 0.6), dy: r(-0.1, 0.1), k: r(0.5, 1) })) }));
+  const bokeh = Array.from({ length: 7 }, () => ({ x: r(0, W), y: r(H * 0.5, H * 0.95), radius: r(H * 0.025, H * 0.07), phase: r(0, 6.3), colour: rnd() < 0.5 ? 0 : 1 }));
+
+  const haze = Array.from({ length: 80 }, () => ({ x: stage.cx + r(-W * 0.35, W * 0.35), y: r(0, H), size: r(0.8, 2.4), speed: r(6, 22), phase: r(0, 6.3) }));
+  return { W, H, horizon, stage, stars, aurora, sun, land, landmark, crowd, clouds, bokeh, haze, colours: backdrop.colours, bpm: backdrop.bpm, seed: backdrop.seed };
+}
+
+// --- One frame at time t (seconds) ----------------------------------------------------------
+
+function drawStageFrame(ctx, scene, t) {
+  const { W, H, horizon, stage, colours } = scene;
+  const [laserA, laserB] = colours.lasers;
+  const beat = t * scene.bpm / 60;
+  const pulse = Math.pow(1 - (beat % 1), 3); // 1 on the beat, fading until the next one
+  const TAU = Math.PI * 2;
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+
+  // Sky.
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, colours.sky[0]); sky.addColorStop(0.62, colours.sky[1]); sky.addColorStop(1, colours.sky[2]);
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+  // Aurora: big soft colour clouds drifting slowly.
+  ctx.globalCompositeOperation = 'lighter';
+  scene.aurora.forEach((cloud, i) => {
+    const x = cloud.x + Math.sin(t * cloud.speed + cloud.phase) * W * 0.12, y = cloud.y + Math.cos(t * cloud.speed * 1.3 + cloud.phase) * H * 0.06;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, cloud.radius);
+    glow.addColorStop(0, i % 2 ? laserA : laserB); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.16; ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  });
+
+  // Twinkling stars.
+  ctx.fillStyle = '#ffffff';
+  scene.stars.forEach(star => {
+    ctx.globalAlpha = 0.25 + 0.6 * (0.5 + 0.5 * Math.sin(t * star.speed + star.phase));
+    ctx.fillRect(star.x, star.y, star.size, star.size);
+  });
+
+  // Sun or moon with its glow.
+  const sunGlow = ctx.createRadialGradient(scene.sun.x, scene.sun.y, 0, scene.sun.x, scene.sun.y, scene.sun.radius * 3.2);
+  sunGlow.addColorStop(0, colours.sun); sunGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.55; ctx.fillStyle = sunGlow; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.95; ctx.fillStyle = colours.sun;
+  ctx.beginPath(); ctx.arc(scene.sun.x, scene.sun.y, scene.sun.radius, 0, TAU); ctx.fill();
+
+  // Craters on the moon, fireworks, a shooting star now and then, and dark clouds drifting by.
+  ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#000000';
+  [[-0.3, -0.2, 0.22], [0.25, 0.1, 0.16], [-0.05, 0.4, 0.12]].forEach(([dx, dy, k]) => {
+    ctx.globalAlpha = 0.08; ctx.beginPath(); ctx.arc(scene.sun.x + dx * scene.sun.radius, scene.sun.y + dy * scene.sun.radius, k * scene.sun.radius, 0, TAU); ctx.fill();
+  });
+  drawFireworks(ctx, scene, beat);
+  drawShootingStar(ctx, scene, t);
+  drawClouds(ctx, scene, t);
+
+  drawLand(ctx, scene, t);
+  if (scene.landmark) drawLandmark(ctx, scene, t, beat);
+
+  // Wide light cones from both sides of the stage roof, sweeping slowly.
+  ctx.globalCompositeOperation = 'lighter';
+  [[stage.x + stage.w * 0.12, 1], [stage.x + stage.w * 0.88, -1]].forEach(([x, side], i) => {
+    const angle = -Math.PI / 2 + side * (0.25 + 0.35 * Math.sin(t * 0.45 + i * 1.7));
+    drawBeam(ctx, x, stage.top, angle, H * 1.4, 0.22, i ? laserB : laserA, 0.16 + 0.1 * pulse);
+  });
+
+  // Lasers: thin bright lines from the stage, changing pattern every 16 beats.
+  const pattern = Math.floor(beat / 16) % 3, count = 9;
+  for (let i = 0; i < count; i++) {
+    const k = i / (count - 1) - 0.5;
+    let x = stage.cx, angle;
+    if (pattern === 0) angle = -Math.PI / 2 + k * 1.5 + Math.sin(t * 0.8) * 0.35;                 // fan sweeping
+    else if (pattern === 1) { x = k < 0 ? stage.x + 20 : stage.x + stage.w - 20; angle = -Math.PI / 2 + (k < 0 ? 1 : -1) * (0.2 + Math.abs(k) * 1.1) * Math.sin(t * 0.9 + Math.abs(k) * 2); } // crossing
+    else angle = -Math.PI / 2 + Math.sin(t * 0.6 + k * 4) * 0.9;                                // waving
+    drawLaser(ctx, x, stage.top + 6, angle, H * 1.5, i % 2 ? laserB : laserA, 0.35 + 0.65 * pulse);
+  }
+
+  // Haze drifting up through the light.
+  ctx.fillStyle = '#ffffff';
+  scene.haze.forEach(p => {
+    const y = ((p.y - t * p.speed) % H + H) % H, x = p.x + Math.sin(t * 0.3 + p.phase) * 18;
+    ctx.globalAlpha = 0.08 + 0.18 * (1 - Math.abs(x - stage.cx) / (W * 0.4)) * (y / H);
+    if (ctx.globalAlpha > 0) ctx.fillRect(x, y, p.size, p.size);
+  });
+
+  // Ground fog banks drifting slowly, lit by the stage.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) {
+    const fx = ((i * 0.31 + t * 0.012) % 1.4 - 0.2) * W, fy = H * (0.66 + 0.03 * i), fr = W * (0.22 + 0.04 * i);
+    const fog = ctx.createRadialGradient(fx, fy, 0, fx, fy, fr);
+    fog.addColorStop(0, i % 2 ? laserA : laserB); fog.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.translate(fx, fy); ctx.scale(1, 0.22); ctx.translate(-fx, -fy);
+    ctx.globalAlpha = 0.09 + 0.05 * pulse; ctx.fillStyle = fog; ctx.fillRect(fx - fr, fy - fr, fr * 2, fr * 2);
+    ctx.restore();
+  }
+
+  drawStage(ctx, scene, beat, pulse);
+  drawFogAndPyro(ctx, scene, beat);
+  drawConfetti(ctx, scene, beat);
+
+  // Lens flares: streaks of light from the stage lamps, brightest on the beat.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const x = stage.x + stage.w * (0.12 + i * 0.152), y = stage.top + 14, len = stage.w * (0.12 + 0.1 * pulse);
+    const streak = ctx.createLinearGradient(x - len, y, x + len, y);
+    streak.addColorStop(0, 'rgba(0,0,0,0)'); streak.addColorStop(0.5, i % 2 ? laserA : laserB); streak.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.1 + 0.4 * pulse; ctx.fillStyle = streak; ctx.fillRect(x - len, y - 1, len * 2, 2);
+  }
+
+  // Light spilling from the stage over the crowd, so the crowd stands out as silhouettes.
+  ctx.globalCompositeOperation = 'lighter';
+  // A soft oval of light from the bottom centre (a squashed circle, so there are no hard edges).
+  ctx.save();
+  ctx.translate(stage.cx, H);
+  ctx.scale(1, 0.24);
+  const spill = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.6);
+  spill.addColorStop(0, laserB); spill.addColorStop(0.4, laserA); spill.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.38 + 0.22 * pulse; ctx.fillStyle = spill;
+  ctx.fillRect(-W, -W * 0.6, W * 2, W * 0.6);
+  ctx.restore();
+  drawCrowd(ctx, scene, beat, t);
+
+  // Darker left side so the festival name stays readable.
+  ctx.globalCompositeOperation = 'source-over';
+  const shadeLeft = ctx.createLinearGradient(0, 0, W * 0.55, 0);
+  shadeLeft.addColorStop(0, 'rgba(0,0,0,0.45)'); shadeLeft.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 1; ctx.fillStyle = shadeLeft; ctx.fillRect(0, 0, W, H);
+
+  // Like a camera lens: the corners fall off into darkness.
+  const vignette = ctx.createRadialGradient(W / 2, H * 0.55, Math.min(W, H) * 0.35, W / 2, H * 0.55, Math.max(W, H) * 0.75);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vignette; ctx.fillRect(0, 0, W, H);
+
+  drawCameraLook(ctx, scene, t, pulse);
+}
+
+// --- Sky: fireworks, a shooting star, clouds --------------------------------------------------
+
+// A firework in the sky every 16 beats (out of step with the flame jets), spreading and falling for about 2.6 s.
+function drawFireworks(ctx, scene, beat) {
+  const { W, H, colours } = scene, TAU = Math.PI * 2, round = Math.floor((beat + 8) / 16), age = ((beat + 8) % 16) * 60 / scene.bpm;
+  if (age > 2.6) return;
+  const rnd = backdropRandom(scene.seed + round * 104729);
+  const x = W * (0.12 + rnd() * 0.76), y = H * (0.12 + rnd() * 0.2), colour = colours.lasers[round % 2];
+  const spread = age => (1 - Math.exp(-age * 2.4)) * H * 0.3, drop = age => 0.5 * H * 0.22 * age * age;
+  ctx.globalCompositeOperation = 'lighter';
+  const fade = Math.pow(Math.max(0, 1 - age / 2.6), 1.5);
+  const flash = ctx.createRadialGradient(x, y, 0, x, y, H * 0.25);
+  flash.addColorStop(0, colour); flash.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.35 * Math.max(0, 1 - age * 3); ctx.fillStyle = flash; ctx.beginPath(); ctx.arc(x, y, H * 0.25, 0, TAU); ctx.fill();
+  ctx.strokeStyle = colour; ctx.fillStyle = '#ffffff'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  for (let i = 0; i < 28; i++) {
+    const angle = i / 28 * TAU, reach = 0.7 + 0.3 * ((i * 7) % 5) / 5, before = Math.max(0, age - 0.12);
+    const x1 = x + Math.cos(angle) * spread(age) * reach, y1 = y + Math.sin(angle) * spread(age) * reach + drop(age);
+    const x0 = x + Math.cos(angle) * spread(before) * reach, y0 = y + Math.sin(angle) * spread(before) * reach + drop(before);
+    ctx.globalAlpha = 0.95 * fade; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.globalAlpha = 0.8 * fade; ctx.beginPath(); ctx.arc(x1, y1, 1.6, 0, TAU); ctx.fill(); // the bright head of each spark
+  }
+}
+
+// A shooting star every 9 seconds, visible for under a second.
+function drawShootingStar(ctx, scene, t) {
+  const { W, H } = scene, round = Math.floor(t / 9), age = t - round * 9;
+  if (age > 0.8) return;
+  const rnd = backdropRandom(scene.seed + round * 6007);
+  const angle = Math.PI * (0.78 + rnd() * 0.06), x = W * (0.35 + rnd() * 0.6) + Math.cos(angle) * W * 0.6 * age, y = H * (0.04 + rnd() * 0.18) + Math.sin(angle) * W * 0.6 * age;
+  const tail = W * 0.09, tx = x - Math.cos(angle) * tail, ty = y - Math.sin(angle) * tail;
+  const streak = ctx.createLinearGradient(tx, ty, x, y);
+  streak.addColorStop(0, 'rgba(255,255,255,0)'); streak.addColorStop(1, '#ffffff');
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1 - age / 0.8; ctx.strokeStyle = streak; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+}
+
+// Dark, soft clouds that drift slowly; the ones near the moon get a lit edge.
+function drawClouds(ctx, scene, t) {
+  const { W, sun } = scene, TAU = Math.PI * 2;
+  scene.clouds.forEach(cloud => {
+    const cx = (((cloud.x + t * cloud.speed) % 1.3 + 1.3) % 1.3 - 0.15) * W;
+    cloud.puffs.forEach(puff => {
+      const x = cx + puff.dx * cloud.size, y = cloud.y + puff.dy * cloud.size, radius = cloud.size * 0.5 * puff.k;
+      const lit = Math.max(0, 1 - Math.hypot(x - sun.x, y - sun.y) / (W * 0.45));
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.4);
+      const shape = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      shape.addColorStop(0, 'rgba(12,8,24,.6)'); shape.addColorStop(1, 'rgba(12,8,24,0)');
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.fillStyle = shape;
+      ctx.beginPath(); ctx.arc(0, 0, radius, 0, TAU); ctx.fill();
+      const edge = ctx.createRadialGradient(0, -radius * 0.25, 0, 0, -radius * 0.25, radius * 0.8);
+      edge.addColorStop(0, scene.colours.sun); edge.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.14 * lit * lit; ctx.fillStyle = edge;
+      ctx.beginPath(); ctx.arc(0, -radius * 0.25, radius * 0.8, 0, TAU); ctx.fill();
+      ctx.restore();
+    });
+  });
+}
+
+function drawBeam(ctx, x, y, angle, length, width, colour, alpha) {
+  const ex = x + Math.cos(angle) * length, ey = y + Math.sin(angle) * length;
+  const nx = Math.cos(angle + Math.PI / 2) * length * width, ny = Math.sin(angle + Math.PI / 2) * length * width;
+  const fade = ctx.createLinearGradient(x, y, ex, ey);
+  fade.addColorStop(0, colour); fade.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = alpha; ctx.fillStyle = fade;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex + nx, ey + ny); ctx.lineTo(ex - nx, ey - ny); ctx.closePath(); ctx.fill();
+}
+
+function drawLaser(ctx, x, y, angle, length, colour, strength) {
+  const ex = x + Math.cos(angle) * length, ey = y + Math.sin(angle) * length;
+  ctx.strokeStyle = colour; ctx.lineCap = 'round';
+  [[7, 0.10], [3, 0.25], [1.2, 0.9]].forEach(([width, alpha]) => {
+    ctx.globalAlpha = alpha * strength; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+  });
+}
+
+function drawLand(ctx, scene, t) {
+  const { W, H, horizon, land, colours } = scene;
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = colours.shade;
+  if (land.kind === 'coast') {
+    // The sea lies at the horizon; in front of it is a beach, so stage, crowd and landmarks stand on land, not in the water.
+    const shore = horizon + H * 0.12;
+    ctx.globalAlpha = 0.6; ctx.fillRect(0, horizon, W, shore - horizon);
+    ctx.strokeStyle = colours.sun; ctx.lineWidth = 1.6;
+    for (let i = 0; i < 4; i++) {
+      const y = horizon + 6 + i * H * 0.025, length = 90 + i * 15, shift = (t * (14 + i * 6)) % length;
+      ctx.globalAlpha = 0.5 - i * 0.08;
+      ctx.beginPath(); ctx.moveTo(-length, y);
+      for (let x = -length; x <= W + length; x += length / 8) ctx.lineTo(x + shift, y + Math.sin((x / length) * Math.PI * 2) * (2 + i));
+      ctx.stroke();
+    }
+    // Reflections on the water: broken lines of light below the sun or moon, the stage lights and the landmark.
+    const lamps = [[scene.sun.x, colours.sun, 1], [scene.stage.cx - scene.stage.w * 0.75, colours.lasers[0], 0.7], [scene.stage.cx + scene.stage.w * 0.75, colours.lasers[1], 0.7]];
+    if (scene.landmark) lamps.push([scene.landmark.x, '#ffd9a0', 0.8]);
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineWidth = 1.4;
+    lamps.forEach(([x, colour, strength], n) => {
+      ctx.strokeStyle = colour;
+      for (let k = 0; k < 9; k++) {
+        const y = horizon + 3 + k * (shore - horizon) / 9, spread = (5 + k * 5) * (0.55 + 0.45 * Math.sin(t * 1.7 + k * 1.9 + n * 2.3)), jitter = Math.sin(t * 0.9 + k * 2.7 + n) * (3 + k * 1.5);
+        ctx.globalAlpha = strength * 0.5 * (1 - k / 11) * (0.6 + 0.4 * Math.sin(t * 2.3 + k * 1.3 + n));
+        ctx.beginPath(); ctx.moveTo(x - spread + jitter, y); ctx.lineTo(x + spread + jitter, y); ctx.stroke();
+      }
+    });
+    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = colours.shade;
+    ctx.globalAlpha = 0.95; ctx.fillRect(0, shore, W, H - shore); // the beach
+    ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; // foam at the water's edge
+    ctx.beginPath(); ctx.moveTo(0, shore); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, shore + Math.sin(x * 0.05 + t * 1.2) * 1.5); ctx.stroke();
+    return;
+  }
+  if (land.kind === 'city') {
+    ctx.globalAlpha = 0.85;
+    land.layers.forEach(b => ctx.fillRect(b.x, horizon + H * 0.06 - b.h, b.w, b.h + H));
+    ctx.fillStyle = colours.sun;
+    land.windows.forEach(w => { ctx.globalAlpha = 0.2 + 0.5 * (Math.sin(t * 0.7 + w.phase) > -0.3 ? 1 : 0.2); ctx.fillRect(w.x, w.y, 3, 4); });
+    return;
+  }
+  land.layers.forEach((layer, i) => {
+    ctx.globalAlpha = layer.alpha;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    layer.points.forEach(([x, y]) => ctx.lineTo(x, y));
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+    if (i === 0 && land.trees.length) {
+      ctx.globalAlpha = 0.75;
+      land.trees.forEach(tree => { const y = horizon + H * 0.1; ctx.beginPath(); ctx.moveTo(tree.x, y - tree.h); ctx.lineTo(tree.x - tree.h * 0.3, y); ctx.lineTo(tree.x + tree.h * 0.3, y); ctx.closePath(); ctx.fill(); });
+    }
+  });
+}
+
+// --- Famous landmarks, lit up like at night ---------------------------------------------------
+
+// Fills the current path with a warm light that is brighter at the bottom.
+function litFill(ctx, top, bottom, light, dark, alpha = 0.95) {
+  const glow = ctx.createLinearGradient(0, bottom, 0, top);
+  glow.addColorStop(0, light); glow.addColorStop(1, dark);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = alpha; ctx.fillStyle = glow;
+}
+// Draws a shape given in units of the landmark's height (x to the right, y upwards).
+function landmarkPath(ctx, points, x0, y0, u) {
+  ctx.beginPath();
+  points.forEach(([x, y], i) => i ? ctx.lineTo(x0 + x * u, y0 - y * u) : ctx.moveTo(x0 + x * u, y0 - y * u));
+  ctx.closePath();
+}
+function mirrored(half) { return [...half, ...half.slice(0, -1).reverse().map(([x, y]) => [-x, y])]; }
+function blinking(t, speed, phase = 0) { return Math.sin(t * speed + phase) > 0 ? 1 : 0.15; }
+
+function drawLandmark(ctx, scene, t, beat) {
+  const m = scene.landmark, { W, H, colours } = scene, gy = m.ground;
+  const [laserA, laserB] = colours.lasers;
+  // Ground: the sky fades into dark earth down to the crowd, so the landmark stands at ground level.
+  ctx.save();
+  const soilTop = scene.horizon + (scene.land.kind === 'coast' ? H * 0.12 : 0), soil = ctx.createLinearGradient(0, soilTop, 0, H);
+  soil.addColorStop(0, 'rgba(5,3,10,0)'); soil.addColorStop(0.45, colours.shade); soil.addColorStop(1, '#05030a');
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, soilTop, W, H - soilTop);
+  ctx.restore();
+  // Floodlights at the foot of the landmark.
+  ctx.save();
+  const lx = m.left + m.width / 2, lr = Math.max(80, m.width * 0.6), foot = ctx.createRadialGradient(lx, gy, 0, lx, gy, lr);
+  foot.addColorStop(0, 'rgba(255,210,140,.4)'); foot.addColorStop(1, 'rgba(255,210,140,0)');
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55; ctx.fillStyle = foot; ctx.fillRect(m.left - 40, gy - lr, m.width + 80, lr + (H - gy));
+  ctx.restore();
+  if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
+    ctx.save();
+    if (typeof drawCityLandmark === 'function') drawCityLandmark(ctx, scene, t, beat);
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  if (m.kind === 'eiffel') {
+    const u = Math.min(m.height, m.width * 2.4), x0 = m.x;
+    const half = [[-0.21, 0], [-0.125, 0.18], [-0.14, 0.2], [-0.14, 0.235], [-0.1, 0.235], [-0.065, 0.45], [-0.075, 0.47], [-0.075, 0.5], [-0.046, 0.5], [-0.022, 0.8], [-0.012, 0.96], [0, 1]];
+    landmarkPath(ctx, mirrored(half), x0, gy, u);
+    ctx.moveTo(x0 - 0.15 * u, gy); ctx.quadraticCurveTo(x0, gy - 0.22 * u, x0 + 0.15 * u, gy); ctx.closePath(); // the arch
+    litFill(ctx, gy - u, gy, '#ffd27a', '#c9801f'); ctx.fill('evenodd');
+    ctx.strokeStyle = 'rgba(60,30,0,.45)'; ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) { const y1 = 0.24 + k * 0.05, y2 = y1 + 0.05; ctx.beginPath(); ctx.moveTo(x0 - (0.1 - k * 0.008) * u, gy - y1 * u); ctx.lineTo(x0 + (0.1 - k * 0.008) * u, gy - y2 * u); ctx.moveTo(x0 + (0.1 - k * 0.008) * u, gy - y1 * u); ctx.lineTo(x0 - (0.1 - k * 0.008) * u, gy - y2 * u); ctx.stroke(); }
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffffff';
+    m.sparkles.forEach(s => { // the famous sparkle
+      ctx.globalAlpha = Math.pow(Math.max(0, Math.sin(t * 7 + s.phase)), 12);
+      if (ctx.globalAlpha > 0.02) ctx.fillRect(x0 + s.side * 0.2 * Math.pow(1 - s.y, 1.7) * u - 1, gy - s.y * u - 1, 2.4, 2.4);
+    });
+    drawBeam(ctx, x0, gy - u, -Math.PI / 2 + Math.sin(t * 0.5) * 1.35, W * 0.7, 0.02, '#fff3c4', 0.3); // searchlight
+  } else if (m.kind === 'bigben') {
+    const u = Math.min(m.height * 0.95, m.width * 2), x0 = m.left + Math.min(m.width * 0.22, u * 0.12);
+    landmarkPath(ctx, [[-0.05, 0], [-0.05, 0.6], [-0.066, 0.6], [-0.066, 0.73], [-0.05, 0.75], [-0.03, 0.9], [0, 1], [0.03, 0.9], [0.05, 0.75], [0.066, 0.73], [0.066, 0.6], [0.05, 0.6], [0.05, 0]], x0, gy, u);
+    litFill(ctx, gy - u, gy, '#f2c879', '#9a6a2c'); ctx.fill();
+    const cy = gy - 0.665 * u, cr = 0.04 * u;
+    ctx.globalAlpha = 0.95; ctx.fillStyle = '#fff4d6'; ctx.beginPath(); ctx.arc(x0, cy, cr, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2b1d0e'; ctx.lineWidth = 1.4; ctx.beginPath();
+    ctx.moveTo(x0, cy); ctx.lineTo(x0 + Math.cos(t * 0.3) * cr * 0.8, cy + Math.sin(t * 0.3) * cr * 0.8);
+    ctx.moveTo(x0, cy); ctx.lineTo(x0 + Math.cos(t * 0.025 - 1) * cr * 0.55, cy + Math.sin(t * 0.025 - 1) * cr * 0.55); ctx.stroke();
+    // The London Eye, turning slowly.
+    const R = Math.min(0.32 * u, m.width * 0.42), ex = Math.min(W - R * 0.35, x0 + 0.12 * u + R), ey = gy - R - 0.05 * u;
+    ctx.globalAlpha = 0.9; ctx.strokeStyle = colours.shade; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ex - R * 0.5, gy); ctx.lineTo(ex, ey); ctx.lineTo(ex + R * 0.15, gy); ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#dfe6ff'; ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.35; ctx.beginPath();
+    for (let i = 0; i < 20; i++) { const a = t * 0.08 + i * Math.PI / 10; ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a) * R, ey + Math.sin(a) * R); }
+    ctx.stroke();
+    ctx.globalAlpha = 0.85; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(ex, ey, R, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 32; i++) { const a = t * 0.08 + i * Math.PI / 16; ctx.fillStyle = i % 2 ? laserA : laserB; ctx.globalAlpha = 0.9; ctx.fillRect(ex + Math.cos(a) * R - 2, ey + Math.sin(a) * R - 2, 4, 4); }
+  } else if (m.kind === 'bridge') {
+    // A suspension bridge entirely to the right of the stage: two towers, a deck above the crowd, piers down to the ground.
+    const deck = gy - H * 0.1, xa = m.left + m.width * 0.24, xb = m.left + m.width * 0.82, th = Math.min(H * 0.3, m.height * 0.5), mid = (xa + xb) / 2;
+    const cableY = x => { const k = (x - mid) / ((xb - xa) / 2); return deck - th + (th - 8) * (1 - k * k); };
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.95; ctx.fillStyle = '#6e2018';
+    [xa, xb].forEach(x => { ctx.fillRect(x - 6, deck, 4, gy - deck); ctx.fillRect(x + 2, deck, 4, gy - deck); }); // piers
+    ctx.strokeStyle = '#d2412f'; ctx.lineWidth = 1;
+    ctx.beginPath(); for (let x = xa + 8; x < xb; x += 9) { ctx.moveTo(x, cableY(x)); ctx.lineTo(x, deck); } ctx.stroke(); // hangers
+    ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo(mid, deck - th + (th - 8) * 2, xb, deck - th); // main cable
+    ctx.moveTo(xa, deck - th); ctx.quadraticCurveTo((xa + m.left) / 2, deck - th * 0.45, m.left, deck); // back stays
+    ctx.moveTo(xb, deck - th); ctx.quadraticCurveTo((xb + W) / 2, deck - th * 0.45, W, deck);
+    ctx.stroke();
+    ctx.fillStyle = '#b8352a'; [xa, xb].forEach(x => { ctx.fillRect(x - 5, deck - th - 4, 3, th + 4); ctx.fillRect(x + 2, deck - th - 4, 3, th + 4); [0.1, 0.45, 0.8].forEach(k => ctx.fillRect(x - 5, deck - th + th * k, 10, 3)); });
+    ctx.fillStyle = '#7d2219'; ctx.fillRect(m.left, deck, W - m.left, 5);
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = '#ffe2a8';
+    for (let x = m.left; x < W; x += 16) { ctx.globalAlpha = 0.45 + 0.4 * blinking(t, 1.3, x); ctx.fillRect(x, deck + 1, 2, 2); }
+  } else if (m.kind === 'frauenkirche') {
+    const u = Math.min(m.height * 0.82, m.width * 1.5), x0 = m.x;
+    landmarkPath(ctx, [[-0.3, 0], [-0.3, 0.27], [0, 0.4], [0.3, 0.27], [0.3, 0]], x0, gy, u);
+    litFill(ctx, gy - 0.4 * u, gy, '#e8b47a', '#8a5a2e', 0.9); ctx.fill();
+    [-0.11, 0.11].forEach(dx => {
+      landmarkPath(ctx, [[dx - 0.065, 0], [dx - 0.065, 0.64], [dx + 0.065, 0.64], [dx + 0.065, 0]], x0, gy, u);
+      litFill(ctx, gy - 0.64 * u, gy, '#f0c08a', '#9b6636'); ctx.fill();
+      ctx.globalAlpha = 0.95; ctx.fillStyle = '#6f9c86'; ctx.beginPath(); ctx.ellipse(x0 + dx * u, gy - 0.7 * u, 0.068 * u, 0.075 * u, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = colours.shade; ctx.fillRect(x0 + dx * u - 1, gy - 0.82 * u, 2, 0.06 * u);
+      ctx.fillStyle = '#fff1cf'; ctx.beginPath(); ctx.arc(x0 + dx * u, gy - 0.55 * u, 0.025 * u, 0, Math.PI * 2); ctx.fill();
+    });
+  } else if (m.kind === 'fernsehturm') {
+    const u = Math.min(m.height, m.width * 3), x0 = m.left + Math.min(m.width * 0.3, u * 0.2);
+    landmarkPath(ctx, [[-0.026, 0], [-0.014, 0.62], [0.014, 0.62], [0.026, 0]], x0, gy, u);
+    litFill(ctx, gy - 0.62 * u, gy, '#cfd8e3', '#7d8794'); ctx.fill();
+    const sy = gy - 0.68 * u, sr = 0.075 * u, ball = ctx.createRadialGradient(x0 - sr * 0.4, sy - sr * 0.4, 1, x0, sy, sr);
+    ball.addColorStop(0, '#f4f7fb'); ball.addColorStop(1, '#7a8796');
+    ctx.globalAlpha = 0.97; ctx.fillStyle = ball; ctx.beginPath(); ctx.arc(x0, sy, sr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe9b0'; ctx.fillRect(x0 - sr * 0.95, sy - 1.5, sr * 1.9, 3);
+    ctx.fillStyle = '#c8d0da'; ctx.fillRect(x0 - 0.009 * u, gy - 0.88 * u, 0.018 * u, 0.13 * u); ctx.fillRect(x0 - 0.0035 * u, gy - u, 0.007 * u, 0.13 * u);
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = blinking(t, 3); ctx.fillStyle = '#ff2b2b';
+    ctx.beginPath(); ctx.arc(x0, gy - u, 3, 0, Math.PI * 2); ctx.fill();
+    const gx = x0 + Math.max(0.2 * u, 46), gw = Math.min(0.36 * u, W - gx - 6), gh = gw * 0.42; // Brandenburg Gate
+    if (gw > 40) {
+      ctx.globalCompositeOperation = 'source-over';
+      landmarkPath(ctx, [[0, 0], [0, 0.8], [0.42, 0.8], [0.44, 1], [0.56, 1], [0.58, 0.8], [1, 0.8], [1, 0]], gx, gy, 1);
+      ctx.beginPath(); ctx.rect(gx, gy - gh * 0.8, gw, gh * 0.8); ctx.rect(gx + gw * 0.4, gy - gh, gw * 0.2, gh * 0.2);
+      litFill(ctx, gy - gh, gy, '#f3d29b', '#a7783f'); ctx.fill();
+      ctx.fillStyle = colours.shade; ctx.globalAlpha = 0.8;
+      for (let i = 0; i < 5; i++) ctx.fillRect(gx + gw * (0.07 + i * 0.185), gy - gh * 0.62, gw * 0.1, gh * 0.62);
+    }
+  } else if (m.kind === 'colosseum') {
+    const w = Math.min(m.width * 0.96, m.height * 1.25), h = w * 0.34, x0 = m.x - w / 2;
+    ctx.beginPath(); ctx.moveTo(x0, gy); ctx.lineTo(x0, gy - h); ctx.lineTo(x0 + w * 0.62, gy - h); ctx.lineTo(x0 + w, gy - h * 0.66); ctx.lineTo(x0 + w, gy); ctx.closePath();
+    litFill(ctx, gy - h, gy, '#f0bd78', '#9c6633'); ctx.fill();
+    ctx.fillStyle = 'rgba(40,18,5,.75)';
+    [[0.08, 0.3], [0.38, 0.6], [0.68, 0.86]].forEach(([y1, y2], row) => {
+      for (let i = 0; i < 10; i++) {
+        const ax = x0 + w * (0.03 + i * 0.097), roof = i / 10 > 0.62 ? 1 - (i / 10 - 0.62) / 0.38 * 0.34 : 1;
+        if (y2 < roof - 0.04) { ctx.beginPath(); ctx.moveTo(ax, gy - y1 * h); ctx.lineTo(ax, gy - (y2 - 0.06) * h); ctx.quadraticCurveTo(ax + w * 0.03, gy - y2 * h - 3, ax + w * 0.06, gy - (y2 - 0.06) * h); ctx.lineTo(ax + w * 0.06, gy - y1 * h); ctx.closePath(); ctx.fill(); }
+      }
+    });
+  } else if (m.kind === 'sagrada') {
+    const u = Math.min(m.height, m.width * 1.4), x0 = m.x;
+    landmarkPath(ctx, [[-0.26, 0], [-0.26, 0.24], [0.26, 0.24], [0.26, 0]], x0, gy, u);
+    litFill(ctx, gy - 0.24 * u, gy, '#e9bb85', '#8f5f32'); ctx.fill();
+    [[0, 1], [-0.07, 0.86], [0.07, 0.84], [-0.15, 0.74], [0.15, 0.72], [-0.22, 0.56], [0.22, 0.55]].forEach(([dx, top]) => {
+      landmarkPath(ctx, [[dx - 0.026, 0.2], [dx - 0.012, top - 0.06], [dx, top], [dx + 0.012, top - 0.06], [dx + 0.026, 0.2]], x0, gy, u);
+      litFill(ctx, gy - top * u, gy - 0.2 * u, '#f3c88f', '#9a6a39'); ctx.fill();
+      ctx.globalAlpha = 0.95; ctx.fillStyle = colours.sun; ctx.beginPath(); ctx.arc(x0 + dx * u, gy - top * u, Math.max(1.5, 0.01 * u), 0, Math.PI * 2); ctx.fill();
+    });
+  } else if (m.kind === 'empire') {
+    const u = Math.min(m.height, m.width * 2.6), x0 = m.x;
+    landmarkPath(ctx, mirrored([[-0.13, 0], [-0.13, 0.55], [-0.1, 0.55], [-0.1, 0.68], [-0.07, 0.68], [-0.07, 0.77], [-0.045, 0.77], [-0.045, 0.84], [-0.02, 0.84], [-0.02, 0.9], [-0.004, 0.9], [-0.004, 1], [0, 1]]), x0, gy, u);
+    ctx.globalAlpha = 0.97; ctx.fillStyle = colours.shade; ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    m.windows.forEach(w => { if (w.y < 0.75) { ctx.globalAlpha = 0.25 + 0.35 * blinking(t, 0.4, w.phase); ctx.fillStyle = colours.sun; ctx.fillRect(x0 + w.x * 0.2 * u * (w.y < 0.55 ? 1 : 0.7), gy - w.y * u, 2, 3); } });
+    const top = Math.floor(beat / 4) % 2 ? laserA : laserB; // the top changes colour every 4 beats
+    ctx.globalAlpha = 0.85; ctx.fillStyle = top;
+    ctx.fillRect(x0 - 0.045 * u, gy - 0.84 * u, 0.09 * u, 0.07 * u); ctx.fillRect(x0 - 0.02 * u, gy - 0.9 * u, 0.04 * u, 0.06 * u);
+    ctx.globalAlpha = blinking(t, 2.6); ctx.fillStyle = '#ff2b2b'; ctx.fillRect(x0 - 1.5, gy - u - 2, 3, 3);
+  } else if (m.kind === 'opera') {
+    const w = Math.min(m.width * 0.98, m.height * 1.3), x0 = m.x, base = gy - w * 0.04;
+    ctx.globalAlpha = 0.9; ctx.fillStyle = '#a99a83'; ctx.fillRect(x0 - w * 0.5, base, w, w * 0.05);
+    [[-0.46, -0.2, 0.5], [-0.26, 0.0, 0.66], [-0.06, 0.18, 0.56], [0.14, 0.34, 0.44], [0.28, 0.46, 0.32]].forEach(([a, b, h]) => {
+      const xa = x0 + a * w, xb = x0 + b * w, top = base - h * w * 0.5;
+      ctx.beginPath(); ctx.moveTo(xa, base); ctx.quadraticCurveTo(xa + (xb - xa) * 0.05, top, xb, top + (base - top) * 0.12); ctx.lineTo(xb, base); ctx.closePath();
+      litFill(ctx, top, base, '#fffaf0', '#d9d2c3'); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,80,60,.4)'; ctx.lineWidth = 1; ctx.stroke();
+    });
+  } else if (m.kind === 'riesenrad') {
+    const R = Math.min(m.height * 0.42, m.width * 0.44), cx = m.x, cy = gy - R - m.height * 0.06;
+    ctx.globalAlpha = 0.95; ctx.strokeStyle = colours.shade; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - R * 0.55, gy); ctx.lineTo(cx, cy); ctx.lineTo(cx + R * 0.55, gy); ctx.stroke();
+    ctx.strokeStyle = '#e8443a'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 30; i++) { const a = t * 0.06 + i * Math.PI / 15; ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); }
+    ctx.stroke();
+    ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, R * 0.93, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 15; i++) {
+      const a = t * 0.06 + i * Math.PI * 2 / 15, px = cx + Math.cos(a) * R, py = cy + Math.sin(a) * R;
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(px - 5, py, 10, 8); ctx.fillStyle = '#ffd88a'; ctx.fillRect(px - 3, py + 2, 6, 3);
+    }
+  } else if (m.kind === 'canals') {
+    const n = m.houses.length, hw = m.width / n;
+    m.houses.forEach((house, i) => {
+      const x = m.left + i * hw, h = house.h * m.height, top = gy - h;
+      ctx.beginPath(); ctx.moveTo(x + 1, gy); ctx.lineTo(x + 1, top + hw * 0.4);
+      if (house.step) { ctx.lineTo(x + hw * 0.2, top + hw * 0.4); ctx.lineTo(x + hw * 0.2, top + hw * 0.15); ctx.lineTo(x + hw * 0.8, top + hw * 0.15); ctx.lineTo(x + hw * 0.8, top + hw * 0.4); }
+      else ctx.lineTo(x + hw / 2, top);
+      ctx.lineTo(x + hw - 1, top + hw * 0.4); ctx.lineTo(x + hw - 1, gy); ctx.closePath();
+      ctx.globalAlpha = 0.97; ctx.fillStyle = ['#2b1a14', '#33231a', '#241812'][i % 3]; ctx.fill();
+      ctx.fillStyle = '#ffd48a';
+      for (let row = 0; row < 4; row++) for (let col = 0; col < 2; col++) {
+        const wy = top + hw * 0.55 + row * (h - hw * 0.7) / 4;
+        if (wy < gy - 6) { ctx.globalAlpha = 0.35 + 0.5 * blinking(t, 0.3, i * 3 + row + col); ctx.fillRect(x + hw * (0.25 + col * 0.35), wy, hw * 0.16, Math.max(3, hw * 0.18)); }
+      }
+    });
+  } else if (m.kind === 'burj') {
+    const u = Math.min(gy - H * 0.04, m.width * 4), x0 = m.x;
+    landmarkPath(ctx, mirrored([[-0.09, 0], [-0.09, 0.25], [-0.07, 0.25], [-0.07, 0.45], [-0.05, 0.45], [-0.05, 0.62], [-0.035, 0.62], [-0.035, 0.75], [-0.02, 0.75], [-0.02, 0.85], [-0.01, 0.85], [-0.01, 0.93], [-0.003, 0.93], [-0.002, 1], [0, 1]]), x0, gy, u);
+    litFill(ctx, gy - u, gy, '#8fa3b8', '#2e3a48', 0.97); ctx.fill();
+    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = colours.sun;
+    for (let i = 0; i < 26; i++) { const y = 0.03 + i * 0.033, wHalf = y < 0.25 ? 0.07 : y < 0.45 ? 0.055 : y < 0.62 ? 0.038 : y < 0.75 ? 0.025 : 0.012; ctx.globalAlpha = 0.25 + 0.3 * blinking(t, 0.5, i); ctx.fillRect(x0 - wHalf * u, gy - y * u, wHalf * 2 * u, 1.2); }
+    ctx.globalAlpha = blinking(t, 2.2); ctx.fillStyle = '#ff2b2b'; ctx.fillRect(x0 - 1.5, gy - u - 2, 3, 3);
+  }
+  ctx.restore();
+}
+
+function drawStage(ctx, scene, beat, pulse) {
+  const { stage, colours } = scene;
+  const [laserA, laserB] = colours.lasers;
+  const sf = stage.floor - stage.top;
+  const wall = { x: stage.x + stage.w * 0.14, y: stage.top + 12, w: stage.w * 0.72, h: sf * 0.62 };
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = colours.shade;
+  // Roof, towers and floor.
+  ctx.beginPath(); ctx.moveTo(stage.x - 14, stage.top); ctx.lineTo(stage.cx, stage.top - 26); ctx.lineTo(stage.x + stage.w + 14, stage.top); ctx.closePath(); ctx.fill();
+  ctx.fillRect(stage.x - 6, stage.top, stage.w + 12, 9);
+  ctx.fillRect(stage.x, stage.top, 9, stage.floor - stage.top);
+  ctx.fillRect(stage.x + stage.w - 9, stage.top, 9, stage.floor - stage.top);
+  ctx.fillRect(stage.x, stage.floor - 14, stage.w, 16);
+  // The back wall: a glow behind the DJ and a slowly turning fan of light.
+  ctx.fillStyle = '#05030a'; ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(wall.x, wall.y, wall.w, wall.h); ctx.clip();
+  ctx.globalCompositeOperation = 'lighter';
+  const centreY = stage.floor - 14 - sf * 0.2;
+  const halo = ctx.createRadialGradient(stage.cx, centreY, 0, stage.cx, centreY, wall.w * 0.6);
+  halo.addColorStop(0, laserB); halo.addColorStop(0.55, laserA); halo.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.28 + 0.3 * pulse; ctx.fillStyle = halo; ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 14; i++) {
+    const angle = Math.PI + (i + 0.5) * Math.PI / 14 + Math.sin(beat * 0.08) * 0.12;
+    ctx.globalAlpha = 0.12 + 0.12 * pulse; ctx.strokeStyle = i % 2 ? laserA : laserB;
+    ctx.beginPath(); ctx.moveTo(stage.cx, centreY); ctx.lineTo(stage.cx + Math.cos(angle) * wall.w, centreY + Math.sin(angle) * wall.w); ctx.stroke();
+  }
+  drawLedWall(ctx, scene, wall, beat, pulse);
+  ctx.restore();
+  drawSpeakers(ctx, scene, beat, pulse);
+  drawMc(ctx, scene, beat, pulse);
+  drawDj(ctx, scene, beat, pulse);
+  // Front lights flashing on the beat.
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const x = stage.x + stage.w * (0.12 + i * 0.152), y = stage.top + 14;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, 16);
+    glow.addColorStop(0, i % 2 ? laserA : laserB); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.25 + 0.75 * pulse; ctx.fillStyle = glow; ctx.fillRect(x - 16, y - 16, 32, 32);
+  }
+}
+
+// The LED screen behind the DJ: a new picture every 8 beats (rings, level bars, stripes, dots) and the pixel grid of a real screen.
+function drawLedWall(ctx, scene, wall, beat, pulse) {
+  const [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const mode = Math.floor(beat / 8) % 4, cx = wall.x + wall.w / 2, cy = wall.y + wall.h * 0.62;
+  ctx.globalCompositeOperation = 'lighter';
+  if (mode === 0) {
+    for (let i = 0; i < 5; i++) {
+      const k = (beat * 0.5 + i / 5) % 1;
+      ctx.globalAlpha = (1 - k) * (0.35 + 0.35 * pulse); ctx.strokeStyle = i % 2 ? laserA : laserB; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, k * wall.w * 0.62, 0, TAU); ctx.stroke();
+    }
+  } else if (mode === 1) {
+    const n = 14, bw = wall.w / n;
+    for (let i = 0; i < n; i++) {
+      const level = 0.25 + 0.55 * Math.abs(Math.sin(beat * 1.3 + i * 0.7)) * (0.6 + 0.4 * pulse);
+      ctx.globalAlpha = 0.5; ctx.fillStyle = i % 2 ? laserA : laserB;
+      ctx.fillRect(wall.x + i * bw + 1, wall.y + wall.h * (1 - level), bw - 2, wall.h * level);
+    }
+  } else if (mode === 2) {
+    ctx.lineWidth = wall.w * 0.05;
+    for (let i = -6; i < 12; i++) {
+      const x = wall.x + (i + (beat * 0.5) % 1) * wall.w * 0.1;
+      ctx.globalAlpha = 0.3 + 0.2 * pulse; ctx.strokeStyle = i % 2 ? laserA : laserB;
+      ctx.beginPath(); ctx.moveTo(x, wall.y + wall.h); ctx.lineTo(x + wall.h * 0.6, wall.y); ctx.stroke();
+    }
+  } else {
+    const cols = 12, rows = 5, dx = wall.w / cols, dy = wall.h / rows;
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const wave = 0.5 + 0.5 * Math.sin(beat * 1.6 - (i + j) * 0.8);
+      ctx.globalAlpha = 0.15 + 0.6 * wave; ctx.fillStyle = (i + j) % 2 ? laserA : laserB;
+      ctx.beginPath(); ctx.arc(wall.x + (i + 0.5) * dx, wall.y + (j + 0.5) * dy, Math.min(dx, dy) * 0.28 * (0.6 + 0.6 * wave), 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.22; ctx.fillStyle = '#05030a';
+  for (let y = wall.y; y < wall.y + wall.h; y += 4) ctx.fillRect(wall.x, y, wall.w, 1);
+}
+
+// A second performer, an MC with a microphone: jumps on every beat, one hand up, the other swinging.
+function drawMc(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const P = (stage.floor - stage.top) * 0.5, x = stage.cx + stage.w * 0.3, floorY = stage.floor - 14;
+  const hop = Math.abs(Math.sin(Math.PI * beat)) * 0.06 * P, footY = floorY - hop, hipY = footY - 0.3 * P, shoulderY = footY - 0.62 * P, headY = footY - 0.76 * P, hr = 0.085 * P;
+  const dark = '#06030c', hand = { x: x + 0.22 * P, y: headY - 0.02 * P + Math.sin(beat * Math.PI) * 0.03 * P };
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  ctx.shadowColor = laserB; ctx.shadowBlur = 6; ctx.fillStyle = dark; ctx.strokeStyle = dark; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2, 0.07 * P);
+  [-1, 1].forEach(side => { ctx.beginPath(); ctx.moveTo(x + side * 0.03 * P, hipY); ctx.lineTo(x + side * 0.07 * P, footY); ctx.stroke(); });
+  ctx.lineWidth = Math.max(3, 0.15 * P);
+  ctx.beginPath(); ctx.moveTo(x, hipY); ctx.lineTo(x, shoulderY + 0.04 * P); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, headY, hr, 0, TAU); ctx.fill();
+  ctx.lineWidth = Math.max(1.6, 0.05 * P);
+  ctx.beginPath(); ctx.moveTo(x + 0.07 * P, shoulderY + 0.02 * P); ctx.lineTo(x + 0.15 * P, (shoulderY + hand.y) / 2); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+  const swing = Math.sin(beat * Math.PI + 1) * 0.08 * P;
+  ctx.beginPath(); ctx.moveTo(x - 0.07 * P, shoulderY + 0.02 * P); ctx.lineTo(x - 0.15 * P + swing, shoulderY + 0.18 * P); ctx.lineTo(x - 0.16 * P + swing * 1.4, hipY); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5 + 0.5 * pulse; ctx.fillStyle = laserA; // the microphone catches the light
+  ctx.beginPath(); ctx.arc(hand.x, hand.y - 0.03 * P, Math.max(1.2, 0.025 * P), 0, TAU); ctx.fill();
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+// Smoke jets from the stage front every 4 beats; at the start of every 32 beats two flame jets with flying sparks.
+function drawFogAndPyro(ctx, scene, beat) {
+  const { H, stage, colours } = scene, [laserA, laserB] = colours.lasers, TAU = Math.PI * 2;
+  const puff = (beat % 4) / 4;
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) {
+    const x = stage.cx + (i / 5 - 0.5) * stage.w * 1.1 + Math.sin(beat + i) * 4, y = stage.floor - 6 - puff * H * 0.07 * (1 + (i % 2) * 0.4), radius = stage.w * (0.1 + 0.16 * puff);
+    const smoke = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    smoke.addColorStop(0, i % 2 ? laserA : laserB); smoke.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.24 * Math.min(1, puff * 10) * Math.pow(1 - puff, 1.5); ctx.fillStyle = smoke;
+    ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill();
+  }
+  const cycle = beat % 32, seconds = cycle * 60 / scene.bpm;
+  if (seconds > 2.4) return;
+  const burst = cycle < 2 ? Math.sin(cycle / 2 * Math.PI) : 0;
+  [[stage.x - 4, -1], [stage.x + stage.w + 4, 1]].forEach(([x, side]) => {
+    if (burst > 0.02) {
+      const h = H * 0.3 * burst, w = stage.w * 0.07 * (0.6 + 0.4 * burst);
+      const flame = ctx.createLinearGradient(x, stage.floor, x, stage.floor - h);
+      flame.addColorStop(0, '#fff3c0'); flame.addColorStop(0.35, '#ffb347'); flame.addColorStop(1, 'rgba(255,90,40,0)');
+      ctx.globalAlpha = 0.9 * burst; ctx.fillStyle = flame;
+      ctx.beginPath(); ctx.ellipse(x, stage.floor - h / 2, w, h / 2, 0, 0, TAU); ctx.fill();
+    }
+    for (let i = 0; i < 16; i++) {
+      const angle = -Math.PI / 2 + side * (0.12 + 0.09 * (i % 8)), speed = H * (0.55 + 0.35 * ((i * 37) % 10) / 10);
+      const sx = x + Math.cos(angle) * speed * seconds, sy = stage.floor + Math.sin(angle) * speed * seconds + 0.5 * H * 1.8 * seconds * seconds;
+      if (sy > stage.floor) continue;
+      ctx.globalAlpha = Math.max(0, 1 - seconds / 2.4); ctx.fillStyle = i % 3 ? '#ffb347' : '#fff3c0';
+      ctx.beginPath(); ctx.arc(sx, sy, 1.4, 0, TAU); ctx.fill();
+    }
+  });
+}
+
+// What a camera adds: soft out-of-focus lights, colour fringes at the edges and a little film grain.
+function drawCameraLook(ctx, scene, t, pulse) {
+  const { W, H, colours } = scene, [laserA, laserB] = colours.lasers, TAU = Math.PI * 2;
+  ctx.globalCompositeOperation = 'lighter';
+  scene.bokeh.forEach(b => {
+    const x = b.x + Math.sin(t * 0.15 + b.phase) * W * 0.02, y = b.y + Math.cos(t * 0.11 + b.phase) * H * 0.02, colour = colours.lasers[b.colour];
+    const disc = ctx.createRadialGradient(x, y, 0, x, y, b.radius);
+    disc.addColorStop(0, colour); disc.addColorStop(0.85, colour); disc.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.05 + 0.05 * pulse; ctx.fillStyle = disc; ctx.beginPath(); ctx.arc(x, y, b.radius, 0, TAU); ctx.fill();
+  });
+  const left = ctx.createLinearGradient(0, 0, W * 0.07, 0), right = ctx.createLinearGradient(W, 0, W * 0.93, 0);
+  left.addColorStop(0, laserA); left.addColorStop(1, 'rgba(0,0,0,0)'); right.addColorStop(0, laserB); right.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.07; ctx.fillStyle = left; ctx.fillRect(0, 0, W * 0.07, H);
+  ctx.fillStyle = right; ctx.fillRect(W * 0.93, 0, W * 0.07, H);
+  const rnd = backdropRandom(scene.seed + Math.floor(t * 12));
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 160; i++) {
+    ctx.globalAlpha = 0.05 + rnd() * 0.09; ctx.fillStyle = rnd() < 0.5 ? '#ffffff' : '#000000';
+    ctx.fillRect(rnd() * W, rnd() * H, 1.2, 1.2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// A DJ behind the decks: head bobbing, one hand scratching, the other on the mixer, and on the
+// first beat of every bar a hand goes up. P is the height of the DJ in pixels.
+function drawDj(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const P = (stage.floor - stage.top) * 0.6, cx = stage.cx, floorY = stage.floor - 14;
+  const tableTop = floorY - 0.42 * P, shoulderY = floorY - 0.78 * P, bob = pulse * 0.02 * P;
+  const headY = floorY - 0.9 * P + bob, hr = 0.075 * P;
+  const rise = x => (x > 0 && x < 1 ? Math.sin(x * Math.PI) : 0);
+  const bar = beat % 8, drop = beat % 32 >= 28 ? rise((beat % 32 - 28) / 4) : 0; // before the flames, both arms go up for four beats
+  const liftR = Math.max(rise(bar), drop), liftL = Math.max(rise(bar - 4), drop);
+  const sway = Math.sin(beat * Math.PI * 0.5) * 0.018 * P, bx = cx + sway * 0.5, hx = cx + sway + Math.sin(beat * Math.PI) * 0.01 * P; // body sways, head nods
+  const dark = '#06030c';
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  // Body, head and headphones, with a rim of stage light.
+  ctx.shadowColor = laserA; ctx.shadowBlur = 7; ctx.fillStyle = dark; ctx.strokeStyle = dark;
+  ctx.beginPath(); ctx.moveTo(bx - 0.15 * P, shoulderY + bob * 0.5); ctx.quadraticCurveTo(bx, shoulderY - 0.04 * P + bob * 0.5, bx + 0.15 * P, shoulderY + bob * 0.5);
+  ctx.lineTo(cx + 0.11 * P, tableTop + 2); ctx.lineTo(cx - 0.11 * P, tableTop + 2); ctx.closePath(); ctx.fill();
+  ctx.fillRect(hx - 0.03 * P, headY + hr * 0.6, 0.06 * P, 0.07 * P);
+  ctx.beginPath(); ctx.arc(hx, headY, hr, 0, TAU); ctx.fill();
+  ctx.lineWidth = Math.max(1.5, 0.028 * P);
+  ctx.beginPath(); ctx.arc(hx, headY, hr * 1.18, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(hx + side * hr * 1.18, headY + hr * 0.1, hr * 0.38, 0, TAU); ctx.fill(); });
+  ctx.shadowBlur = 0;
+  // The DJ table with a light strip on its front.
+  const tw = 0.95 * P;
+  ctx.fillStyle = '#0b0714'; ctx.fillRect(cx - tw / 2, tableTop, tw, floorY - tableTop);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.5 + 0.4 * pulse; ctx.fillStyle = Math.floor(beat) % 2 ? laserA : laserB;
+  ctx.fillRect(cx - tw / 2, tableTop, tw, Math.max(1.5, 0.018 * P));
+  for (let i = 0; i < 7; i++) {
+    ctx.globalAlpha = Math.sin(beat * Math.PI + i * 0.9) > 0 ? 0.85 : 0.25; ctx.fillStyle = i % 2 ? laserA : laserB;
+    ctx.fillRect(cx - tw / 2 + 0.06 * P + i * 0.125 * P, tableTop + 0.08 * P, 0.06 * P, Math.max(1.5, 0.025 * P));
+  }
+  // Two turntables with turning records, and the mixer between them.
+  ctx.globalCompositeOperation = 'source-over';
+  [-1, 1].forEach(side => {
+    const dx = cx + side * 0.27 * P, rx = 0.15 * P, ry = 0.03 * P, angle = beat * 2.4 * side;
+    ctx.globalAlpha = 1; ctx.fillStyle = '#16101f'; ctx.beginPath(); ctx.ellipse(dx, tableTop - 0.012 * P, rx, ry, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = side > 0 ? laserA : laserB; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(dx, tableTop - 0.012 * P); ctx.lineTo(dx + Math.cos(angle) * rx * 0.92, tableTop - 0.012 * P + Math.sin(angle) * ry * 0.92); ctx.stroke();
+  });
+  ctx.globalAlpha = 1; ctx.fillStyle = '#1b1428'; ctx.fillRect(cx - 0.09 * P, tableTop - 0.035 * P, 0.18 * P, 0.035 * P);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) { ctx.globalAlpha = 0.4 + 0.5 * (Math.sin(beat * 2 + i * 1.7) > 0 ? 1 : 0.2); ctx.fillStyle = i % 2 ? laserA : laserB; ctx.fillRect(cx - 0.075 * P + i * 0.04 * P, tableTop - 0.027 * P, Math.max(1.2, 0.015 * P), Math.max(1.2, 0.015 * P)); }
+  // Arms: the left hand scratches, the right one turns knobs and now and then goes up.
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = laserB; ctx.shadowBlur = 5; ctx.strokeStyle = dark; ctx.fillStyle = dark; ctx.lineWidth = Math.max(2, 0.05 * P);
+  const shoulderLY = shoulderY + 0.03 * P + bob * 0.5;
+  const scratch = { x: cx - 0.27 * P + Math.sin(beat * TAU * 2) * 0.05 * P, y: tableTop - 0.03 * P };
+  const knob = { x: cx + 0.06 * P + Math.sin(beat * Math.PI) * 0.02 * P, y: tableTop - 0.045 * P - pulse * 0.015 * P };
+  const wave = Math.sin(beat * TAU) * 0.03 * P * drop;
+  const upR = { x: cx + 0.3 * P + wave, y: headY - 0.12 * P }, upL = { x: cx - 0.3 * P + wave, y: headY - 0.12 * P };
+  const hand2 = { x: knob.x + (upR.x - knob.x) * liftR, y: knob.y + (upR.y - knob.y) * liftR };
+  const hand1 = { x: scratch.x + (upL.x - scratch.x) * liftL, y: scratch.y + (upL.y - scratch.y) * liftL };
+  [[-1, hand1, 1 - liftL], [1, hand2, 1 - liftR]].forEach(([side, hand, bend]) => {
+    const sx = bx + side * 0.14 * P, ex = (sx + hand.x) / 2 + side * 0.07 * P, ey = (shoulderLY + hand.y) / 2 + 0.04 * P * bend;
+    ctx.beginPath(); ctx.moveTo(sx, shoulderLY); ctx.lineTo(ex, ey); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(hand.x, hand.y, Math.max(1.5, 0.03 * P), 0, TAU); ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+}
+
+// A stack of speakers on each side of the stage; the cones pump and glow on the beat.
+function drawSpeakers(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const sw = stage.w * 0.15, total = (stage.floor - stage.top) * 0.62;
+  [[stage.x - sw - 8, 0], [stage.x + stage.w + 8, 1]].forEach(([x, side]) => {
+    let y = stage.floor;
+    [[0.58, 0.36, false], [0.42, 0.22, true]].forEach(([share, wr, small], k) => {
+      const h = total * share; y -= h;
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#0a0612'; ctx.fillRect(x, y, sw, h);
+      ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, sw - 1, h - 1);
+      const colour = (side + k) % 2 ? laserA : laserB;
+      const drawCone = (cx, cy, r) => {
+        const cone = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+        cone.addColorStop(0, '#2c2438'); cone.addColorStop(1, '#0d0816');
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = cone;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.25 + 0.65 * pulse; ctx.strokeStyle = colour; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.45 + 0.45 * pulse; ctx.fillStyle = colour;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.28 * (1 + 0.3 * pulse), 0, TAU); ctx.fill();
+      };
+      const centre = x + sw / 2, pump = 1 + 0.1 * pulse;
+      if (small) { drawCone(centre, y + h * 0.27, sw * 0.1 * (1 + 0.3 * pulse)); drawCone(centre, y + h * 0.7, Math.min(sw * wr, h * 0.26) * pump); }
+      else drawCone(centre, y + h * 0.5, Math.min(sw * wr, h * 0.4) * pump);
+    });
+  });
+}
+
+// Confetti bursts from the stage every 8 beats and falls for about 3 seconds.
+function drawConfetti(ctx, scene, beat) {
+  const { W, H, stage, colours } = scene;
+  const seconds = (beat % 8) * 60 / scene.bpm;
+  if (seconds > 3.2) return;
+  const rnd = backdropRandom(scene.seed + Math.floor(beat / 8) * 7919);
+  const palette = [colours.lasers[0], colours.lasers[1], colours.sun, '#ffffff'];
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 70; i++) {
+    const vx = (rnd() - 0.5) * W * 0.55, vy = -(H * 0.7 + rnd() * H * 0.6), spin = rnd() * 10, colour = palette[i % 4];
+    const x = stage.cx + vx * seconds, y = stage.top + vy * seconds + 0.5 * H * 1.6 * seconds * seconds;
+    if (y > H || y < -20) continue;
+    ctx.globalAlpha = Math.max(0, 1 - seconds / 3.2);
+    ctx.fillStyle = colour;
+    ctx.fillRect(x, y, 2 + 4 * Math.abs(Math.cos(seconds * 6 + spin)), 4);
+  }
+}
+
+function drawCrowd(ctx, scene, beat, t) {
+  const { H, colours } = scene;
+  ctx.globalCompositeOperation = 'source-over';
+  scene.crowd.forEach(person => {
+    const bounce = person.size * 0.6 * Math.abs(Math.sin(Math.PI * (beat + person.phase)));
+    const y = person.y - bounce, s = person.size;
+    ctx.globalAlpha = person.shade; ctx.fillStyle = colours.shade;
+    ctx.beginPath(); ctx.arc(person.x, y, s, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(person.x - s * 1.1, y + s * 0.7, s * 2.2, H - y);
+    const near = Math.max(0, 1 - Math.abs(person.x - scene.stage.cx) / (scene.W * 0.45)); // lit from behind by the stage
+    if (near > 0.05) {
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = near * near * (0.1 + 0.28 * Math.pow(1 - (beat % 1), 3)) * person.shade;
+      ctx.strokeStyle = '#ffe9c8'; ctx.lineWidth = Math.max(0.8, s * 0.18);
+      ctx.beginPath(); ctx.arc(person.x, y, s, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    if (person.arm) {
+      const sway = Math.sin(beat * Math.PI + person.phase * 6) * s * 0.6, reach = 2.2 + 0.5 * Math.pow(1 - (beat % 1), 3); // arms wave and pump with the beat
+      const handX = person.x + person.arm * s * 1.3 + sway, handY = y - s * reach;
+      ctx.strokeStyle = colours.shade; ctx.lineWidth = Math.max(2, s * 0.45); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(person.x + person.arm * s * 0.7, y + s); ctx.lineTo(handX, handY); ctx.stroke();
+      if (person.stick) { // a glow stick
+        const colour = colours.lasers[person.phase < 0.5 ? 0 : 1];
+        ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = colour; ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.9; ctx.lineWidth = Math.max(1.5, s * 0.22);
+        ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(handX + sway * 0.4, handY - s * 1.5); ctx.stroke();
+        ctx.globalAlpha = 0.18; ctx.lineWidth = Math.max(4, s * 0.8);
+        ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(handX + sway * 0.4, handY - s * 1.5); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      if (person.phone) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 3 + person.phase * 9));
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(handX - 1.5, handY - s * 0.4, 3, 4);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+  });
+}
+
+// --- The Overview banner: draws, animates, pauses when it cannot be seen --------------------
+
+let overviewBackdropKey = '';
+let overviewBackdrop = null;
+let overviewStage = null;
+let overviewStageSize = '';
+let overviewStageFrame = 0;
+let overviewStageInView = true;
+let overviewStageWatching = false;
+
+function overviewStageCanRun() {
+  const box = document.querySelector('#overview-backdrop');
+  return Boolean(box && !box.hidden && overviewStageInView && !document.hidden && overviewStage);
+}
+
+function prefersStillStage() {
+  try { return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; }
+}
+
+function drawOverviewStage(now) {
+  overviewStageFrame = 0;
+  const canvas = document.querySelector('#overview-backdrop-canvas');
+  const ctx = canvas && canvas.getContext && canvas.getContext('2d');
+  if (!ctx || !overviewStage) return;
+  const ratio = canvas.width / overviewStage.W || 1;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  drawStageFrame(ctx, overviewStage, prefersStillStage() ? 2.6 : now / 1000);
+  if (!prefersStillStage() && overviewStageCanRun() && typeof requestAnimationFrame === 'function') {
+    overviewStageFrame = requestAnimationFrame(drawOverviewStage);
+  }
+}
+
+function startOverviewStage() {
+  if (overviewStageFrame || !overviewStageCanRun()) return;
+  if (typeof requestAnimationFrame === 'function' && !prefersStillStage()) overviewStageFrame = requestAnimationFrame(drawOverviewStage);
+  else drawOverviewStage(2600);
+}
+
+// Matches the canvas to its box (sharp on retina screens) and rebuilds the layout if needed.
+function sizeOverviewStage() {
+  const canvas = document.querySelector('#overview-backdrop-canvas');
+  if (!canvas || !overviewBackdrop) return;
+  const W = Math.max(320, Math.round(canvas.clientWidth || 960)), H = Math.max(160, Math.round(canvas.clientHeight || 280));
+  const ratio = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+  const size = `${W}x${H}x${ratio}|${overviewBackdropKey}`;
+  if (size === overviewStageSize) return;
+  overviewStageSize = size;
+  canvas.width = Math.round(W * ratio); canvas.height = Math.round(H * ratio);
+  overviewStage = buildStageScene(overviewBackdrop, W, H);
+  if (!overviewStageFrame) drawOverviewStage(performanceNow());
+}
+
+function performanceNow() {
+  return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+}
+
+function watchOverviewStage() {
+  if (overviewStageWatching) return;
+  overviewStageWatching = true;
+  const box = document.querySelector('#overview-backdrop');
+  try {
+    if (typeof IntersectionObserver === 'function') new IntersectionObserver(entries => {
+      overviewStageInView = entries.some(entry => entry.isIntersecting);
+      if (overviewStageInView) startOverviewStage();
+    }).observe(box);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => { sizeOverviewStage(); startOverviewStage(); }).observe(box);
+    else if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', () => { sizeOverviewStage(); startOverviewStage(); });
+    if (document.addEventListener) document.addEventListener('visibilitychange', startOverviewStage);
+  } catch { /* the banner still draws once */ }
+}
+
+function renderOverviewBackdrop() {
+  const box = document.querySelector('#overview-backdrop');
+  if (!box) return;
+  if (typeof festivalBackdrop !== 'function' || typeof state === 'undefined' || !state?.event) { box.hidden = true; return; }
+  try {
+    const backdrop = festivalBackdrop({ name: state.event.name, venue: state.event.venue, artists: state.artists, bookings: state.bookings });
+    document.querySelector('#overview-backdrop-title').textContent = state.event.name || 'Your festival';
+    const dates = document.querySelector('#overview-dates')?.textContent || '';
+    document.querySelector('#overview-backdrop-caption').textContent = [state.event.venue, dates, backdrop.label].filter(Boolean).join(' · ');
+    box.dataset.mood = backdrop.mood;
+    box.dataset.scene = backdrop.scene;
+    // The title glows in the laser colour and pulses to the festival's beat.
+    box.style.setProperty('--bd-glow', backdrop.colours.lasers[1]);
+    box.style.setProperty('--bd-beat', `${(60 / backdrop.bpm).toFixed(3)}s`);
+    box.hidden = false;
+    if (backdrop.key !== overviewBackdropKey) { overviewBackdropKey = backdrop.key; overviewBackdrop = backdrop; overviewStageSize = ''; }
+    watchOverviewStage();
+    sizeOverviewStage();
+    startOverviewStage();
+  } catch {
+    box.hidden = true; // a picture must never stop the Overview from working
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { buildStageScene, drawStageFrame };

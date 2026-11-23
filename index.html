@@ -9,16 +9,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css?v=project-settings" />
     <link rel="stylesheet" href="checkliste-festivalplanung/checklist.css" />
-    <link rel="stylesheet" href="site-map/site-map.css?v=add-pin-2" />
+    <link rel="stylesheet" href="site-map/site-map.css?v=pin-presentation-1" />
     <link rel="stylesheet" href="vendors/vendors.css?v=custom-vendors" />
     <link rel="stylesheet" href="finance/finance.css?v=finance-scenarios" />
     <link rel="stylesheet" href="account/account.css?v=forgot-password" />
     <link rel="stylesheet" href="compact.css?v=lineup-view-switch" />
     <link rel="stylesheet" href="readiness.css" />
     <link rel="stylesheet" href="notifications.css" />
+    <link rel="stylesheet" href="overview-backdrop.css?v=backdrop-live-5" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Loaded last: fonts, colours, buttons and the frame (sidebar, header) for every page. -->
-    <link rel="stylesheet" href="design.css?v=design-1" />
+    <link rel="stylesheet" href="design.css?v=design-4" />
     <!-- Site map page order and toolbar; after design.css so it wins (feature-plans/clear-site-map-pins.md). -->
     <link rel="stylesheet" href="site-map/site-map-layout.css?v=calm-4" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
@@ -108,6 +109,7 @@
     </div>
     <div class="app-layout">
       <aside class="sidebar" aria-label="Festival Architect navigation">
+        <!-- Phones: the name sits here, as before. Wider screens show it in the top bar instead (design.css). -->
         <a class="sidebar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
           <span class="brand-mark"><i></i><i></i><i></i></span>
           <span>Festival Architect</span>
@@ -141,6 +143,10 @@
       </aside>
       <div class="app-shell" id="top">
       <header class="topbar">
+        <a class="topbar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>Festival Architect</span>
+        </a>
         <div class="festival-meta hidden">
           <span id="event-summary"></span>
         </div>
@@ -173,6 +179,10 @@
       </header>
 
       <main id="overview-view">
+        <figure class="overview-backdrop" id="overview-backdrop" aria-hidden="true" hidden>
+          <canvas id="overview-backdrop-canvas"></canvas>
+          <figcaption class="overview-backdrop-text"><span id="overview-backdrop-title"></span><span id="overview-backdrop-caption"></span></figcaption>
+        </figure>
         <section class="checklist-hero overview-hero" aria-labelledby="overview-title">
           <div class="overview-hero-text">
             <h1 id="overview-title">Overview</h1>
@@ -860,7 +870,7 @@
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js?v=technical-audit-1"></script>
     <script src="rules/task-rules.js?v=project-deletion-recovery"></script>
-    <script src="rules/notification-rules.js?v=sender-fallback"></script>
+    <script src="rules/notification-rules.js?v=audit-fix"></script>
     <script src="task-assignments.js?v=project-deletion-recovery"></script>
     <script src="gantt-defaults.js"></script>
     <script src="gantt-editor.js?v=project-restore-control"></script>
@@ -870,20 +880,23 @@
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js?v=custom-vendors"></script>
     <script src="rules/vendor-library.js?v=vendor-catalogue"></script>
-    <script src="rules/site-map-rules.js?v=add-pin"></script>
+    <script src="rules/site-map-rules.js?v=pin-presentation-2"></script>
     <script src="rules/map-draft-rules.js"></script>
-    <script src="rules/map-pin-rules.js?v=add-pin"></script>
+    <script src="rules/map-pin-rules.js?v=pin-presentation-2"></script>
     <script src="rules/crowd-rules.js?v=technical-audit-1"></script>
     <script src="site-map/map-drawing.js?v=technical-audit-1"></script>
     <script src="rules/visitor-simulation.js"></script>
     <script src="site-map/visitor-playback.js?v=exact-endpoint"></script>
-    <script src="site-map/site-map-page.js?v=calm-4"></script>
+    <script src="site-map/site-map-page.js?v=pin-presentation-1"></script>
     <script src="vendors/vendors-page.js?v=custom-vendors"></script>
     <script src="rules/finance-rules.js?v=zero-finance-start-1"></script>
-    <script src="finance/finance-page.js?v=zero-finance-start-1"></script>
+    <script src="finance/finance-page.js?v=audit-fix"></script>
     <script src="rules/demo-festival.js?v=fun-open"></script>
     <script src="demo/demo-loader.js?v=demo-label"></script>
-    <script src="overview.js?v=overnight-hours"></script>
+    <script src="rules/backdrop-rules.js?v=backdrop-cities-10"></script>
+    <script src="overview-backdrop-cities.js?v=backdrop-cities-10"></script>
+    <script src="overview-backdrop.js?v=backdrop-cities-10"></script>
+    <script src="overview.js?v=backdrop-1"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js?v=technical-audit-1"></script>
     <script src="notifications.js?v=notification-sender"></script>
