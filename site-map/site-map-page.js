@@ -35,7 +35,8 @@
   const baseItems = () => layoutItems(needs);
   function refreshItems() {
     const open = sites.find((entry) => entry.id === currentId);
-    items = [...baseItems(), ...extraPinItems(open?.extraPins)];
+    const presets = baseItems();
+    items = [...presets, ...namedExtraPinItems(open?.extraPins, presets)];
   }
   // Suggestions plan only the built-in facilities; added pins keep their spots.
   const addedPlacements = (s) => Object.fromEntries(extraPinItems(s.extraPins).filter((pin) => s.placements[pin.id]).map((pin) => [pin.id, s.placements[pin.id]]));
@@ -143,7 +144,8 @@
     const map = saved.sites.find(value => value.id === saved.currentId) || saved.sites[0];
     if (!map || !committedMapIds.has(map.id)) return [{ id: `map:${map?.id || 'missing'}:saved`, label: 'Save and assess festival map', ok: false,
       unknown: true, detail: 'The suggested map has not been saved yet. Review the layout and measurements, then choose Save changes on Site map.', section: 'Site map' }];
-    const savedItems = [...layoutItems(sizeFor(saved.ground.visitors)), ...extraPinItems(map.extraPins)];
+    const savedPresets = layoutItems(sizeFor(saved.ground.visitors));
+    const savedItems = [...savedPresets, ...namedExtraPinItems(map.extraPins, savedPresets)];
     const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors, activeStageIds(savedItems)).checks]
       .map(rule => ({ id: `map:${map.id}:${rule.id}`, label: rule.label, ok: rule.ok, unknown: !!rule.unknown, detail: rule.detail, section: 'Site map' }));
     savedReadinessCache = { snapshot: saved, stageCount, rules };
@@ -297,11 +299,6 @@
     };
   }
 
-  // A small "+" on pins the organiser added, so they stand out from the planned facilities.
-  const addedBadge = (r) => `<g class="sm-added-badge" pointer-events="none" transform="translate(${r * 0.78} ${-r * 2.85})">
-      <circle r="${r * 0.42}" fill="#ff684c" stroke="#fff" stroke-width="${r * 0.1}" />
-      <text dy="0.36em" text-anchor="middle" font-size="${r * 0.62}" font-family="Archivo, sans-serif" font-weight="800" fill="#fff">+</text></g>`;
-
   function drawObjects() {
     const s = site();
     const onPitches = vendors();
@@ -319,7 +316,7 @@
       const name = vendor ? `${item.name}: ${vendor.name}` : item.name;
       return `<g class="fa-item" data-id="${item.id}" transform="translate(${at[0]} ${at[1]})" tabindex="0" role="button" aria-label="${escape(name)}">
         ${MapDrawing.object(item, u, angle(item, at), vendor)}
-        ${MapDrawing.pin(item, r, colourOf(item.category), label, item.id === selectedId)}${item.added ? addedBadge(r) : ''}</g>`;
+        ${MapDrawing.pin(item, r, colourOf(item.category), label, item.id === selectedId)}</g>`;
     }).join('');
     renderPopover();
   }
@@ -500,12 +497,12 @@
       ${addedList(locked)}${drop}`;
   }
 
-  // "Added by you": every added pin on the map; click to find it, × to delete it.
+  // Shortcuts for individual facilities; click to find a pin, × to delete it.
   function addedList(locked) {
     const s = site();
     const added = items.filter((item) => item.added && s.placements[item.id]);
     if (!added.length) return '';
-    return `<div class="sm-dock-added"><span class="sm-dock-label">Added by you <small>${added.length}</small></span><div class="sm-tray-pins">
+    return `<div class="sm-dock-added"><span class="sm-dock-label">Pin shortcuts <small>${added.length}</small></span><div class="sm-tray-pins">
       ${added.map((item) => `<span class="sm-added-chip ${item.id === selectedId ? 'on' : ''}" style="--marker:${colourOf(item.category)}">
         <button type="button" data-find-pin="${item.id}" aria-label="Show ${escape(item.name)} on the map"><i>${escape(item.symbol)}</i>${escape(item.name)}</button>
         <button type="button" class="sm-added-x" data-delete-pin="${item.id}" ${locked ? 'disabled' : ''} aria-label="Delete ${escape(item.name)}" title="Delete">×</button></span>`).join('')}
@@ -514,7 +511,6 @@
 
   // "+ Add pin": big choices with a line on what each is for; "Own pin" asks for a name first.
   function addChooser() {
-    const count = site().extraPins?.length || 0;
     const tiles = EXTRA_PIN_TYPES.map((type) => {
       const own = type.kind === 'marker';
       return `<button type="button" class="sm-add-tile ${own && ownOpen ? 'on' : ''}" ${own ? `data-add-own aria-expanded="${ownOpen}"` : `data-add-type="${type.kind}"`} style="--marker:${colourOf(type.category)}">
@@ -528,7 +524,6 @@
         <label for="sm-add-name">Name your pin</label>
         <div><input id="sm-add-name" maxlength="${EXTRA_PIN_NAME_MAX}" placeholder="e.g. VIP area, charging station" autocomplete="off" />
         <button type="submit" class="button primary">Place it on the map</button></div></form>` : ''}
-      ${count ? `<small class="sm-note">${count} added on this map · listed under “Added by you”.</small>` : ''}
     </div>`;
   }
 
@@ -536,7 +531,7 @@
     if (!editable() || busy) return;
     const s = site();
     const name = kind === 'marker' ? view.querySelector('#sm-add-name')?.value || '' : '';
-    const result = addExtraPin(s.extraPins, kind, name);
+    const result = addExtraPin(s.extraPins, kind, name, baseItems());
     if (!result.ok) { mapMessage(result.problem); view.querySelector('#sm-add-name')?.focus(); return; }
     s.extraPins = result.extraPins;
     refreshItems();
@@ -544,7 +539,7 @@
     selectedId = null;
     startPlacing(result.pin.id);
     view.querySelector('.sm-frame')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    mapMessage(`Now click the spot for ${result.pin.name} on the map. Esc cancels.`);
+    mapMessage(`Now click the spot for ${findItem(result.pin.id, items).name} on the map. Esc cancels.`);
   }
 
   function toggleAdd(open = !addOpen, { own = false } = {}) {
@@ -567,13 +562,12 @@
     if (!item || !active.includes(item.category)) { pop.hidden = true; return; }
     const at = s.placements[item.id];
     const vendor = item.kind === 'pitch' ? vendorOnPitch(vendors(), item.id) : null;
-    pop.classList.toggle('added', Boolean(item.added));
-    pop.innerHTML = `<div class="sm-pop-title"><i style="--marker:${colourOf(item.category)}"></i><b>${escape(vendor ? `${item.name}: ${vendor.name}` : item.name)}${item.added ? '<em>Added by you</em>' : ''}</b>
+    pop.innerHTML = `<div class="sm-pop-title"><i style="--marker:${colourOf(item.category)}"></i><b>${escape(vendor ? `${item.name}: ${vendor.name}` : item.name)}</b>
         <button type="button" class="sm-pop-close" data-pop="close" aria-label="Close pin options">×</button></div>
       ${editable() ? `<div class="sm-pop-actions">
         <button type="button" data-pin="move" ${busy ? 'disabled' : ''} title="Pick the pin up, then click its new spot">↔ Move</button>
-        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="${item.added ? 'Delete this added pin' : 'Take the pin off the map'} (Delete key)">✕ ${item.added ? 'Delete' : 'Remove'}</button>
-      </div>${item.added ? `<button type="button" class="sm-pop-another" data-pin-another="${item.kind}" ${busy ? 'disabled' : ''}>+ Add another ${escape(EXTRA_PIN_TYPES.find((type) => type.kind === item.kind)?.label.toLowerCase() || 'pin')}</button>` : ''}<small>or drag the pin to a new spot</small>` : '<small>View only</small>'}`;
+        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="${item.added ? 'Delete this pin' : 'Take the pin off the map'} (Delete key)">✕ ${item.added ? 'Delete' : 'Remove'}</button>
+      </div>${item.added ? `<button type="button" class="sm-pop-another" data-pin-another="${item.kind}" ${busy ? 'disabled' : ''}>+ ${escape(anotherPinLabel(item.kind))}</button>` : ''}<small>or drag the pin to a new spot</small>` : '<small>View only</small>'}`;
     pop.hidden = false;
     positionPopover(at);
   }
@@ -732,7 +726,7 @@
       ${editable() ? `<div class="sm-pin-actions">
         <button type="button" class="button secondary" data-pin="move" ${busy ? 'disabled' : ''}>Move to another spot</button>
         <button type="button" class="button danger" data-pin="remove" ${busy ? 'disabled' : ''}>${item.added ? 'Delete pin' : 'Remove from map'}</button></div>
-      <p class="sm-sub">${item.added ? 'You added this pin. Delete removes it completely; Undo change brings it back.' : 'Tip: drag the pin to move it, or select it and press Delete to remove it.'}</p>` : ''}`;
+      <p class="sm-sub">${item.added ? 'Drag the pin to move it. Delete removes it completely; Undo change brings it back.' : 'Tip: drag the pin to move it, or select it and press Delete to remove it.'}</p>` : ''}`;
   }
 
   function renderScore() {

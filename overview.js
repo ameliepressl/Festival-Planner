@@ -58,6 +58,7 @@ function renderOverview() {
   renderProjectSettings();
   renderOverviewFinance();
   renderOverviewTasks();
+  if (typeof renderOverviewBackdrop === 'function') renderOverviewBackdrop();
 }
 
 function renderOverviewFinance() {

@@ -36,7 +36,8 @@ Several of us are beginners. Explain what you change and why, in plain language.
 
 ## Accounts and data
 
-- Storage: Supabase (Postgres) holds the accounts (`profiles`) and the festival plans
+- Storage: Supabase Auth handles sign-in and passwords; Supabase Postgres holds
+  usernames/profile information (`profiles`) and the festival plans
   (`festivals`; up to 20 per account since `migrations/005`, see `feature-plans/several-festivals.md`). The pages still save in the browser; `account/account.js` copies
   every key that starts with `festival-` to the account. **New saved data must use a key
   that starts with `festival-`**, otherwise it is not saved to the account.

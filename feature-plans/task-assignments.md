@@ -2,6 +2,10 @@
 
 Owner: Amelie · Branch: `feature-task-assignments` (after the Overview design)
 
+**Historical feature plan:** the descriptions below record the first assignment interface,
+including the former Overview team-progress panel. For the current task controls, see
+[project-tasks-improvement.md](project-tasks-improvement.md) and the [README](../README.md).
+
 ## Why
 
 Several people now plan one festival, but every task belongs to nobody: the Gantt's Owner
