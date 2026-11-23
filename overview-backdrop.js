@@ -180,15 +180,20 @@ function drawLand(ctx, scene, t) {
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = colours.shade;
   if (land.kind === 'coast') {
-    ctx.globalAlpha = 0.6; ctx.fillRect(0, horizon, W, H - horizon);
+    // The sea lies at the horizon; in front of it is a beach, so stage, crowd and landmarks stand on land, not in the water.
+    const shore = horizon + H * 0.12;
+    ctx.globalAlpha = 0.6; ctx.fillRect(0, horizon, W, shore - horizon);
     ctx.strokeStyle = colours.sun; ctx.lineWidth = 1.6;
-    for (let i = 0; i < 5; i++) {
-      const y = horizon + 8 + i * H * 0.035, length = 90 + i * 15, shift = (t * (14 + i * 6)) % length;
-      ctx.globalAlpha = 0.5 - i * 0.07;
+    for (let i = 0; i < 4; i++) {
+      const y = horizon + 6 + i * H * 0.025, length = 90 + i * 15, shift = (t * (14 + i * 6)) % length;
+      ctx.globalAlpha = 0.5 - i * 0.08;
       ctx.beginPath(); ctx.moveTo(-length, y);
       for (let x = -length; x <= W + length; x += length / 8) ctx.lineTo(x + shift, y + Math.sin((x / length) * Math.PI * 2) * (2 + i));
       ctx.stroke();
     }
+    ctx.globalAlpha = 0.95; ctx.fillRect(0, shore, W, H - shore); // the beach
+    ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; // foam at the water's edge
+    ctx.beginPath(); ctx.moveTo(0, shore); for (let x = 0; x <= W; x += 20) ctx.lineTo(x, shore + Math.sin(x * 0.05 + t * 1.2) * 1.5); ctx.stroke();
     return;
   }
   if (land.kind === 'city') {
@@ -232,9 +237,9 @@ function drawLandmark(ctx, scene, t, beat) {
   const [laserA, laserB] = colours.lasers;
   // Ground: the sky fades into dark earth down to the crowd, so the landmark stands at ground level.
   ctx.save();
-  const soil = ctx.createLinearGradient(0, scene.horizon, 0, H);
+  const soilTop = scene.horizon + (scene.land.kind === 'coast' ? H * 0.12 : 0), soil = ctx.createLinearGradient(0, soilTop, 0, H);
   soil.addColorStop(0, 'rgba(5,3,10,0)'); soil.addColorStop(0.45, colours.shade); soil.addColorStop(1, '#05030a');
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, scene.horizon, W, H - scene.horizon);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, soilTop, W, H - soilTop);
   ctx.restore();
   if (typeof BACKDROP_LANDMARK_STYLES !== 'undefined' && BACKDROP_LANDMARK_STYLES[m.kind]) { // the 100 more cities
     ctx.save();
