@@ -29,7 +29,9 @@ function emptySeen() {
   return { assigned: [], readOn: null };
 }
 
-function validDate(value) {
+// Not called validDate: in the browser every rule file shares one global scope, and a second
+// validDate would replace the strict one in festival-rules.js (it accepts 30 February).
+function validNoticeDate(value) {
   return typeof value === 'string' && NOTIFICATION_DATE.test(value) && !Number.isNaN(Date.parse(value));
 }
 
@@ -41,12 +43,12 @@ function parseSeen(text) {
   const ids = Array.isArray(saved.assigned) ? saved.assigned : [];
   const assigned = [...new Set(ids.filter((id) => typeof id === 'string' && id.length > 0 && id.length <= NOTIFICATION_ID_MAX))]
     .slice(0, NOTIFICATION_SEEN_MAX);
-  return { assigned, readOn: validDate(saved.readOn) ? saved.readOn : null };
+  return { assigned, readOn: validNoticeDate(saved.readOn) ? saved.readOn : null };
 }
 
 // Whole days from `today` to `end` (negative = overdue), or null without a valid due date.
 function daysUntilDue(end, today) {
-  if (!validDate(end) || !validDate(today)) return null;
+  if (!validNoticeDate(end) || !validNoticeDate(today)) return null;
   return Math.round((Date.parse(end) - Date.parse(today)) / 86400000);
 }
 
@@ -107,7 +109,7 @@ function likelyAssigner(people = [], myUserId) {
 // "Mark all as read": remember my current subtasks and today. Deadlines come back tomorrow.
 function markAllRead({ steps, assignments, people, myUserId, today }) {
   const assigned = myAssignedSteps({ steps, assignments, people, myUserId }).map((step) => step.id).slice(0, NOTIFICATION_SEEN_MAX);
-  return { assigned, readOn: validDate(today) ? today : null };
+  return { assigned, readOn: validNoticeDate(today) ? today : null };
 }
 
 // The counter on the bell: nothing at 0, at most "9+".
