@@ -19,7 +19,7 @@ function buildStageScene(backdrop, W, H) {
 
   // The famous landmark stands to the right of the stage, on the ground of the landscape.
   const ground = H * 0.86; // ground level: the landmark stands among the crowd, whose back row hides its feet
-  const zoneLeft = stage.x + stage.w + 34;
+  const zoneLeft = stage.x + stage.w + stageW * 0.15 + 30; // room for the speakers beside the stage
   const landmark = backdrop.landmark ? { kind: backdrop.landmark, left: zoneLeft, right: W, x: (zoneLeft + W) / 2, ground,
     width: W - zoneLeft, height: H * 0.62,
     sparkles: Array.from({ length: 34 }, () => ({ y: r(0.04, 0.9), side: r(-0.85, 0.85), phase: r(0, 6.3) })),
@@ -409,32 +409,127 @@ function drawLandmark(ctx, scene, t, beat) {
 function drawStage(ctx, scene, beat, pulse) {
   const { stage, colours } = scene;
   const [laserA, laserB] = colours.lasers;
-  const wall = { x: stage.x + stage.w * 0.16, y: stage.top + 12, w: stage.w * 0.68, h: (stage.floor - stage.top) * 0.52 };
+  const sf = stage.floor - stage.top;
+  const wall = { x: stage.x + stage.w * 0.14, y: stage.top + 12, w: stage.w * 0.72, h: sf * 0.62 };
   ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = colours.shade;
-  // Roof, towers, speakers and floor.
+  // Roof, towers and floor.
   ctx.beginPath(); ctx.moveTo(stage.x - 14, stage.top); ctx.lineTo(stage.cx, stage.top - 26); ctx.lineTo(stage.x + stage.w + 14, stage.top); ctx.closePath(); ctx.fill();
   ctx.fillRect(stage.x - 6, stage.top, stage.w + 12, 9);
   ctx.fillRect(stage.x, stage.top, 9, stage.floor - stage.top);
   ctx.fillRect(stage.x + stage.w - 9, stage.top, 9, stage.floor - stage.top);
-  ctx.fillRect(stage.x - 26, stage.floor - 52, 22, 52); ctx.fillRect(stage.x + stage.w + 4, stage.floor - 52, 22, 52);
   ctx.fillRect(stage.x, stage.floor - 14, stage.w, 16);
-  // LED wall with an equalizer that jumps to the beat.
+  // The back wall: a glow behind the DJ and a slowly turning fan of light.
   ctx.fillStyle = '#05030a'; ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-  const bars = 22, gap = 2, barW = (wall.w - gap * (bars + 1)) / bars;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(wall.x, wall.y, wall.w, wall.h); ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < bars; i++) {
-    const level = (0.2 + 0.8 * Math.abs(Math.sin(beat * Math.PI * 0.5 + i * 0.55) * Math.cos(beat * 0.25 + i * 0.21))) * (0.55 + 0.45 * pulse);
-    const h = Math.max(2, (wall.h - 4) * level);
-    ctx.globalAlpha = 0.9; ctx.fillStyle = i % 2 ? laserA : laserB;
-    ctx.fillRect(wall.x + gap + i * (barW + gap), wall.y + wall.h - 2 - h, barW, h);
+  const centreY = stage.floor - 14 - sf * 0.2;
+  const halo = ctx.createRadialGradient(stage.cx, centreY, 0, stage.cx, centreY, wall.w * 0.6);
+  halo.addColorStop(0, laserB); halo.addColorStop(0.55, laserA); halo.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.28 + 0.3 * pulse; ctx.fillStyle = halo; ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 14; i++) {
+    const angle = Math.PI + (i + 0.5) * Math.PI / 14 + Math.sin(beat * 0.08) * 0.12;
+    ctx.globalAlpha = 0.12 + 0.12 * pulse; ctx.strokeStyle = i % 2 ? laserA : laserB;
+    ctx.beginPath(); ctx.moveTo(stage.cx, centreY); ctx.lineTo(stage.cx + Math.cos(angle) * wall.w, centreY + Math.sin(angle) * wall.w); ctx.stroke();
   }
+  ctx.restore();
+  drawSpeakers(ctx, scene, beat, pulse);
+  drawDj(ctx, scene, beat, pulse);
   // Front lights flashing on the beat.
+  ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 6; i++) {
     const x = stage.x + stage.w * (0.12 + i * 0.152), y = stage.top + 14;
     const glow = ctx.createRadialGradient(x, y, 0, x, y, 16);
     glow.addColorStop(0, i % 2 ? laserA : laserB); glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.globalAlpha = 0.25 + 0.75 * pulse; ctx.fillStyle = glow; ctx.fillRect(x - 16, y - 16, 32, 32);
   }
+}
+
+// A DJ behind the decks: head bobbing, one hand scratching, the other on the mixer, and on the
+// first beat of every bar a hand goes up. P is the height of the DJ in pixels.
+function drawDj(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const P = (stage.floor - stage.top) * 0.6, cx = stage.cx, floorY = stage.floor - 14;
+  const tableTop = floorY - 0.42 * P, shoulderY = floorY - 0.78 * P, bob = pulse * 0.02 * P;
+  const headY = floorY - 0.9 * P + bob, hr = 0.075 * P;
+  const bar = beat % 8, lift = bar < 1 ? Math.sin(bar * Math.PI) : 0;
+  const dark = '#06030c';
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  // Body, head and headphones, with a rim of stage light.
+  ctx.shadowColor = laserA; ctx.shadowBlur = 7; ctx.fillStyle = dark; ctx.strokeStyle = dark;
+  ctx.beginPath(); ctx.moveTo(cx - 0.15 * P, shoulderY + bob * 0.5); ctx.quadraticCurveTo(cx, shoulderY - 0.04 * P + bob * 0.5, cx + 0.15 * P, shoulderY + bob * 0.5);
+  ctx.lineTo(cx + 0.11 * P, tableTop + 2); ctx.lineTo(cx - 0.11 * P, tableTop + 2); ctx.closePath(); ctx.fill();
+  ctx.fillRect(cx - 0.03 * P, headY + hr * 0.6, 0.06 * P, 0.07 * P);
+  ctx.beginPath(); ctx.arc(cx, headY, hr, 0, TAU); ctx.fill();
+  ctx.lineWidth = Math.max(1.5, 0.028 * P);
+  ctx.beginPath(); ctx.arc(cx, headY, hr * 1.18, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(cx + side * hr * 1.18, headY + hr * 0.1, hr * 0.38, 0, TAU); ctx.fill(); });
+  ctx.shadowBlur = 0;
+  // The DJ table with a light strip on its front.
+  const tw = 0.95 * P;
+  ctx.fillStyle = '#0b0714'; ctx.fillRect(cx - tw / 2, tableTop, tw, floorY - tableTop);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 0.5 + 0.4 * pulse; ctx.fillStyle = Math.floor(beat) % 2 ? laserA : laserB;
+  ctx.fillRect(cx - tw / 2, tableTop, tw, Math.max(1.5, 0.018 * P));
+  for (let i = 0; i < 7; i++) {
+    ctx.globalAlpha = Math.sin(beat * Math.PI + i * 0.9) > 0 ? 0.85 : 0.25; ctx.fillStyle = i % 2 ? laserA : laserB;
+    ctx.fillRect(cx - tw / 2 + 0.06 * P + i * 0.125 * P, tableTop + 0.08 * P, 0.06 * P, Math.max(1.5, 0.025 * P));
+  }
+  // Two turntables with turning records, and the mixer between them.
+  ctx.globalCompositeOperation = 'source-over';
+  [-1, 1].forEach(side => {
+    const dx = cx + side * 0.27 * P, rx = 0.15 * P, ry = 0.03 * P, angle = beat * 2.4 * side;
+    ctx.globalAlpha = 1; ctx.fillStyle = '#16101f'; ctx.beginPath(); ctx.ellipse(dx, tableTop - 0.012 * P, rx, ry, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = side > 0 ? laserA : laserB; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(dx, tableTop - 0.012 * P); ctx.lineTo(dx + Math.cos(angle) * rx * 0.92, tableTop - 0.012 * P + Math.sin(angle) * ry * 0.92); ctx.stroke();
+  });
+  ctx.globalAlpha = 1; ctx.fillStyle = '#1b1428'; ctx.fillRect(cx - 0.09 * P, tableTop - 0.035 * P, 0.18 * P, 0.035 * P);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) { ctx.globalAlpha = 0.4 + 0.5 * (Math.sin(beat * 2 + i * 1.7) > 0 ? 1 : 0.2); ctx.fillStyle = i % 2 ? laserA : laserB; ctx.fillRect(cx - 0.075 * P + i * 0.04 * P, tableTop - 0.027 * P, Math.max(1.2, 0.015 * P), Math.max(1.2, 0.015 * P)); }
+  // Arms: the left hand scratches, the right one turns knobs and now and then goes up.
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = laserB; ctx.shadowBlur = 5; ctx.strokeStyle = dark; ctx.fillStyle = dark; ctx.lineWidth = Math.max(2, 0.05 * P);
+  const shoulderLY = shoulderY + 0.03 * P + bob * 0.5;
+  const scratch = { x: cx - 0.27 * P + Math.sin(beat * TAU * 2) * 0.05 * P, y: tableTop - 0.03 * P };
+  const knob = { x: cx + 0.06 * P + Math.sin(beat * Math.PI) * 0.02 * P, y: tableTop - 0.045 * P - pulse * 0.015 * P };
+  const up = { x: cx + 0.3 * P, y: headY - 0.12 * P };
+  const hand2 = { x: knob.x + (up.x - knob.x) * lift, y: knob.y + (up.y - knob.y) * lift };
+  [[-1, scratch, 1], [1, hand2, 1 - lift]].forEach(([side, hand, bend]) => {
+    const sx = cx + side * 0.14 * P, ex = (sx + hand.x) / 2 + side * 0.07 * P, ey = (shoulderLY + hand.y) / 2 + 0.04 * P * bend;
+    ctx.beginPath(); ctx.moveTo(sx, shoulderLY); ctx.lineTo(ex, ey); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+    ctx.beginPath(); ctx.arc(hand.x, hand.y, Math.max(1.5, 0.03 * P), 0, TAU); ctx.fill();
+  });
+  ctx.shadowBlur = 0;
+}
+
+// A stack of speakers on each side of the stage; the cones pump and glow on the beat.
+function drawSpeakers(ctx, scene, beat, pulse) {
+  const { stage } = scene, [laserA, laserB] = scene.colours.lasers, TAU = Math.PI * 2;
+  const sw = stage.w * 0.15, total = (stage.floor - stage.top) * 0.62;
+  [[stage.x - sw - 8, 0], [stage.x + stage.w + 8, 1]].forEach(([x, side]) => {
+    let y = stage.floor;
+    [[0.58, 0.36, false], [0.42, 0.22, true]].forEach(([share, wr, small], k) => {
+      const h = total * share; y -= h;
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      ctx.fillStyle = '#0a0612'; ctx.fillRect(x, y, sw, h);
+      ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, sw - 1, h - 1);
+      const colour = (side + k) % 2 ? laserA : laserB;
+      const drawCone = (cx, cy, r) => {
+        const cone = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r);
+        cone.addColorStop(0, '#2c2438'); cone.addColorStop(1, '#0d0816');
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = cone;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.25 + 0.65 * pulse; ctx.strokeStyle = colour; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+        ctx.globalAlpha = 0.45 + 0.45 * pulse; ctx.fillStyle = colour;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.28 * (1 + 0.3 * pulse), 0, TAU); ctx.fill();
+      };
+      const centre = x + sw / 2, pump = 1 + 0.1 * pulse;
+      if (small) { drawCone(centre, y + h * 0.27, sw * 0.1 * (1 + 0.3 * pulse)); drawCone(centre, y + h * 0.7, Math.min(sw * wr, h * 0.26) * pump); }
+      else drawCone(centre, y + h * 0.5, Math.min(sw * wr, h * 0.4) * pump);
+    });
+  });
 }
 
 // Confetti bursts from the stage every 8 beats and falls for about 3 seconds.

@@ -12,7 +12,7 @@ the live demo and shows at a glance what kind of festival it is.
 - [x] A banner above the Overview with an **animated live stage** on a `<canvas>`. It shows:
       - lasers that sweep to the beat and change pattern every 16 beats
       - light cones, haze and an aurora sky with twinkling stars
-      - an LED wall with an equalizer
+      - a DJ at the decks (head bobbing, scratching, a hand up every bar) in front of a glowing back wall, and speaker stacks on both sides whose cones pump to the beat
       - confetti bursts every 8 beats
       - a crowd that bounces to the beat, with raised arms and phone lights
       - moving waves (coast) and flickering windows (city)
