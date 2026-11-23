@@ -716,3 +716,8 @@ respected and missing artists are reported" checked the old hard limit. It is re
 a hard limit and missing artists are reported" (all artists planned at €250 and €0 budget; artists left
 out only for lack of time). Vicky, please review. New: `tests/lineup-suggestion-budget.test.js` (8 tests).
 Validation: 413/413 tests passed.
+
+**Update 23 November (docs):** branch `docs-lineup-suggestions`. README now describes Suggest lineup
+(Vicky, #38) and that its budget works as in manual booking (#40): "At a glance", "Lineup planner" and
+"Current lineup rules". Roadmap: the running order check now notes what Suggest lineup already covers.
+Documentation only; no code or test changed.

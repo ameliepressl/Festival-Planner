@@ -29,7 +29,7 @@ Kira · Amelie · Frederik · Vicky
 
 | Area | What you can do |
 | --- | --- |
-| **Lineup** | Multi-day timetable for 1–12 stages, artist library with real artists, budget warnings, PDF export |
+| **Lineup** | Multi-day timetable for 1–12 stages, artist library with real artists, **automatic lineup suggestions**, budget warnings, PDF export |
 | **Tasks** | Task board and Gantt timeline with suggested dates, assignments and deadlines |
 | **Site map** | Aerial map with facility pins, own map upload, automatic layout with 10 rules, crowd and evacuation estimates |
 | **Vendors** | Food-court pitches, vendor library, **add your own stands** with menu, prices and diet labels, visitor needs (vegan, alcohol-free) |
@@ -122,6 +122,8 @@ direct request (`migrations/006`, applied on 22 November 2026).
 - **Lineup planner** — a multi-day timetable for several stages. Book artists with agreed
   fees and set lengths, mark them tentative or confirmed, add calendar blocks, keep an eye on
   the budget, finalise the plan, print it as a PDF and save or restore a backup.
+  **Suggest lineup** plans the catalogue automatically and shows a preview first (see the
+  rules below).
 - **Artist library** — search and filter real artists, then copy them into this festival's
   editable catalogue. Library fees are fictional planning estimates, not agency quotes.
   Available photos come from Wikimedia Commons, with attribution links; initials work
@@ -140,6 +142,14 @@ direct request (`migrations/006`, applied on 22 November 2026).
   performance contributes its own fee to the budget.
 - A change that creates or increases a budget overrun requires confirmation. The remaining
   budget can be negative, and the app displays that clearly.
+- **Suggest lineup** (orange button above the timetable) spreads the catalogue over days and
+  stages within the opening hours: the chosen headliner closes the last day, no genre plays
+  three times in a row on a stage, and there is a minimum changeover you choose. Confirmed
+  performances and calendar blocks stay; new performances are tentative; nothing changes
+  until you choose **Use this lineup**. The artist budget is no hard limit here either: the
+  preview shows the remaining amount or the overrun, and a suggestion that creates or
+  increases an overrun asks for the same confirmation as a manual booking. Artists are left
+  out only when there is no free slot.
 - There is no required artist count or minimum catalogue size. Finalising checks the
   existing appointments; the lineup then stays read-only until reopened as a draft.
 - Add grey operational blocks and notes, edit or remove appointments, and optionally

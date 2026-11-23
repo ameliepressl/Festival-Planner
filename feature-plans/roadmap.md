@@ -37,7 +37,7 @@ Teacher approval for the JavaScript/Supabase stack remains unconfirmed; see the
 - [ ] **Travel & hotel** — arrival, flight, hotel nights and rooms per artist; costs go into the finances
 - [ ] **Payment plan per artist** — 50 % deposit on contract, 50 % after the show, due dates in the calendar
 - [ ] **Changeover rule** — at least X minutes between acts on the same stage. ✅ `changeover` field
-- [ ] **Running order check** — headliner last, no genre three times in a row, energy curve of the evening
+- [ ] **Running order check** — headliner last, no genre three times in a row, energy curve of the evening. ✅ **Suggest lineup** puts the headliner last and avoids a genre three times in a row (Vicky, #38; budget as in manual booking, #40). Still open: the energy curve, and checking a lineup planned by hand
 
 ## 3. Tickets & marketing (6–0 months before)
 
