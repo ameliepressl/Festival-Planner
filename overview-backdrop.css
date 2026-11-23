@@ -28,13 +28,13 @@
 .overview-backdrop[hidden] { display: none; }
 #overview-backdrop-canvas { display: block; width: 100%; height: 100%; }
 
-/* Poster text over the stage: festival name, then venue · dates · mood. */
+/* Poster text over the stage: festival name, then venue · dates · mood. Hidden for now: the page heading below already shows the name. */
 .overview-backdrop-text {
   position: absolute;
   left: clamp(16px, 3vw, 34px);
   top: clamp(16px, 3vw, 32px);
   max-width: min(46%, 560px);
-  display: flex;
+  display: none; /* hidden for now; use flex to show the poster text again */
   flex-direction: column;
   gap: 10px;
   color: #fff;
