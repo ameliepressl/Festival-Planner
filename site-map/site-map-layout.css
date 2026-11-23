@@ -1,0 +1,57 @@
+/* Site map page layout (feature-plans/clear-site-map-pins.md → "A calmer page").
+   Loaded after design.css, so it decides the order of the page: map first, save bar always in reach,
+   tools in labelled groups, layout check and pin details next to the map. */
+#site-map-view .sm-hero{padding-bottom:14px}
+#site-map-view .sm-hero .hero-copy{max-width:640px;margin-bottom:0}
+
+/* The save bar stays at the top while you work on the map. */
+#site-map-view .sm-save-actions{position:sticky;top:0;z-index:20;background:var(--paper);margin:0 0 14px;padding:10px 0;border-bottom:1px solid var(--line)}
+#site-map-view .sm-save-actions:has(#sm-save:not(:disabled)){background:#fff4ef;border-bottom-color:var(--coral);box-shadow:0 6px 18px rgba(23,39,43,.08);padding-left:12px;padding-right:12px}
+#site-map-view .sm-save-actions:has(#sm-save:not(:disabled)) [role=status]{color:#b44033;font-weight:600}
+
+#site-map-view .sm-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;padding-bottom:18px}
+#site-map-view .sm-main{display:flex;flex-direction:column;gap:10px;min-width:0}
+#site-map-view .sm-main>*,#site-map-view .sm-side>*{grid-column:auto;grid-row:auto;margin:0}
+#site-map-view .sm-side{display:flex;flex-direction:column;gap:12px;position:sticky;top:70px;max-height:calc(100vh - 84px);overflow:auto;overscroll-behavior:contain}
+
+#site-map-view .sm-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#site-map-view #festival-layout-title{margin:0;font:600 22px/1.2 var(--font-display)}
+#site-map-view #festival-layout-title small{font:500 12px var(--font-text);color:var(--muted);margin-left:6px}
+#site-map-view .sm-head #sm-open-settings{font:500 12px var(--font-text);padding:7px 10px;min-height:34px}
+
+#site-map-view .sm-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px;background:var(--white);border:1px solid var(--line)}
+#site-map-view .sm-layout-actions{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+#site-map-view .sm-layout-actions .button{min-height:36px;padding:8px 13px;font-size:12px;white-space:nowrap}
+#site-map-view .sm-tools{display:flex;align-items:center;gap:8px;margin:0;flex-wrap:wrap}
+#site-map-view .sm-cap{font:600 10px var(--font-text);letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+#site-map-view .sm-seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--ink)}
+#site-map-view .sm-seg .sm-tool{border:0;border-right:1px solid var(--line);min-height:32px;padding:6px 9px;font:500 12px var(--font-text);background:var(--white)}
+#site-map-view .sm-seg .sm-tool:last-child{border-right:0}
+#site-map-view .sm-seg .sm-tool:hover:not(.on):not(:disabled){background:var(--paper)}
+#site-map-view .sm-seg .sm-tool.on{background:var(--ink);color:#fff}
+
+#site-map-view .map-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0}
+#site-map-view .map-chips .map-chip{min-height:30px;padding:5px 10px}
+#site-map-view .map-chips .sm-toggle{margin:0 0 0 4px;padding:5px 4px;min-height:30px;display:inline-flex;align-items:center;gap:6px;font:500 12px var(--font-text);color:var(--ink)}
+
+/* Jumping to the map or the dock leaves room for the save bar above. */
+#site-map-view .sm-frame,#site-map-view #sm-tray,#site-map-view .sm-hint{scroll-margin-top:72px}
+
+#site-map-view .sm-more{display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+#site-map-view .sm-size-disclosure>summary small{font:400 12px var(--font-text);color:var(--muted);margin-left:8px}
+#site-map-view .sm-crowd-disclosure{margin:0}
+
+@media(max-width:1100px){
+  #site-map-view .sm-layout{grid-template-columns:minmax(0,1fr)}
+  #site-map-view .sm-side{position:static;max-height:none;overflow:visible}
+}
+@media(max-width:600px){
+  #site-map-view .sm-save-actions{gap:4px 6px;padding-top:6px;padding-bottom:6px}
+  #site-map-view .sm-save-actions [role=status]{flex:1 1 100%;min-width:0;font-size:11px}
+  #site-map-view .sm-save-actions .button{flex:1 1 0;min-width:0;padding:7px 4px;font-size:11px;white-space:nowrap}
+  #site-map-view .sm-bar{padding:8px}
+  #site-map-view .sm-layout-actions{width:100%}
+  #site-map-view .sm-layout-actions .button{flex:1 1 auto}
+  #site-map-view .sm-head{flex-wrap:wrap}
+  #site-map-view .sm-size-disclosure>summary small{display:block;margin:2px 0 0}
+}

@@ -9,13 +9,16 @@
   const view = document.querySelector('#site-map-view');
   const SELECTED_KEY = 'festival-architect-site-map-selected';
   const MODES = {
-    explore: { label: 'Explore', hint: 'Click a pin to see its details · drag to move around · scroll or use + / − to zoom.' },
+    explore: { label: 'Explore', hint: 'Click a pin for its options · drag a pin to move it · drag the map to look around · scroll or + / − to zoom.' },
     move: { label: 'Move pins', hint: 'Drag a pin to a new spot. The layout check updates when you let go.' },
     border: { label: 'Draw fence', hint: 'Click the corners of the festival ground one after another, then press “Done”.' },
     entrance: { label: 'Set gate', hint: 'Click the spot on the fence where the main entrance should be.' },
     paint: { label: 'Mark no-go', hint: 'Drag over water, forest, roads or buildings to mark them as no-go areas.' },
-    erase: { label: 'Erase no-go', hint: 'Drag over red areas to make them usable again.' }
+    erase: { label: 'Erase no-go', hint: 'Drag over red areas to make them usable again.' },
+    // Not a toolbar button: started from "Pins to place" (rules/map-pin-rules.js).
+    place: { label: 'Place pins', hint: 'Click the map to place the pin.' }
   };
+  const TOOLBAR_MODES = Object.entries(MODES).filter(([id]) => id !== 'place');
 
   // Festival size: the expected visitors decide how many toilets, water points and pitches the map needs.
   // A saved lineup decides how many stages the map has (Stage A, B, C, ...).
@@ -28,6 +31,24 @@
   let needs = sizeFor(ground.visitors);
   let items = layoutItems(needs);
   let sites = loadSites();
+  // The pins of the open map: the facilities for the festival size plus the pins the organiser added.
+  const baseItems = () => layoutItems(needs);
+  function refreshItems() {
+    const open = sites.find((entry) => entry.id === currentId);
+    items = [...baseItems(), ...extraPinItems(open?.extraPins)];
+  }
+  // Suggestions plan only the built-in facilities; added pins keep their spots.
+  const addedPlacements = (s) => Object.fromEntries(extraPinItems(s.extraPins).filter((pin) => s.placements[pin.id]).map((pin) => [pin.id, s.placements[pin.id]]));
+  let addOpen = false;   // the "+ Add pin" chooser in the dock
+  let ownOpen = false;   // the name field for "Own pin" inside the chooser
+  let moveFrom = null;   // an added pin being moved: { id, at }; Esc puts it back there
+  // One line under each choice in "+ Add pin", so the organiser knows what the pin is for.
+  const ADD_HINTS = {
+    toilets: 'Counts for toilets near a stage', water: 'Counts for water near a stage',
+    'first-aid': 'Counts for first aid near a stage', bar: 'A drinks bar away from the food court',
+    info: 'Help desk, lost & found', security: 'Extra post, e.g. at a bottleneck',
+    recycling: 'Cups, bottles and bins', marker: 'VIP area, meeting point… you name it'
+  };
   let currentId = read(SELECTED_KEY) || 'demo';
   if (!sites.some((s) => s.id === currentId)) currentId = 'demo';
   let active = MAP_CATEGORIES.map((c) => c.id);
@@ -35,7 +56,11 @@
   let mode = 'explore';
   let showNogo = false;
   let draftBorder = null;
-  let box = null;     // the visible part of the map (zoom and pan)
+  let placing = null; // the pin that the next click on the map places (mode "place")
+  let ghost = null;   // preview under the mouse while placing: { at, ok }
+  let chipDrag = null; // a pin dragged from "Pins to place" onto the map
+  let suppressChipClick = false;
+  let box = null;    // the visible part of the map (zoom and pan)
   let pointer = null; // what the mouse is doing right now
   let busy = false;
   let simulation = null;
@@ -76,7 +101,7 @@
     ({ sites, ground, currentId } = cloneMapDraft(draft.present));
     needs = sizeFor(ground.visitors); items = layoutItems(needs);
     selectedId = null; draftBorder = draft.present.pendingFence ? cloneMapDraft(draft.present.pendingFence) : null;
-    pointer = null; box = null; mode = draftBorder?.length ? 'border' : 'explore';
+    pointer = null; box = null; placing = null; ghost = null; mode = draftBorder?.length ? 'border' : 'explore';
     renderPage();
   }
   function commitChanges() {
@@ -118,7 +143,7 @@
     const map = saved.sites.find(value => value.id === saved.currentId) || saved.sites[0];
     if (!map || !committedMapIds.has(map.id)) return [{ id: `map:${map?.id || 'missing'}:saved`, label: 'Save and assess festival map', ok: false,
       unknown: true, detail: 'The suggested map has not been saved yet. Review the layout and measurements, then choose Save changes on Site map.', section: 'Site map' }];
-    const savedItems = layoutItems(sizeFor(saved.ground.visitors));
+    const savedItems = [...layoutItems(sizeFor(saved.ground.visitors)), ...extraPinItems(map.extraPins)];
     const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors, activeStageIds(savedItems)).checks]
       .map(rule => ({ id: `map:${map.id}:${rule.id}`, label: rule.label, ok: rule.ok, unknown: !!rule.unknown, detail: rule.detail, section: 'Site map' }));
     savedReadinessCache = { snapshot: saved, stageCount, rules };
@@ -143,31 +168,39 @@
   // ---------- the page frame (drawn once per visit or map change) ----------
   function renderPage() {
     closeSimulation();
+    refreshItems();
     const keepSettingsOpen = !!view.querySelector("#sm-settings-dialog")?.open;
     const s = site();
     view.innerHTML = `
       <section class="checklist-hero sm-hero">
         <h1>Site map</h1>
-        <p class="hero-copy">Upload a photo or plan of your ground and the planner places stages, facilities and exits for you. Click a pin to see its details.</p>
+        <p class="hero-copy">Plan where everything stands: <b>Suggest layout</b> places it for you, then drag pins to adjust. The layout check on the right tells you what still needs work.</p>
       </section>
-      <details class="sm-card sm-size-disclosure" open><summary>Festival size</summary><div id="sm-size"></div></details>
       <div class="sm-save-actions" role="group" aria-label="Save map changes">
         <span id="sm-save-status" role="status" aria-live="polite"></span>
         <button type="button" class="button primary" id="sm-save">Save changes</button>
         <button type="button" class="button secondary" id="sm-undo">Undo change</button>
         <button type="button" class="button secondary" id="sm-discard">Discard changes</button>
       </div>
-      <details class="sm-card sm-crowd-disclosure"><summary>Crowd and evacuation estimates</summary><div id="sm-crowd"></div></details>
       <div class="sm-layout">
         <div class="sm-main" role="region" aria-labelledby="festival-layout-title">
-          <h2 id="festival-layout-title">Festival layout</h2>
-          <div class="sm-tools" role="group" aria-label="Map tools">
-            ${Object.entries(MODES).map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
-            <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> Show no-go areas</label>
-            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
+          <div class="sm-head">
+            <h2 id="festival-layout-title">Festival layout <small>${escape(s.name)}</small></h2>
+            <button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">⚙ Map settings</button>
           </div>
-          <div class="map-chips" role="group" aria-label="Show categories">
+          <div class="sm-bar">
+            <div class="sm-layout-actions" role="group" aria-label="Pins">
+              <button type="button" class="button primary" id="sm-suggest">✦ Suggest layout</button>
+              <button type="button" class="button secondary" id="sm-add-pin" aria-controls="sm-tray">+ Add pin</button>
+              <button type="button" class="button secondary sm-clear-button" id="sm-clear-pins" aria-haspopup="dialog" aria-controls="sm-clear-dialog">Clear all pins</button>
+            </div>
+            <div class="sm-tools" role="group" aria-label="Map tools"><span class="sm-cap">Tool</span>
+              <div class="sm-seg">${TOOLBAR_MODES.map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}</div>
+            </div>
+          </div>
+          <div class="map-chips" role="group" aria-label="Show on the map"><span class="sm-cap">Show</span>
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
+            <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> No-go areas</label>
           </div>
           <div class="sm-frame mode-${mode}">
             <details class="sm-simulation" id="sm-simulation"><summary>Visitor simulation</summary><div class="sm-sim-body"></div></details>
@@ -180,20 +213,27 @@
               <canvas id="sm-visitors-canvas" hidden aria-hidden="true"></canvas>
               <div class="sm-zoom"><button type="button" data-zoom="in" aria-label="Zoom in">+</button><button type="button" data-zoom="out" aria-label="Zoom out">−</button><button type="button" data-zoom="reset" aria-label="Show whole map">⤢</button></div>
               <div class="sm-scale" id="sm-scale"></div>
+              <div class="sm-pop" id="sm-pop" role="group" aria-label="Pin options" hidden></div>
             </div>
+            <section class="sm-dock" id="sm-tray" aria-labelledby="sm-tray-title" hidden></section>
           </div>
-          <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </div>
         <aside class="sm-side">
           <section class="sm-card" id="sm-details" aria-live="polite"></section>
+          <section class="sm-card" id="sm-score" aria-label="Layout check"></section>
         </aside>
+      </div>
+      <div class="sm-more">
+        <details class="sm-card sm-size-disclosure" open><summary>Festival size <small>how many toilets, water points and pitches the map needs</small></summary><div id="sm-size"></div></details>
+        <details class="sm-card sm-crowd-disclosure"><summary>Crowd and evacuation estimates</summary><div id="sm-crowd"></div></details>
       </div>
       <dialog id="sm-settings-dialog" aria-labelledby="sm-settings-title">
         <header class="sm-dialog-heading"><h2 id="sm-settings-title">Map settings</h2><button type="button" class="button secondary" id="sm-close-settings" aria-label="Close map settings">×</button></header>
         <label class="sm-select">MAP<select id="sm-select">${sites.map((m) => `<option value="${escape(m.id)}" ${m.id === currentId ? 'selected' : ''}>${escape(m.name)}</option>`).join('')}</select></label>
         <div id="sm-settings"></div>
         <p class="field-help">Changes remain a draft until you choose Save changes above the map.</p><p id="sm-settings-message" role="status" aria-live="polite"></p>
-      </dialog>`;
+      </dialog>
+      <dialog id="sm-clear-dialog" class="confirm-dialog sm-clear-dialog" aria-labelledby="sm-clear-title"><form method="dialog"></form></dialog>`;
     box = box && box.site === currentId ? box : { site: currentId, x: 0, y: 0, w: s.width, h: s.height };
     drawScene();
     drawAll();
@@ -207,7 +247,7 @@
     renderCrowd();
     renderDraftActions();
     if (!editable()) {
-      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
+      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-add-pin, #sm-clear-pins, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
     }
     const playbackPanel = view.querySelector('#sm-simulation');
     playbackPanel.ontoggle = () => {
@@ -224,7 +264,7 @@
     bindMap();
   }
 
-  function drawAll() { applyBox(); drawNogo(); drawObjects(); drawEdit(); renderHint(); renderDetails(); renderScore(); renderCrowd(); }
+  function drawAll() { applyBox(); drawNogo(); drawObjects(); drawEdit(); renderHint(); renderDetails(); renderScore(); renderCrowd(); renderTray(); }
 
   // ---------- drawing the layers ----------
   function drawScene() { view.querySelector('#sm-scene').innerHTML = MapDrawing.scene(site()); }
@@ -237,6 +277,7 @@
     const s = site();
     view.querySelector('#sm-svg').setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`);
     simulation?.paint();
+    positionPopover();
     // A scale bar of a round number of metres, about a fifth of the visible width.
     const metres = box.w * metresPerUnit(s) / 5;
     const nice = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000].find((n) => n >= metres) || 5000;
@@ -256,6 +297,11 @@
     };
   }
 
+  // A small "+" on pins the organiser added, so they stand out from the planned facilities.
+  const addedBadge = (r) => `<g class="sm-added-badge" pointer-events="none" transform="translate(${r * 0.78} ${-r * 2.85})">
+      <circle r="${r * 0.42}" fill="#ff684c" stroke="#fff" stroke-width="${r * 0.1}" />
+      <text dy="0.36em" text-anchor="middle" font-size="${r * 0.62}" font-family="Archivo, sans-serif" font-weight="800" fill="#fff">+</text></g>`;
+
   function drawObjects() {
     const s = site();
     const onPitches = vendors();
@@ -273,8 +319,9 @@
       const name = vendor ? `${item.name}: ${vendor.name}` : item.name;
       return `<g class="fa-item" data-id="${item.id}" transform="translate(${at[0]} ${at[1]})" tabindex="0" role="button" aria-label="${escape(name)}">
         ${MapDrawing.object(item, u, angle(item, at), vendor)}
-        ${MapDrawing.pin(item, r, colourOf(item.category), label, item.id === selectedId)}</g>`;
+        ${MapDrawing.pin(item, r, colourOf(item.category), label, item.id === selectedId)}${item.added ? addedBadge(r) : ''}</g>`;
     }).join('');
+    renderPopover();
   }
 
   function drawEdit() {
@@ -288,11 +335,359 @@
       out += points.map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="${r * 1.4}" fill="#ff684c" stroke="#fff" stroke-width="${r * 0.4}" />`).join('');
     }
     if (mode === 'entrance' && s.entrance) out += `<circle cx="${s.entrance[0]}" cy="${s.entrance[1]}" r="${r * 3}" fill="none" stroke="#ff684c" stroke-width="${r * 0.6}" />`;
+    // While placing: a see-through pin follows the mouse; red with a cross where it cannot stand.
+    const item = mode === 'place' && placing && ghost ? findItem(placing, items) : null;
+    if (item) {
+      const pinSize = box.w / 58;
+      out += `<g class="sm-ghost ${ghost.ok ? 'ok' : 'blocked'}" transform="translate(${ghost.at[0]} ${ghost.at[1]})" pointer-events="none">
+        <circle r="${pinSize * 0.5}" fill="none" stroke="#fff" stroke-width="${pinSize * 0.12}" stroke-dasharray="${pinSize * 0.3} ${pinSize * 0.2}" />
+        ${MapDrawing.pin(item, pinSize, ghost.ok ? colourOf(item.category) : '#c14b3c', ghost.ok ? item.symbol : '✕', false)}</g>`;
+    }
     layer.innerHTML = out;
+  }
+
+  // ---------- "Clear all pins" and placing them again (rules/map-pin-rules.js) ----------
+  function showCategory(categoryId) {
+    if (active.includes(categoryId)) return;
+    active = [...active, categoryId];
+    const chip = view.querySelector(`[data-category="${categoryId}"]`);
+    chip?.classList.add('on'); chip?.setAttribute('aria-pressed', 'true');
+  }
+
+  // Arms one pin: the next click on the map places it.
+  function startPlacing(id) {
+    const item = findItem(id, items);
+    if (!item || site().placements[id] || !editable() || busy) return;
+    if (draftBorder?.length) { mapMessage('Finish the fence with Done, or cancel drawing it, before placing pins.'); return; }
+    if (moveFrom && moveFrom.id !== id) putBackMoved();
+    showCategory(item.category);
+    if (mode !== 'place') setMode('place');
+    placing = id; ghost = null;
+    drawEdit(); renderHint(); renderTray();
+  }
+
+  // One pin off the map (Remove from map, Delete key); with pickUp it is ready to be placed again.
+  function removePin(id, { pickUp = false } = {}) {
+    const s = site();
+    const item = findItem(id, items);
+    if (!item || !s.placements[id] || !editable() || busy) return;
+    if (draftBorder?.length) { mapMessage('Finish the fence with Done, or cancel drawing it, before changing pins.'); return; }
+    if (item.added && pickUp) moveFrom = { id, at: s.placements[id] };
+    s.placements = withoutPin(s.placements, id);
+    if (selectedId === id) selectedId = null;
+    if (item.added && !pickUp) {
+      s.extraPins = withoutExtraPin(s.extraPins, id);
+      refreshItems(); save(); drawAll();
+      mapMessage(`${item.name} deleted from the map. Undo change brings it back.`);
+      return;
+    }
+    save();
+    drawAll();
+    if (pickUp) {
+      startPlacing(id);
+      mapMessage(item.added ? `Click the new spot for ${item.name}. Esc puts it back where it was.`
+        : `Click the new spot for ${item.name}. Esc leaves it under “Pins to place”.`);
+    } else {
+      mapMessage(`${item.name} taken off the map. It waits under the map in “Pins to place”; Undo change puts it back.`);
+      view.querySelector(`#sm-tray [data-place="${id}"]`)?.focus({ preventScroll: true });
+    }
+  }
+
+  // Moving an added pin was cancelled: it goes back to where it stood.
+  function putBackMoved() {
+    const s = site();
+    const from = moveFrom;
+    moveFrom = null;
+    if (!from || !s || s.placements[from.id] || !s.extraPins?.some((pin) => pin.id === from.id)) return;
+    s.placements = { ...s.placements, [from.id]: from.at };
+    save();
+    drawAll();
+  }
+
+  // An added pin whose placing was cancelled is dropped again.
+  function dropUnplacedAdded() {
+    const s = site();
+    if (!s?.extraPins?.length) return;
+    const kept = placedExtraPins(s.extraPins, s.placements);
+    if (kept.length === s.extraPins.length) return;
+    s.extraPins = kept;
+    refreshItems(); save();
+  }
+
+  function stopPlacing() {
+    placing = null; ghost = null;
+    if (mode === 'place') setMode('explore'); else { drawEdit(); renderTray(); }
+  }
+
+  function placeAt(point) {
+    const s = site();
+    const item = findItem(placing, items);
+    const spot = pinSpot(s, item, point);
+    if (!spot.ok) { mapMessage(spot.problem); return; }
+    s.placements = { ...s.placements, [item.id]: spot.at };
+    if (item.id === 'entrance') s.entrance = spot.at;
+    if (moveFrom?.id === item.id) moveFrom = null;
+    save();
+    // After an added pin, placing ends; after a built-in one, the next missing pin is ready.
+    const next = item.added ? null : nextPinToPlace(items.filter((entry) => !entry.added), s.placements, item.id);
+    placing = next?.id || null; ghost = null;
+    if (next) showCategory(next.category);
+    selectedId = item.id;
+    drawAll();
+    if (!next) {
+      setMode('explore');
+      if (item.added) mapMessage(`${item.name} is on the map. Drag it to fine-tune, or add another from its menu; Save changes keeps it.`);
+      else celebrate();
+    }
+  }
+
+  // The last pin is on the map: say how good the new layout is.
+  function celebrate() {
+    const s = site();
+    const score = layoutScore(checkLayout(s, s.placements, items));
+    view.querySelector('.sm-ring')?.classList.add('sm-ring-done');
+    mapMessage(score === 100 ? `All ${items.length} pins placed, and every layout rule is met. Choose Save changes to keep it.`
+      : `All ${items.length} pins placed. Layout check: ${score}%. Click a red rule to see what to move, then Save changes.`);
+  }
+
+  function fillMissing() {
+    const s = site();
+    const result = suggestLayout(s, baseItems());
+    if (result.problem) { mapMessage(result.problem); return; }
+    const before = items.filter((item) => s.placements[item.id]).length;
+    s.placements = fillMissingPins(s.placements, result.placements);
+    placing = null; ghost = null;
+    save();
+    if (mode === 'place') setMode('explore');
+    drawAll();
+    const added = items.filter((item) => s.placements[item.id]).length - before;
+    const score = layoutScore(checkLayout(s, s.placements, items));
+    mapMessage(`${added} ${added === 1 ? 'pin' : 'pins'} added; your ${before} placed ${before === 1 ? 'pin stays' : 'pins stay'} where you put them. Layout check: ${score}%.`);
+  }
+
+  // The dock under the map: every pin still waiting for a place, by category, with progress.
+  // Pins are dragged from here onto the map (or clicked, then placed with a click), and dragged
+  // back here to take them off the map.
+  function renderTray() {
+    const tray = view.querySelector('#sm-tray');
+    if (!tray) return;
+    const s = site();
+    const groups = pinChoices(items, s.placements);
+    tray.hidden = lineupProblem();
+    if (tray.hidden) { tray.innerHTML = ''; return; }
+    const { total, placed } = pinCounts(items, s.placements);
+    const locked = !editable() || busy;
+    const current = placing ? findItem(placing, items) : null;
+    const head = `<div class="sm-dock-head">
+        <h2 id="sm-tray-title">Pins to place</h2>
+        <span class="sm-dock-count">${placed} of ${total} on the map</span>
+        <div class="sm-tray-progress ${groups.length ? '' : 'done'}" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
+        ${baseItems().some((entry) => !s.placements[entry.id]) ? `<button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''} title="Keeps every pin you placed and plans only the missing ones">Fill the rest for me</button>` : ''}
+        <button type="button" class="button secondary sm-add-toggle ${addOpen ? 'on' : ''}" data-tray="add" aria-expanded="${addOpen}" ${locked ? 'disabled' : ''}>+ Add pin</button>
+      </div>
+      ${addOpen && !locked ? addChooser() : ''}`;
+    const drop = '<div class="sm-dock-drop" aria-hidden="true">Drop here to take the pin off the map</div>';
+    if (!groups.length) {
+      tray.innerHTML = `${head}<p class="sm-dock-empty"><b>✓ Every facility is on the map.</b> Drag a pin to move it. To take one off, drag it here or click it and choose <b>Remove</b>.</p>${addedList(locked)}${drop}`;
+      return;
+    }
+    tray.innerHTML = `${head}
+      <p class="sm-dock-help">${current ? `Placing <b>${escape(current.name)}</b>: click its spot on the map${current.onFence ? ' (it snaps to the fence)' : ''}.`
+        : '<b>Drag a pin onto the map</b>, or click it and then click the map.'}</p>
+      <div class="sm-dock-groups">${groups.map((group) => `<div class="sm-tray-group"><span class="sm-dock-label">${escape(group.title)} <small>${group.count}</small></span><div class="sm-tray-pins">
+        ${group.choices.map((choice) => { const on = choice.ids.includes(placing); return `<button type="button" class="sm-tray-pin ${on ? 'on' : ''}" data-place="${choice.id}" aria-pressed="${on}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} aria-label="Place ${escape(choice.label)}${choice.count > 1 ? `, ${choice.count} left` : ''}">
+          <i>${escape(choice.symbol)}</i>${escape(choice.label)}${choice.count > 1 ? `<b>×${choice.count}</b>` : ''}</button>`; }).join('')}</div></div>`).join('')}</div>
+      ${addedList(locked)}${drop}`;
+  }
+
+  // "Added by you": every added pin on the map; click to find it, × to delete it.
+  function addedList(locked) {
+    const s = site();
+    const added = items.filter((item) => item.added && s.placements[item.id]);
+    if (!added.length) return '';
+    return `<div class="sm-dock-added"><span class="sm-dock-label">Added by you <small>${added.length}</small></span><div class="sm-tray-pins">
+      ${added.map((item) => `<span class="sm-added-chip ${item.id === selectedId ? 'on' : ''}" style="--marker:${colourOf(item.category)}">
+        <button type="button" data-find-pin="${item.id}" aria-label="Show ${escape(item.name)} on the map"><i>${escape(item.symbol)}</i>${escape(item.name)}</button>
+        <button type="button" class="sm-added-x" data-delete-pin="${item.id}" ${locked ? 'disabled' : ''} aria-label="Delete ${escape(item.name)}" title="Delete">×</button></span>`).join('')}
+    </div></div>`;
+  }
+
+  // "+ Add pin": big choices with a line on what each is for; "Own pin" asks for a name first.
+  function addChooser() {
+    const count = site().extraPins?.length || 0;
+    const tiles = EXTRA_PIN_TYPES.map((type) => {
+      const own = type.kind === 'marker';
+      return `<button type="button" class="sm-add-tile ${own && ownOpen ? 'on' : ''}" ${own ? `data-add-own aria-expanded="${ownOpen}"` : `data-add-type="${type.kind}"`} style="--marker:${colourOf(type.category)}">
+        <i>${escape(type.symbol)}</i><span><b>${escape(type.label)}</b><small>${escape(ADD_HINTS[type.kind] || '')}</small></span></button>`;
+    }).join('');
+    return `<div class="sm-add" role="group" aria-labelledby="sm-add-title">
+      <div class="sm-add-head"><div><b id="sm-add-title">What do you want to add?</b><span>Pick one, then click its spot on the map.</span></div>
+        <button type="button" class="sm-pop-close" data-tray="add" aria-label="Close “Add a pin”">×</button></div>
+      <div class="sm-add-grid">${tiles}</div>
+      ${ownOpen ? `<form class="sm-add-own" novalidate>
+        <label for="sm-add-name">Name your pin</label>
+        <div><input id="sm-add-name" maxlength="${EXTRA_PIN_NAME_MAX}" placeholder="e.g. VIP area, charging station" autocomplete="off" />
+        <button type="submit" class="button primary">Place it on the map</button></div></form>` : ''}
+      ${count ? `<small class="sm-note">${count} added on this map · listed under “Added by you”.</small>` : ''}
+    </div>`;
+  }
+
+  function addPin(kind) {
+    if (!editable() || busy) return;
+    const s = site();
+    const name = kind === 'marker' ? view.querySelector('#sm-add-name')?.value || '' : '';
+    const result = addExtraPin(s.extraPins, kind, name);
+    if (!result.ok) { mapMessage(result.problem); view.querySelector('#sm-add-name')?.focus(); return; }
+    s.extraPins = result.extraPins;
+    refreshItems();
+    addOpen = false; ownOpen = false;
+    selectedId = null;
+    startPlacing(result.pin.id);
+    view.querySelector('.sm-frame')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    mapMessage(`Now click the spot for ${result.pin.name} on the map. Esc cancels.`);
+  }
+
+  function toggleAdd(open = !addOpen, { own = false } = {}) {
+    addOpen = open;
+    ownOpen = open && own;
+    if (open && mode === 'place') stopPlacing();
+    renderTray();
+    if (addOpen) {
+      view.querySelector('#sm-tray')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      (view.querySelector('#sm-add-name') || view.querySelector('.sm-add-tile'))?.focus({ preventScroll: true });
+    }
+  }
+
+  // The small menu next to the selected pin, right on the map.
+  function renderPopover() {
+    const pop = view.querySelector('#sm-pop');
+    if (!pop) return;
+    const s = site();
+    const item = selectedId && s.placements[selectedId] && mode !== 'place' && !pointer?.drag ? findItem(selectedId, items) : null;
+    if (!item || !active.includes(item.category)) { pop.hidden = true; return; }
+    const at = s.placements[item.id];
+    const vendor = item.kind === 'pitch' ? vendorOnPitch(vendors(), item.id) : null;
+    pop.classList.toggle('added', Boolean(item.added));
+    pop.innerHTML = `<div class="sm-pop-title"><i style="--marker:${colourOf(item.category)}"></i><b>${escape(vendor ? `${item.name}: ${vendor.name}` : item.name)}${item.added ? '<em>Added by you</em>' : ''}</b>
+        <button type="button" class="sm-pop-close" data-pop="close" aria-label="Close pin options">×</button></div>
+      ${editable() ? `<div class="sm-pop-actions">
+        <button type="button" data-pin="move" ${busy ? 'disabled' : ''} title="Pick the pin up, then click its new spot">↔ Move</button>
+        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="${item.added ? 'Delete this added pin' : 'Take the pin off the map'} (Delete key)">✕ ${item.added ? 'Delete' : 'Remove'}</button>
+      </div>${item.added ? `<button type="button" class="sm-pop-another" data-pin-another="${item.kind}" ${busy ? 'disabled' : ''}>+ Add another ${escape(EXTRA_PIN_TYPES.find((type) => type.kind === item.kind)?.label.toLowerCase() || 'pin')}</button>` : ''}<small>or drag the pin to a new spot</small>` : '<small>View only</small>'}`;
+    pop.hidden = false;
+    positionPopover(at);
+  }
+
+  function positionPopover(at = site().placements[selectedId]) {
+    const pop = view.querySelector('#sm-pop');
+    const svg = view.querySelector('#sm-svg');
+    if (!pop || pop.hidden || !at || !svg?.getScreenCTM) return;
+    const ctm = svg.getScreenCTM();
+    const frame = view.querySelector('.sm-map-viewport').getBoundingClientRect();
+    if (!ctm) return;
+    const pinTop = at[1] - (box.w / 58) * 2.6;  // the pin is drawn above its point
+    const x = at[0] * ctm.a + ctm.e - frame.left;
+    let y = pinTop * ctm.d + ctm.f - frame.top - 12;   // a gap, so the menu never covers the pin itself
+    const below = y < pop.offsetHeight + 12;
+    if (below) y = at[1] * ctm.d + ctm.f - frame.top + 14;
+    const inside = x > 0 && x < frame.width && y > -20 && y < frame.height + 20;
+    pop.classList.toggle('below', below);
+    pop.style.visibility = inside ? '' : 'hidden';
+    // Keep the whole menu inside the map; the little arrow still points at the pin.
+    const half = pop.offsetWidth / 2;
+    const left = Math.min(frame.width - half - 6, Math.max(half + 6, x));
+    pop.style.left = `${left}px`;
+    pop.style.top = `${y}px`;
+    pop.style.setProperty('--arrow', `${Math.min(half - 10, Math.max(10 - half, x - left))}px`);
+  }
+
+  function deselect() {
+    if (!selectedId) return;
+    selectedId = null;
+    drawObjects(); renderDetails();
+  }
+
+  // Screen point → map point, or null when the point is not over the map.
+  function mapPointAt(clientX, clientY) {
+    const svg = view.querySelector('#sm-svg');
+    const rect = svg?.getBoundingClientRect();
+    if (!rect || clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
+    const point = svg.createSVGPoint();
+    point.x = clientX; point.y = clientY;
+    const p = point.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.round(p.x), Math.round(p.y)];
+  }
+
+  function overDock(clientX, clientY) {
+    const rect = view.querySelector('#sm-tray')?.getBoundingClientRect();
+    return Boolean(rect) && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  }
+
+  // The confirmation for "Clear all pins": what goes, what stays, and that it can be undone.
+  function openClearDialog() {
+    const s = site();
+    const dialog = view.querySelector('#sm-clear-dialog');
+    const hasGate = Boolean(s.placements.entrance);
+    // "Keep the main entrance" starts ticked, so the first count already leaves the gate out.
+    const counts = pinCounts(items, s.placements, { keepGate: hasGate });
+    if (!counts.toRemove) { mapMessage('There are no pins to clear on this map. Pick one under “Pins to place”.'); return; }
+    const byCategory = MAP_CATEGORIES.map((category) => ({ ...category,
+      count: items.filter((item) => item.category === category.id && item.id !== 'entrance' && s.placements[item.id]).length })).filter((category) => category.count);
+    dialog.querySelector('form').innerHTML = `
+      <p class="eyebrow">Site map · ${escape(s.name)}</p>
+      <h2 id="sm-clear-title">Start the layout from scratch?</h2>
+      <p>All <b id="sm-clear-count">${counts.toRemove}</b> pins are taken off the map so you can place every facility yourself.</p>
+      <ul class="sm-clear-chips">${byCategory.map((category) => `<li style="--marker:${category.colour}"><i></i>${category.count} ${escape(category.title)}</li>`).join('')}</ul>
+      ${hasGate ? '<label class="sm-clear-keep"><input type="checkbox" id="sm-clear-keep-gate" checked /> <span>Keep the main entrance where it is<small>Everything else is planned around the gate.</small></span></label>' : ''}
+      ${s.extraPins?.length ? `<p class="sm-clear-safe">The ${s.extraPins.length} ${s.extraPins.length === 1 ? 'pin you added is' : 'pins you added are'} deleted.</p>` : ''}
+      <div class="sm-clear-stays"><b>Stays as it is:</b> the map, the fence, no-go areas, the festival size and crowd measurements.</div>
+      <p class="sm-clear-safe">Nothing is saved yet. <b>Undo change</b> brings the pins back right away, <b>Discard changes</b> returns to your saved map.</p>
+      <div class="dialog-actions"><button class="button secondary" value="cancel">Keep my pins</button><button class="button danger" value="clear" id="sm-clear-confirm">Clear ${counts.toRemove} pins</button></div>`;
+    const keep = dialog.querySelector('#sm-clear-keep-gate');
+    keep?.addEventListener('change', () => {
+      const n = pinCounts(items, s.placements, { keepGate: keep.checked }).toRemove;
+      dialog.querySelector('#sm-clear-count').textContent = n;
+      dialog.querySelector('#sm-clear-confirm').textContent = `Clear ${n} pins`;
+    });
+    dialog.returnValue = '';
+    dialog.onclose = () => {
+      if (dialog.returnValue === 'clear') clearPins({ keepGate: Boolean(keep?.checked) });
+      else view.querySelector('#sm-clear-pins')?.focus();
+    };
+    dialog.showModal();
+    dialog.querySelector('[value="cancel"]').focus();
+  }
+
+  function clearPins({ keepGate }) {
+    if (!editable() || busy) return;
+    const s = site();
+    const removed = pinCounts(items, s.placements, { keepGate }).toRemove;
+    s.placements = clearedPlacements(s.placements, { keepGate });
+    if (s.extraPins?.length) s.extraPins = [];   // added pins are deleted, not kept waiting
+    refreshItems();
+    selectedId = null;
+    save();
+    const first = nextPinToPlace(items, s.placements);
+    placing = null;
+    drawAll();
+    if (first) startPlacing(first.id);
+    mapMessage(`${removed} pins cleared. Click the map to place ${first ? first.name : 'the first pin'}; Undo change brings them all back.`);
   }
 
   function renderHint() {
     const hint = view.querySelector('#sm-hint');
+    if (mode === 'place') {
+      const item = placing ? findItem(placing, items) : null;
+      const left = pinsToPlace(items, site().placements).reduce((sum, group) => sum + group.items.length, 0);
+      if (item?.added) {
+        hint.innerHTML = `<span>${moveFrom ? 'Click the new spot for' : 'Click the map to place'} <b>${escape(item.name)}</b> · Esc ${moveFrom ? 'puts it back' : 'cancels'}</span><button type="button" class="button secondary" data-tray="stop">Cancel</button>`;
+        return;
+      }
+      hint.innerHTML = item
+        ? `<span>Click the map to place <b>${escape(item.name)}</b>${item.onFence ? ' (snaps to the fence)' : ''} · ${left} left · Esc to stop</span><button type="button" class="button secondary" data-tray="skip">Skip</button> <button type="button" class="button secondary" data-tray="stop">Done placing</button>`
+        : '<span>Pick a pin under “Pins to place”.</span>';
+      return;
+    }
     const extra = mode === 'border' || draftBorder?.length
       ? ` <button type="button" class="button primary" data-border="done" ${(draftBorder || []).length < 3 ? 'disabled' : ''}>Done (${(draftBorder || []).length} corners)</button> <button type="button" class="button secondary" data-border="cancel">Cancel</button>`
       : '';
@@ -334,7 +729,10 @@
       </dl>
       ${nearby ? `<p class="sm-sub">Nearest</p><ul class="sm-nearby">${nearby}</ul>` : ''}
       ${rules.length ? `<p class="sm-sub">Layout rules</p><ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>` : ''}
-      <p class="sm-sub">${mode === 'move' ? 'Drag the pin to move it.' : 'Switch to “Move pins” to move it.'}</p>`;
+      ${editable() ? `<div class="sm-pin-actions">
+        <button type="button" class="button secondary" data-pin="move" ${busy ? 'disabled' : ''}>Move to another spot</button>
+        <button type="button" class="button danger" data-pin="remove" ${busy ? 'disabled' : ''}>${item.added ? 'Delete pin' : 'Remove from map'}</button></div>
+      <p class="sm-sub">${item.added ? 'You added this pin. Delete removes it completely; Undo change brings it back.' : 'Tip: drag the pin to move it, or select it and press Delete to remove it.'}</p>` : ''}`;
   }
 
   function renderScore() {
@@ -351,9 +749,11 @@
         <div class="sm-ring" style="--score:${score}"><span>${score}<small>%</small></span></div>
         <div><p class="sm-score-label">Layout check</p><strong>${passed} of ${rules.length} rules met</strong><small>${score === 100 ? 'This layout is ready to work with.' : 'Click a rule to see what to fix.'}</small></div>
       </div>
-      ${rules[0].ok ? '' : `<div class="sm-missing"><span>${items.filter((i) => !s.placements[i.id]).length} facilities for ${needs.visitors.toLocaleString('en-GB')} visitors still need a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
+      ${rules[0].ok ? '' : `<div class="sm-missing"><span>${missingText(items.filter((i) => !s.placements[i.id]).length)} for ${needs.visitors.toLocaleString('en-GB')} visitors still ${items.filter((i) => !s.placements[i.id]).length === 1 ? 'needs' : 'need'} a place.</span><button type="button" class="button primary" data-action="plan-missing">Plan them</button></div>`}
       <ul class="sm-rules">${rules.map((rule) => `<li class="${rule.ok ? 'ok' : 'problem'}" data-rule="${rule.id}" tabindex="0"><b>${rule.ok ? '✓' : '✕'}</b><span>${rule.label}<small>${escape(rule.detail)}</small></span></li>`).join('')}</ul>`;
   }
+
+  const missingText = (count) => `${count} ${count === 1 ? 'facility' : 'facilities'}`;
 
   function renderSettings() {
     const s = site();
@@ -432,7 +832,7 @@
     if (!validVisitors(value)) { mapMessage(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
     ground = { visitors: Number(value) };
     needs = sizeFor(ground.visitors);
-    items = layoutItems(needs);
+    refreshItems();
     save();
     if (selectedId && !findItem(selectedId, items)) selectedId = null;
     renderSize(); drawAll(); renderCrowd();
@@ -443,9 +843,9 @@
   // ---------- actions ----------
   function suggest() {
     const s = site();
-    const result = suggestLayout(s, items);
+    const result = suggestLayout(s, baseItems());
     if (result.problem) { mapMessage(result.problem); return; }
-    s.placements = result.placements;
+    s.placements = { ...result.placements, ...addedPlacements(s) };
     save();
     drawAll();
     const score = layoutScore(checkLayout(s, s.placements, items));
@@ -458,7 +858,7 @@
       view.querySelector('#sm-select').value = currentId;
       renderSettings(); return false;
     }
-    currentId = id; selectedId = null; draftBorder = null; box = null; mode = 'explore';
+    currentId = id; selectedId = null; draftBorder = null; box = null; placing = null; ghost = null; mode = 'explore';
     // Choosing the festival's active map is saved deliberately too. Overview keeps
     // using the previous committed map until Save changes is chosen.
     if (!skipNavigationCheck && editable()) save();
@@ -469,10 +869,11 @@
   function setMode(next) {
     closeSimulation();
     mode = next;
+    if (mode !== 'place') { placing = null; ghost = null; putBackMoved(); dropUnplacedAdded(); }
     if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
     view.querySelectorAll('[data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-pressed', b.dataset.mode === mode); });
-    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions();
+    drawNogo(); drawEdit(); renderHint(); renderDetails(); renderDraftActions(); renderTray(); renderPopover();
   }
 
   function select(id) {
@@ -514,7 +915,7 @@
         entrance: null, grid: emptyGrid(width, height), placements: {}
       };
       created.grid = await detectWater(created);
-      created.placements = suggestLayout(created, items).placements;
+      created.placements = suggestLayout(created, baseItems()).placements;
       sites.push(created);
       switchMap(created.id, true); save();
       mapMessage('Map uploaded and a first layout suggested. Set the real width, the fence and the gate, then suggest again.');
@@ -583,7 +984,7 @@
       const s = site();
       const p = toMap(event);
       const itemEl = event.target.closest('.fa-item');
-      pointer = { start: [event.clientX, event.clientY], startBox: { ...box }, moved: false, itemId: itemEl?.dataset.id || null, el: itemEl };
+      pointer = { start: [event.clientX, event.clientY], startBox: { ...box }, moved: false, itemId: itemEl?.dataset.id || null, el: itemEl, at: p };
       svg.setPointerCapture(event.pointerId);
       if ((!editable() || busy) && mode !== 'explore') { pointer = null; return; }
       if (mode === 'border') { draftBorder = [...(draftBorder || []), p]; save(); drawEdit(); renderHint(); renderDraftActions(); pointer = null; return; }
@@ -595,16 +996,44 @@
         pointer = null; return;
       }
       if (mode === 'paint' || mode === 'erase') { pointer.paint = mode === 'paint' ? '1' : '0'; paintAt(p, pointer.paint); return; }
-      if (mode === 'move' && pointer.itemId) { pointer.drag = true; select(pointer.itemId); pointer.el = view.querySelector(`.fa-item[data-id="${pointer.itemId}"]`); }
+      // A pin can be dragged straight away (not only in "Move pins"); a short click still selects it.
+      if (pointer.itemId && editable() && !busy) {
+        pointer.origin = s.placements[pointer.itemId];
+        if (mode === 'move') startPinDrag();
+        else pointer.canDrag = true;
+      }
     });
 
+    function startPinDrag() {
+      pointer.drag = true;
+      pointer.canDrag = false;
+      select(pointer.itemId);
+      pointer.el = view.querySelector(`.fa-item[data-id="${pointer.itemId}"]`);
+      view.querySelector('#sm-pop').hidden = true;
+      view.querySelector('#sm-tray')?.classList.add('dropping');
+    }
+
     svg.addEventListener('pointermove', (event) => {
+      if (!pointer && mode === 'place' && placing) {
+        const p = toMap(event);
+        const spot = pinSpot(site(), findItem(placing, items), p);
+        ghost = { at: spot.ok ? spot.at : p, ok: spot.ok };
+        drawEdit();
+        return;
+      }
       if (!pointer) return;
       const dx = event.clientX - pointer.start[0];
       const dy = event.clientY - pointer.start[1];
       if (Math.hypot(dx, dy) > 4) pointer.moved = true;
       if (pointer.paint) { paintAt(toMap(event), pointer.paint); return; }
-      if (pointer.drag) { const p = toMap(event); site().placements[pointer.itemId] = p; pointer.el.setAttribute('transform', `translate(${p[0]} ${p[1]})`); return; }
+      if (pointer.canDrag && pointer.moved) startPinDrag();
+      if (pointer.drag) {
+        const p = toMap(event);
+        site().placements[pointer.itemId] = p;
+        pointer.el?.setAttribute('transform', `translate(${p[0]} ${p[1]})`);
+        view.querySelector('#sm-tray')?.classList.toggle('hot', overDock(event.clientX, event.clientY));
+        return;
+      }
       if (pointer.moved) {
         const scale = pointer.startBox.w / svg.clientWidth;
         box = { ...box, x: pointer.startBox.x - dx * scale, y: pointer.startBox.y - dy * scale };
@@ -612,19 +1041,47 @@
       }
     });
 
-    const finish = () => {
+    const finish = (event) => {
       if (!pointer) return;
       if (pointer.paint) { save(); drawObjects(); renderScore(); renderDetails(); renderCrowd(); }
-      else if (pointer.drag) { save(); drawAll(); }
+      else if (pointer.drag) { const done = pointer; pointer = null; finishPinDrag(done, event); return; }
       else if (!pointer.moved && pointer.itemId) select(pointer.itemId);
+      else if (!pointer.moved && mode === 'place' && placing && editable() && !busy) { const at = pointer.at; pointer = null; placeAt(at); return; }
+      else if (!pointer.moved && mode === 'explore') deselect();
       pointer = null;
     };
+
+    // A dragged pin: dropped on the dock = off the map; on a bad spot = back where it was.
+    function finishPinDrag(done, event) {
+      const tray = view.querySelector('#sm-tray');
+      tray?.classList.remove('dropping', 'hot');
+      const s = site();
+      const item = findItem(done.itemId, items);
+      if (event && overDock(event.clientX, event.clientY)) {
+        s.placements[done.itemId] = done.origin;
+        removePin(done.itemId);
+        return;
+      }
+      const spot = pinSpot(s, item, s.placements[done.itemId]);
+      if (!spot.ok) {
+        s.placements[done.itemId] = done.origin;
+        drawAll();
+        mapMessage(item.onFence ? `${spot.problem} The pin went back to where it was.`
+          : `${item.name} cannot stand on water, forest or outside the fence, so it went back to where it was.`);
+        return;
+      }
+      s.placements[done.itemId] = spot.at;
+      if (done.itemId === 'entrance') s.entrance = spot.at;
+      save(); drawAll();
+    }
+    svg.addEventListener('pointerleave', () => { if (ghost) { ghost = null; drawEdit(); } });
     svg.addEventListener('pointerup', finish);
     svg.addEventListener('pointercancel', finish);
     svg.addEventListener('wheel', (event) => { event.preventDefault(); zoom(event.deltaY > 0 ? 1.15 : 1 / 1.15, toMap(event)); }, { passive: false });
     svg.addEventListener('keydown', (event) => {
       const itemEl = event.target.closest('.fa-item');
       if (itemEl && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); select(itemEl.dataset.id); }
+      if (itemEl && (event.key === 'Delete' || event.key === 'Backspace')) { event.preventDefault(); removePin(itemEl.dataset.id); }
     });
   }
 
@@ -642,6 +1099,41 @@
       return;
     }
     if (t.closest('#sm-suggest')) { if (editable() && !busy) suggest(); return; }
+    if (t.closest('#sm-clear-pins')) { if (editable() && !busy) openClearDialog(); return; }
+    if (t.closest('#sm-add-pin')) { if (editable() && !busy) toggleAdd(true); return; }
+    const addType = t.closest('[data-add-type]')?.dataset.addType;
+    if (addType) { addPin(addType); return; }
+    if (t.closest('[data-add-own]')) { toggleAdd(true, { own: !ownOpen }); return; }
+    const another = t.closest('[data-pin-another]')?.dataset.pinAnother;
+    if (another) { if (another === 'marker') toggleAdd(true, { own: true }); else addPin(another); return; }
+    const findPin = t.closest('[data-find-pin]')?.dataset.findPin;
+    if (findPin) { select(findPin); renderTray(); return; }
+    const deletePin = t.closest('[data-delete-pin]')?.dataset.deletePin;
+    if (deletePin) { removePin(deletePin); return; }
+    if (t.closest('[data-pop="close"]')) { deselect(); return; }
+    const pinAction = t.closest('[data-pin]')?.dataset.pin;
+    if (pinAction && selectedId) { removePin(selectedId, { pickUp: pinAction === 'move' }); return; }
+    const placeButton = t.closest('[data-place]');
+    if (placeButton) {
+      if (suppressChipClick) { suppressChipClick = false; return; }
+      startPlacing(placeButton.dataset.place); return;
+    }
+    const trayAction = t.closest('[data-tray]')?.dataset.tray;
+    if (trayAction === 'stop') { stopPlacing(); return; }
+    if (trayAction === 'add') { if (editable() && !busy) toggleAdd(); return; }
+    if (trayAction === 'list') {
+      // On narrow screens the list sits below the map: jump there and focus the pin being placed.
+      const tray = view.querySelector('#sm-tray');
+      tray?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      (tray?.querySelector('.sm-tray-pin.on') || tray?.querySelector('.sm-tray-pin'))?.focus({ preventScroll: true });
+      return;
+    }
+    if (trayAction === 'skip') {
+      const next = nextPinToPlace(items, site().placements, placing);
+      if (next && next.id !== placing) startPlacing(next.id);
+      return;
+    }
+    if (trayAction === 'fill') { if (editable() && !busy) fillMissing(); return; }
     const modeButton = t.closest('[data-mode]');
     if (modeButton) { if (modeButton.dataset.mode === 'explore' || (editable() && !busy)) setMode(modeButton.dataset.mode); return; }
     const chip = t.closest('[data-category]');
@@ -675,7 +1167,7 @@
     if (t.closest('[data-go-vendors]')) return document.querySelector('.sidebar-item[data-section="Vendors"]').click();
     const action = t.closest('[data-action]')?.dataset.action;
     if (action && (!editable() || busy)) return;
-    if (action === 'plan-missing') return suggest();
+    if (action === 'plan-missing') return fillMissing();
     if (t.closest('.sm-upload')) mapMessage('Choose a JPG or PNG image. Uploading it creates a new map.');
     if (action === 'detect') {
       busy = true; renderDraftActions();
@@ -731,6 +1223,58 @@
         mapMessage('Enter a map width from 20 to 20,000 metres. The previous valid width has been kept.');
       }
     }
+  });
+  // Dragging a pin from "Pins to place" onto the map. A click without moving just picks it.
+  view.addEventListener('pointerdown', (event) => {
+    const chip = event.target.closest('#sm-tray [data-place]');
+    if (!chip || chip.disabled || event.button > 0) return;
+    chipDrag = { id: chip.dataset.place, start: [event.clientX, event.clientY], moved: false };
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!chipDrag) return;
+    if (!chipDrag.moved) {
+      if (Math.hypot(event.clientX - chipDrag.start[0], event.clientY - chipDrag.start[1]) < 6) return;
+      chipDrag.moved = true;
+      startPlacing(chipDrag.id);
+      chipDrag.id = placing;
+      document.body.classList.add('sm-dragging-pin');
+    }
+    const p = mapPointAt(event.clientX, event.clientY);
+    if (p && placing) {
+      const spot = pinSpot(site(), findItem(placing, items), p);
+      ghost = { at: spot.ok ? spot.at : p, ok: spot.ok };
+    } else ghost = null;
+    drawEdit();
+  });
+  document.addEventListener('pointerup', (event) => {
+    if (!chipDrag) return;
+    const drag = chipDrag;
+    chipDrag = null;
+    if (!drag.moved) return;
+    document.body.classList.remove('sm-dragging-pin');
+    suppressChipClick = true;
+    setTimeout(() => { suppressChipClick = false; }, 0);
+    const p = mapPointAt(event.clientX, event.clientY);
+    if (p && placing) placeAt(p);
+    else { ghost = null; drawEdit(); }
+  });
+
+  // Esc stops placing pins; Delete removes the selected pin (not while a dialog is open).
+  document.addEventListener('keydown', (event) => {
+    if (view.classList.contains('hidden') || view.querySelector('dialog[open]')) return;
+    if (event.key === 'Escape' && mode === 'place') stopPlacing();
+    else if (event.key === 'Escape' && addOpen) { toggleAdd(false); view.querySelector('#sm-add-pin')?.focus({ preventScroll: true }); }
+    else if (event.key === 'Escape' && selectedId) deselect();
+    // Delete removes the selected pin, unless the person is typing in a field.
+    const typing = event.target?.closest?.('input, textarea, select, [contenteditable="true"]');
+    if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId && !typing && !event.target?.closest?.('.fa-item')) {
+      event.preventDefault(); removePin(selectedId);
+    }
+  });
+  view.addEventListener('submit', (event) => {
+    if (!event.target.closest('.sm-add-own')) return;
+    event.preventDefault();
+    addPin('marker');
   });
   view.addEventListener('keydown', (event) => {
     const rule = event.target.closest('[data-rule]');

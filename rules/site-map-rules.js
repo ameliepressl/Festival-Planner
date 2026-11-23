@@ -112,10 +112,46 @@ const stageLabel = (id) => `Stage ${id.slice(6).toUpperCase()}`;
 // The smallest layout (two toilet rows, two water points, six pitches). Used when no festival size is given.
 const LAYOUT_ITEMS = layoutItems();
 
-// Ids that can appear in a saved layout (also those of larger festivals).
+// Ids that can appear in a saved layout (also those of larger festivals, and pins the organiser added).
 function isKnownItemId(id) {
   return BASE_ITEMS.some((item) => item.id === id) || /^(stage|first-aid)-[c-l]$/.test(id)
-    || /^(toilets|water)-([a-l]|[3-9]|[1-9][0-9])$/.test(id) || /^P([1-9]|1[0-9]|20)$/.test(id);
+    || /^(toilets|water)-([a-l]|[3-9]|[1-9][0-9])$/.test(id) || /^P([1-9]|1[0-9]|20)$/.test(id)
+    || EXTRA_PIN_ID.test(id);
+}
+
+// ---------- pins the organiser adds ("+ Add pin"), saved per map as extraPins: [{ id, kind, name }] ----------
+// They count in the layout check like the built-in ones (an extra toilet near a stage helps that rule).
+const EXTRA_PIN_ID = /^x-[1-9][0-9]{0,2}$/;
+const EXTRA_PIN_MAX = 60;
+const EXTRA_PIN_NAME_MAX = 40;
+const EXTRA_PIN_TYPES = [
+  { kind: 'toilets', label: 'Toilets', category: 'facilities', symbol: 'WC', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra row of toilet cabins added by the organiser.' },
+  { kind: 'water', label: 'Free water', category: 'facilities', symbol: 'H₂O', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra free drinking water point added by the organiser.' },
+  { kind: 'first-aid', label: 'First aid', category: 'safety', symbol: '✚', team: 'First aid & safety', hours: 'Whole event', text: 'An extra first aid point added by the organiser.' },
+  { kind: 'bar', label: 'Bar', category: 'food', symbol: 'BAR', team: 'Backstage & catering', hours: 'From gates open', text: 'A drinks bar added by the organiser.' },
+  { kind: 'info', label: 'Info point', category: 'services', symbol: 'i', team: 'Tickets & entry', hours: 'From gates open', text: 'An extra info point added by the organiser.' },
+  { kind: 'security', label: 'Security post', category: 'safety', symbol: '◈', team: 'Security', hours: 'Whole event', text: 'An extra security post added by the organiser.' },
+  { kind: 'recycling', label: 'Recycling point', category: 'facilities', symbol: '♲', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra recycling point added by the organiser.' },
+  { kind: 'marker', label: 'Own pin', category: 'services', symbol: '◆', team: 'Organiser', hours: '—', text: 'A pin the organiser added, e.g. a VIP area, a charging station or a meeting point.' }
+];
+
+// Reads saved extra pins; anything broken, unknown or duplicated is dropped.
+function parseExtraPins(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  return list.filter((pin) => pin && typeof pin === 'object' && EXTRA_PIN_ID.test(pin.id) && !seen.has(pin.id)
+      && EXTRA_PIN_TYPES.some((type) => type.kind === pin.kind) && typeof pin.name === 'string'
+      && pin.name.trim().length > 0 && pin.name.length <= EXTRA_PIN_NAME_MAX && seen.add(pin.id))
+    .slice(0, EXTRA_PIN_MAX).map((pin) => ({ id: pin.id, kind: pin.kind, name: pin.name.trim() }));
+}
+
+// Extra pins as layout items (same shape as the built-in facilities).
+function extraPinItems(extraPins = []) {
+  return parseExtraPins(extraPins).map((pin) => {
+    const type = EXTRA_PIN_TYPES.find((entry) => entry.kind === pin.kind);
+    return { id: pin.id, kind: pin.kind, name: pin.name, category: type.category, symbol: type.symbol,
+      team: type.team, hours: type.hours, text: type.text, added: true };
+  });
 }
 
 // ---------- the demo ground: a 600 m wide field with a forest and a lake ----------
@@ -529,7 +565,10 @@ function parseSiteMaps(text) {
     && validMapGrid(s.grid)
     && s.placements && typeof s.placements === 'object' && !Array.isArray(s.placements))
     .map((s) => {
-      const cleaned = { ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => isKnownItemId(id) && isPoint(p))) };
+      const extraPins = parseExtraPins(s.extraPins);
+      const known = (id) => (EXTRA_PIN_ID.test(id) ? extraPins.some((pin) => pin.id === id) : isKnownItemId(id));
+      const cleaned = { ...s, placements: Object.fromEntries(Object.entries(s.placements).filter(([id, p]) => known(id) && isPoint(p))) };
+      if (Object.hasOwn(s, 'extraPins')) cleaned.extraPins = extraPins;
       // Older maps have no measurements. Preserve that absence rather than inventing safe values.
       if (Object.hasOwn(s, 'crowdSafety')) {
         const normalize = typeof module !== 'undefined' ? require('./crowd-rules.js').normalizeCrowdSafety : normalizeCrowdSafety;
@@ -546,6 +585,7 @@ if (typeof module !== 'undefined') {
     safeMapId, safeMapImage, validMapGrid, MAX_MAP_GRID_CELLS,
     findItem, distance, metresPerUnit, gridSearch, cellCentre, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
-    suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps
+    suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps,
+    EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins, extraPinItems
   };
 }
