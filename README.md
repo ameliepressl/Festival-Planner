@@ -115,7 +115,9 @@ The database enforces access through Row Level Security and guarded updates, rat
 than relying only on disabled buttons.
 
 Saved sections sync to Supabase and can be loaded on another device. Different sections
-are merged; simultaneous edits to the same section can still overwrite one another.
+are merged. If two people change the same section, the later save is refused: a message names
+the section, the edit stays in the browser, and the person chooses Keep mine or Use theirs
+(`feature-plans/section-conflicts.md`; needs `migrations/007`).
 Check the account saving status before leaving. If another tab changes the open festival,
 reload the older tab before editing it.
 Forgot your password? Choose **Forgot your password?** on the sign-in screen: the app emails a

@@ -293,6 +293,10 @@ function applyFestivalData(storage, data, { roster = [], accountMeta, recoverTra
 //   dirtyKeys  sections changed in the browser but not saved yet ('*' = all of them)
 //   legacy     the browser held a plan from before accounts existed
 //   access     { role, creatorLabel } the pages were started with (see accessFor)
+//   versions   { section: version } the version of each section this browser started from
+//              (missing = the database does not count versions yet)
+//   conflicts  { section: version } sections the database refused because a teammate saved them
+//              first; the person's edit stays in the browser until they choose (see below)
 function parseAccountMeta(text) {
   try {
     const meta = JSON.parse(text);
@@ -309,6 +313,8 @@ function parseAccountMeta(text) {
       dirty: dirtyKeys.length > 0,
       legacy: meta.legacy === true,
       access: parseAccess(meta.access),
+      ...(cleanVersions(meta.versions) ? { versions: cleanVersions(meta.versions) } : {}),
+      ...(Object.keys(cleanVersions(meta.conflicts) || {}).length ? { conflicts: cleanVersions(meta.conflicts) } : {}),
       ...(meta.teamDirty === true ? {
         teamDirty: true,
         teamBase: rosterFromTeam((Array.isArray(meta.teamBase) ? meta.teamBase : []).map(member => ({
@@ -373,10 +379,11 @@ function sameAccess(a, b) {
 //   Viewers send nothing; Editors never send the finances or the task assignments;
 //   the team roster is never sent.
 // Returns { changes: { key: text }, removed: [key], skipped: [key] }.
-function sectionsToSave({ storage, dirtyKeys, role }) {
+function sectionsToSave({ storage, dirtyKeys, role, held = [] }) {
   const result = { changes: {}, removed: [], skipped: [] };
   const keys = dirtyKeys.includes('*') ? festivalKeys(storage).filter(isSyncedKey) : dirtyKeys.filter(isSyncedKey);
   for (const key of [...new Set(keys)].sort()) {
+    if (held.includes(key)) continue;   // waiting for the person's decision (see below)
     if (role === 'Viewer' || (role === 'Editor' && ACCOUNT_ADMIN_ONLY_KEYS.includes(key))) {
       result.skipped.push(key);
       continue;
@@ -390,8 +397,8 @@ function sectionsToSave({ storage, dirtyKeys, role }) {
 
 // Capture the revision of each section, not just one revision for the whole page.
 // An edit to the checklist during a lineup save must not resend the old lineup.
-function captureSaveBatch({ storage, dirtyKeys, role, revisions = {}, userId, festivalId }) {
-  const sections = sectionsToSave({ storage, dirtyKeys, role });
+function captureSaveBatch({ storage, dirtyKeys, role, revisions = {}, userId, festivalId, held = [] }) {
+  const sections = sectionsToSave({ storage, dirtyKeys, role, held });
   const keys = [...new Set([...Object.keys(sections.changes), ...sections.removed, ...sections.skipped])];
   return { ...sections, userId, festivalId, keys,
     revisions: Object.fromEntries(keys.map(key => [key, revisions[key] || 0])) };
@@ -406,6 +413,77 @@ function acknowledgeSaveBatch({ batch, userId, festivalId, dirtyKeys, revisions 
   const pending = new Set(dirtyKeys.includes('*') ? [...currentKeys, ...batch.keys, ...Object.keys(revisions)] : dirtyKeys);
   for (const key of batch.keys) if ((revisions[key] || 0) === batch.revisions[key]) pending.delete(key);
   return [...pending];
+}
+
+// --- Two people changing the same section (feature-plans/section-conflicts.md) -------------
+// The database counts a version per section. A save says which version it started from; if a
+// teammate saved that section first, the database refuses it and the person decides.
+
+// { section: whole number >= 0 }, or undefined when it is not such an object.
+function cleanVersions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const result = {};
+  for (const [key, number] of Object.entries(value)) {
+    if (isSyncedKey(key) && Number.isInteger(number) && number >= 0) result[key] = number;
+  }
+  return result;
+}
+
+// The versions a save starts from. null = this browser has none (the database does not count
+// versions yet): the save is not checked, as before.
+function expectedVersions(versions, keys) {
+  if (!versions) return null;
+  return Object.fromEntries(keys.map((key) => [key, versions[key] || 0]));
+}
+
+// What the database answered to a save: { versions, conflicts }. Saved sections move to their
+// new version; refused ones are held, with the version the teammate saved, until the person
+// chooses. Without versions in the answer (an older database) nothing changes.
+function applySaveResult({ versions, conflicts }, batch, result) {
+  const answered = cleanVersions(result?.versions);
+  if (!answered) return { versions, conflicts, saved: [...batch.keys], refused: [] };
+  const refused = (Array.isArray(result.conflicts) ? result.conflicts : []).filter((key) => batch.keys.includes(key));
+  const nextVersions = { ...(versions || {}) };
+  const nextConflicts = { ...(conflicts || {}) };
+  const saved = [];
+  for (const key of batch.keys) {
+    if (refused.includes(key)) { nextConflicts[key] = answered[key] || 0; continue; }
+    nextVersions[key] = answered[key] || 0;
+    delete nextConflicts[key];
+    saved.push(key);
+  }
+  return { versions: nextVersions, conflicts: nextConflicts, saved, refused };
+}
+
+// Keep mine: the held sections start from the teammate's version, so the next save replaces it.
+function keepMine({ versions, conflicts }) {
+  return { versions: { ...(versions || {}), ...(conflicts || {}) }, conflicts: {}, keys: Object.keys(conflicts || {}) };
+}
+
+// Changes that can still be saved: everything except the sections waiting for a decision.
+function hasUnheldChanges(dirtyKeys, conflicts) {
+  return dirtyKeys.some((key) => key === '*' || !(conflicts && key in conflicts));
+}
+
+const SECTION_NAMES = Object.freeze({
+  'festival-architect-v2': 'the lineup',
+  'festival-architect-finance': 'the finances',
+  'festival-gantt-project-v1': 'the project schedule',
+  'festival-work-board-status-v1': 'the task board',
+  'festival-task-assignments-v1': 'the task assignments',
+  'festival-architect-ground': 'the site map',
+  'festival-architect-site-maps': 'the site map',
+  'festival-architect-site-map-selected': 'the site map',
+  'festival-architect-checklist': 'the final checklist',
+  'festival-architect-vendors': 'the vendors',
+  'festival-project-setup-v1': 'the project setup'
+});
+
+function conflictMessage(keys) {
+  const names = [...new Set(keys.map((key) => SECTION_NAMES[key] || 'a part of the plan'))];
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] || 'a part of the plan');
+  return `Not saved: a teammate changed ${list} while you were editing it. Nothing was overwritten, and your change is still here. `
+    + 'Keep mine replaces their change; Use theirs loads their version and drops yours.';
 }
 
 // Apply only the intended team edits to a newer roster, keeping unrelated invitations.
@@ -520,6 +598,7 @@ if (typeof module !== 'undefined') {
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,
     newPasswordProblem, passwordResetRedirect, recoveryFromUrl, recoveryTokenFromQuery, resetLinkUsedUp,
     accountErrorMessage, isFestivalDataKey, collectFestivalData, cleanFestivalData, hasFestivalData,
-    clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows
+    clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows,
+    cleanVersions, expectedVersions, applySaveResult, keepMine, hasUnheldChanges, conflictMessage
   };
 }

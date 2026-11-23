@@ -777,3 +777,11 @@ In timeline edit mode, Clear all tasks opens a confirmation for festival owners 
 After a saved bulk deletion, Restore last deletion appears beside the view switch and Manage work areas for festival owners and Admins. It recovers the last cleared tasks or deleted work area, including saved dates, progress and assignments. It keeps newer work and consumes the recovery record after one successful restore.
 
 Validation: **491/491 tests passed**, including eight new regression checks. An isolated browser preview confirmed saving a task and its owner together, creating an area from both views, clearing with Cancel and Save, and persistence after reload. The timeline dialog requires a subtask, and the saved task appears on the board. Editor and Viewer controls matched their existing roles. The board dialog fit at 390 px. Browser checks also covered the fixed position of Manage work areas, an area rename, moving and deleting tasks, cancelling a draft deletion, and reloading. Recovery checks covered restoring a deleted area after reload, keeping a newer task, recovering completion and ownership, and restoring after Clear all tasks. No console errors appeared during the verified flows.
+
+## Section conflicts (two people editing the same section)
+
+Owner: Amelie · Branch: `feature-section-conflicts` · Plan: [section-conflicts.md](feature-plans/section-conflicts.md).
+
+Found by Amelie's two-browser test: a stale browser silently overwrote a teammate's change inside the same section. Each section now has a version in the database (`migrations/007_section_conflicts.sql`); a save that started from an older version is refused for that section only, the edit stays in the browser, and a bar offers Keep mine or Use theirs. Reloading keeps the edit and asks again; signing out and switching festivals wait for the decision. Run migration 007 in the Supabase SQL Editor before merging; the page also works without it.
+
+Validation: **536/536 tests passed** (19 new in `tests/section-conflicts.test.js`); the SQL was run against a real PostgreSQL together with migrations 001–006, twice.

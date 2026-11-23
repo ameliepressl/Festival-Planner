@@ -52,8 +52,10 @@ Several of us are beginners. Explain what you change and why, in plain language.
   the same roles through `canFestival()` in `rules/access-rules.js`. Never rely on hiding
   buttons alone.
 - Saving sends only the sections (keys) that changed, which reduces interference between teammates.
-  Concurrent edits to the same section still use the last saved value; this is not live
-  collaborative editing. Do not write one big key for everything.
+  Each section has a version in the database (`migrations/007`, `feature-plans/section-conflicts.md`): a
+  save that started from an older version of a section is refused for that section, the person's edit stays
+  in the browser and they choose Keep mine or Use theirs. This is not live collaborative editing and
+  two people's edits to one section are never merged field by field. Do not write one big key for everything.
 - Changes to tables or rules are written as a new numbered SQL file in `migrations/` and run
   in the Supabase SQL Editor by the database owner (Amelie). Never change or delete tables or
   rows in Supabase unless the task says so.
