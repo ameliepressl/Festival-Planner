@@ -128,7 +128,7 @@
 
   function render() {
     renderedDate = today();
-    const selection = areaSelect.value;
+    const previousArea = areaSelect.value;
     document.querySelector('#board-my-tasks').setAttribute('aria-pressed', String(assigneeSelect.value === 'me'));
     const query = search.value.trim().toLowerCase();
     const plan = window.getSavedGanttPlan();
@@ -136,7 +136,6 @@
     const canEditTasks = canFestival('lineup') && !projectProblem;
     const team = assignments.people();
     const assigned = assignments.read();
-    const canAssign = assignments.canAssign();
     const myId = assignments.myUserId();
     const assigneeFilter = assigneeSelect.value;
     assigneeSelect.replaceChildren(new Option('Everyone', ''));
@@ -149,7 +148,8 @@
     areaSelect.replaceChildren(new Option('All areas', ''));
     plan.forEach(area => areaSelect.add(new Option(area.title, String(area.id))));
     const cards = projectSteps(plan);
-    areaSelect.value = selection;
+    areaSelect.value = plan.some(area => String(area.id) === previousArea) ? previousArea : '';
+    const selection = areaSelect.value;
     const visible = cards.filter(card => {
       const days = daysUntil(card.end, renderedDate);
       return (statusFilter === 'all' || statusOf(card, renderedDate) === statusFilter) &&
@@ -160,11 +160,12 @@
           .join(' ').toLowerCase().includes(query);
     });
 
-    // "Assigned to …" on a card; Owner and Admins can change it right there.
+    // Keep the current owner visible on the card.
     function assigneeLine(card) {
       if (!team.length) return document.createTextNode('');
       const { userId } = assigneeOf(card, assigned, team);
-      return element('div', 'work-board-assignee', userId ? 'Assigned to ' + assignments.nameOf(userId, team) : 'Nobody assigned');
+      const label = userId ? 'Assigned to ' + assignments.nameOf(userId, team) : 'Nobody assigned';
+      return element('div', 'work-board-assignee', label);
     }
 
     function move(id, status, focus = false) {
@@ -326,7 +327,22 @@
   }, 60000);
   const chart = document.querySelector('#gantt-view');
   overview.append(board, chart);
-  stats.after(document.querySelector('.project-view-switch'));
+  stats.after(document.querySelector('.project-view-controls'));
+  const manageAreasButton = document.querySelector('#manage-project-areas');
+  const restoreButton = document.querySelector('#project-area-restore');
+  manageAreasButton.hidden = !canFestival('team');
+  function updateAreaTools() {
+    const problem = window.getProjectDataProblem?.() || '';
+    manageAreasButton.disabled = Boolean(problem);
+    manageAreasButton.title = problem;
+    const deletion = window.getProjectDeletionSummary();
+    restoreButton.hidden = !deletion;
+    restoreButton.disabled = Boolean(deletion?.draft);
+    restoreButton.title = deletion?.draft ? 'Save or cancel the timeline draft to restore a saved deletion.' : '';
+  }
+  updateAreaTools();
+  window.addEventListener('gantt-project-changed', updateAreaTools);
+  window.addEventListener('gantt-edit-mode-changed', updateAreaTools);
 
   window.showProjectTaskView = mode => {
     overview.classList.remove('hidden');
@@ -347,6 +363,127 @@
   stats.querySelector('[data-status="all"]').setAttribute('aria-pressed', 'true');
   renderStats();
   setInterval(() => { if (!document.querySelector('#board-page').classList.contains('hidden') && today() !== renderedDate) render(); }, 60000);
+  const areaDialog = document.querySelector('#project-areas-dialog');
+  const areaForm = areaDialog.querySelector('form');
+  const areaFields = areaForm.elements;
+  const areaError = areaForm.querySelector('[role="alert"]');
+  const areaStatus = areaForm.querySelector('[role="status"]');
+  const areaHelp = document.querySelector('#project-areas-help');
+  const deleteHelp = document.querySelector('#project-area-delete-help');
+  const deleteAreaButton = document.querySelector('#project-area-delete');
+  const renameAreaButton = document.querySelector('#project-area-rename');
+  const confirmAreaButton = document.querySelector('#project-area-confirm');
+  const closeAreasButton = document.querySelector('#project-areas-close');
+  let reviewedArea = null;
+
+  function renderAreaDialog(preferredId = '') {
+    const { areas, draft } = window.getProjectAreasForManagement();
+    areaHelp.textContent = draft ? 'Choose Save changes on the timeline to keep edits made here.'
+      : 'Changes apply to both the task board and timeline.';
+    areaFields.area.replaceChildren(...areas.map(area => new Option(area.title, area.id)));
+    areaFields.area.value = areas.some(area => area.id === preferredId) ? preferredId : (areas[0]?.id || '');
+    document.querySelector('#project-areas-empty').hidden = areas.length > 0;
+    document.querySelector('#project-area-fields').hidden = areas.length === 0;
+    deleteAreaButton.hidden = renameAreaButton.hidden = areas.length === 0;
+    showAreaName(areas.find(area => area.id === areaFields.area.value));
+  }
+
+  function showAreaName(area) {
+    reviewedArea = null;
+    areaError.textContent = '';
+    areaFields.area.disabled = false;
+    areaFields.areaName.value = area?.title || '';
+    areaFields.areaName.disabled = !area;
+    document.querySelector('#project-area-name').hidden = false;
+    areaFields.destination.disabled = true;
+    document.querySelector('#project-area-destination').hidden = true;
+    deleteHelp.hidden = confirmAreaButton.hidden = confirmAreaButton.disabled = true;
+    renameAreaButton.disabled = !area;
+    closeAreasButton.textContent = 'Close';
+  }
+
+  manageAreasButton.onclick = () => {
+    if (!canFestival('team') || window.getProjectDataProblem?.()) return;
+    areaStatus.textContent = '';
+    renderAreaDialog();
+    areaDialog.showModal();
+  };
+  areaFields.area.onchange = () => {
+    areaStatus.textContent = '';
+    const { areas } = window.getProjectAreasForManagement();
+    showAreaName(areas.find(area => area.id === areaFields.area.value));
+  };
+  deleteAreaButton.onclick = () => {
+    const { areas } = window.getProjectAreasForManagement();
+    const area = areas.find(item => item.id === areaFields.area.value);
+    if (!area) return;
+    reviewedArea = area;
+    areaStatus.textContent = areaError.textContent = '';
+    areaFields.area.disabled = areaFields.areaName.disabled = true;
+    document.querySelector('#project-area-name').hidden = true;
+    areaFields.destination.replaceChildren(new Option('Choose what happens to the tasks', ''));
+    for (const other of areas.filter(item => item.id !== area.id)) {
+      areaFields.destination.add(new Option('Move to ' + other.title, 'move:' + other.id));
+    }
+    areaFields.destination.add(new Option('Delete the tasks and their progress', 'delete'));
+    areaFields.destination.required = area.groups > 0;
+    areaFields.destination.disabled = !area.groups;
+    document.querySelector('#project-area-destination').hidden = !area.groups;
+    const groupCount = area.groups + (area.groups === 1 ? ' task group' : ' task groups');
+    const stepCount = area.subtasks + (area.subtasks === 1 ? ' subtask' : ' subtasks');
+    deleteHelp.textContent = area.groups ? `“${area.title}” contains ${groupCount} and ${stepCount}. Move them to another area or delete them with this area.`
+      : `Delete the empty work area “${area.title}”?`;
+    deleteHelp.hidden = false;
+    deleteAreaButton.hidden = renameAreaButton.hidden = renameAreaButton.disabled = true;
+    confirmAreaButton.hidden = confirmAreaButton.disabled = false;
+    closeAreasButton.textContent = 'Back';
+    (area.groups ? areaFields.destination : closeAreasButton).focus();
+  };
+  closeAreasButton.onclick = () => {
+    if (reviewedArea) {
+      renderAreaDialog(reviewedArea.id);
+      areaFields.area.focus();
+    } else areaDialog.close();
+  };
+
+  const restoreDialog = document.querySelector('#project-restore-dialog');
+  const restoreForm = restoreDialog.querySelector('form');
+  const restoreError = restoreForm.querySelector('[role="alert"]');
+  restoreButton.onclick = () => {
+    const deletion = window.getProjectDeletionSummary();
+    if (!deletion || deletion.draft) return;
+    const count = deletion.subtasks;
+    document.querySelector('#project-area-recovery-help').textContent = count
+      ? `Restore the last deletion? This brings back ${count} ${count === 1 ? 'subtask' : 'subtasks'} with saved progress and assignments. Newer work stays in the project.`
+      : 'Bring back the last deleted work area? Tasks that were moved stay in their current area.';
+    restoreError.textContent = '';
+    restoreDialog.showModal();
+  };
+  restoreForm.querySelector('[data-cancel]').onclick = () => restoreDialog.close();
+  restoreForm.onsubmit = event => {
+    event.preventDefault();
+    try { window.restoreLastProjectDeletion(); }
+    catch (failure) { restoreError.textContent = failure.message; return; }
+    restoreDialog.close();
+    manageAreasButton.focus();
+    toast('Last deletion restored on the board and timeline.');
+  };
+  areaForm.onsubmit = event => {
+    event.preventDefault();
+    const areaId = areaFields.area.value;
+    const choice = areaFields.destination.value;
+    const deleting = Boolean(reviewedArea);
+    const changes = deleting
+      ? { destinationId: choice.startsWith('move:') ? choice.slice(5) : '', deleteTasks: choice === 'delete' }
+      : { title: areaFields.areaName.value };
+    try { window.manageProjectArea(areaId, changes); }
+    catch (failure) { areaError.textContent = failure.message; return; }
+    const { draft } = window.getProjectAreasForManagement();
+    renderAreaDialog(deleting ? changes.destinationId : areaId);
+    areaStatus.textContent = (deleting ? 'Work area removed' : 'Work area renamed') + (draft ? ' in the timeline draft.' : '.');
+    (areaFields.area.disabled || !areaFields.area.value ? closeAreasButton : areaFields.area).focus();
+  };
+
   const dialog = document.querySelector('#board-create-dialog');
   const form = document.querySelector('#board-create-form');
   const fields = form.elements;
@@ -354,11 +491,14 @@
   const addTaskButton = document.querySelector('#board-add-task');
   const saveTaskButton = document.querySelector('#board-create-save');
   const deleteTaskButton = document.querySelector('#board-edit-delete');
+  const newAreaOption = '+new-area';
   let editingStepId = null;
+  let addingTimelineArea = false;
+  let initialOwner = '';
   addTaskButton.hidden = !canFestival('lineup');
   addTaskButton.disabled = Boolean(window.getProjectDataProblem?.());
   if (addTaskButton.disabled) addTaskButton.title = window.getProjectDataProblem();
-  form.querySelector('.hero-copy').textContent = 'Choose a work area, then select one of its task groups or create a new group. Your task appears on both the board and timeline.';
+  const dialogHelp = form.querySelector('.hero-copy');
   const groupHelp = element('p', 'field-help', 'Task groups belong to the selected work area. Choose an existing group or “Create a task group”.');
   groupHelp.id = 'board-group-help';
   fields.parent.setAttribute('aria-describedby', groupHelp.id);
@@ -372,16 +512,25 @@
   }
   function updateParents() {
     const area = window.getSavedGanttPlan().find(item => String(item.id) === fields.area.value);
+    const creatingArea = fields.area.value === newAreaOption;
+    const areaNameField = document.querySelector('#board-area-name');
+    areaNameField.hidden = !creatingArea;
+    fields.areaName.disabled = !creatingArea;
+    fields.areaName.required = creatingArea;
     fields.parent.replaceChildren(new Option('Choose a task group', ''));
     if (area) {
       area.tasks.forEach(task => fields.parent.add(new Option(task.title, String(task.id))));
       fields.parent.add(new Option('+ Create a task group', 'new'));
     }
-    fields.parent.disabled = !area;
-    groupHelp.textContent = area ? `Showing task groups in ${area.title}. You can also create a new group.` : 'Choose a work area first to see its task groups.';
+    if (creatingArea) {
+      fields.parent.replaceChildren(new Option('Create a task group', 'new'));
+      fields.parent.value = 'new';
+    }
+    fields.parent.disabled = addingTimelineArea || (!area && !creatingArea);
+    groupHelp.textContent = creatingArea ? 'Give the new work area its first task group.' : area ? `Showing task groups in ${area.title}. You can also create a new group.` : 'Choose a work area first to see its task groups.';
     updateParentName();
   }
-  function openTaskDialog(stepId = null) {
+  function openTaskDialog(stepId = null, fromTimeline = false) {
     if (!canFestival('lineup')) return;
     if (window.getProjectDataProblem?.()) { summary.textContent = window.getProjectDataProblem(); return; }
     const card = stepId === null ? null : projectSteps().find(item => String(item.id) === String(stepId));
@@ -390,14 +539,34 @@
       return;
     }
     editingStepId = card ? String(card.id) : null;
+    addingTimelineArea = fromTimeline;
     form.reset();
     error.textContent = '';
-    document.querySelector('#board-create-title').textContent = card ? 'Edit task' : 'Add new task';
-    saveTaskButton.textContent = card ? 'Save changes' : 'Create task';
+    document.querySelector('#board-create-title').textContent = fromTimeline ? 'Add work area' : card ? 'Edit task' : 'Add new task';
+    saveTaskButton.textContent = fromTimeline ? 'Add area to draft' : card ? 'Save changes' : 'Create task';
+    dialogHelp.textContent = fromTimeline
+      ? 'Create the first task group and subtask for this area. Choose Save changes on the timeline to keep it.'
+      : 'Choose a work area and task group, then set the subtask’s dates. Changes appear on the board and timeline.';
+    fields.area.closest('label').hidden = fromTimeline;
+    fields.parent.closest('label').hidden = fromTimeline;
+    fields.area.disabled = fromTimeline;
+    groupHelp.hidden = fromTimeline;
     deleteTaskButton.hidden = !card;
+    const canEditOwner = Boolean(card && assignments.canAssign());
+    document.querySelector('#board-edit-owner').hidden = !canEditOwner;
+    fields.owner.disabled = !canEditOwner;
+    fields.owner.replaceChildren(new Option('Nobody', ''));
+    initialOwner = '';
+    if (canEditOwner) {
+      const team = assignments.people();
+      team.forEach(person => fields.owner.add(new Option(assignments.nameOf(person.userId, team), person.userId)));
+      initialOwner = assignments.assigneeOf(card, team).userId || '';
+    }
+    fields.owner.value = initialOwner;
     fields.area.replaceChildren(new Option('Choose an area', ''));
     window.getSavedGanttPlan().forEach(area => fields.area.add(new Option(area.title, String(area.id))));
-    fields.area.value = card?.areaId || areaSelect.value || String(window.getSavedGanttPlan()[0]?.id || '');
+    if (!card) fields.area.add(new Option('+ Create a work area', newAreaOption));
+    fields.area.value = fromTimeline ? newAreaOption : (card?.areaId || areaSelect.value || String(window.getSavedGanttPlan()[0]?.id || ''));
     fields.title.value = card?.title || '';
     fields.start.value = card?.start || projectToday();
     fields.end.value = card?.end || projectToday();
@@ -407,10 +576,11 @@
     dialog.showModal();
   }
   addTaskButton.onclick = () => openTaskDialog();
+  window.openTimelineAreaDialog = () => openTaskDialog(null, true);
   fields.area.onchange = updateParents;
   fields.parent.onchange = updateParentName;
   document.querySelector('#board-create-cancel').onclick = () => dialog.close();
-  dialog.addEventListener('close', () => { editingStepId = null; });
+  dialog.addEventListener('close', () => { editingStepId = null; addingTimelineArea = false; });
   deleteTaskButton.onclick = () => {
     if (!canFestival('lineup') || editingStepId === null) return;
     const card = projectSteps().find(item => String(item.id) === editingStepId);
@@ -427,21 +597,30 @@
     event.preventDefault();
     if (!canFestival('lineup')) return;
     const updating = editingStepId !== null;
+    const creatingArea = !updating && fields.area.value === newAreaOption;
     try {
       const details = {
         areaId:fields.area.value, taskId:fields.parent.value === 'new' ? '' : fields.parent.value,
         parentName:fields.parentName.value, title:fields.title.value,
         start:fields.start.value, end:fields.end.value
       };
-      if (updating) window.updateBoardSubtask({ ...details, stepId: editingStepId });
-      else window.addBoardSubtask(details);
+      if (addingTimelineArea) {
+        window.addTimelineWorkArea({ ...details, newAreaName: fields.areaName.value });
+        dialog.close();
+        return;
+      }
+      if (updating) {
+        const ownerId = !fields.owner.disabled && fields.owner.value !== initialOwner ? fields.owner.value : undefined;
+        window.updateBoardSubtask({ ...details, stepId: editingStepId, ownerId });
+      }
+      else window.addBoardSubtask({ ...details, newAreaName: creatingArea ? fields.areaName.value : undefined });
     } catch (failure) {
       error.textContent = failure.message;
       return;
     }
     dialog.close();
     search.value = '';
-    areaSelect.value = fields.area.value;
+    areaSelect.value = creatingArea ? String(window.getSavedGanttPlan().at(-1).id) : fields.area.value;
     render();
     summary.textContent = (updating ? 'Task updated on the board and project timeline. ' : 'Task added to the board and project timeline. ') + summary.textContent;
   };

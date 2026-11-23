@@ -22,7 +22,11 @@
   function save(next) {
     if (!canAssign()) throw new Error('Only the festival creator and Admins can assign tasks.');
     // Also remembers who handed out each new assignment (shown in notifications).
-    try { localStorage.setItem(key, JSON.stringify(withAssigners(read(), next, myUserId()))); }
+    try {
+      const current = localStorage.getItem(key);
+      const assignments = withAssigners(parseAssignments(current), next, myUserId());
+      localStorage.setItem(key, encodeAssignments(assignments, readProjectDeletion(current)));
+    }
     catch { throw new Error('Could not save the assignment in this browser.'); }
     changed();
   }

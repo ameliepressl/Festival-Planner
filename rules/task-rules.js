@@ -41,6 +41,15 @@ function parseAssignments(text) {
   return result;
 }
 
+// The last bulk deletion shares the protected assignment section and survives owner edits.
+function readProjectDeletion(text) {
+  try { return JSON.parse(text)?.lastProjectDeletion ?? null; } catch { return null; }
+}
+
+function encodeAssignments(assignments, deletion) {
+  return JSON.stringify(deletion ? { ...assignments, lastProjectDeletion: deletion } : assignments);
+}
+
 // Who handed out each assignment; only for assignments that exist and name a person.
 function parseAssigners(saved, assignments) {
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return null;
@@ -75,6 +84,20 @@ function withAssigners(previous, next, byUserId) {
   }
   if (found) result.assignedBy = by;
   return result;
+}
+
+// Store an explicit owner for each deleted subtask, including older inherited assignments.
+function deletedSubtaskOwners(areas, assignments) {
+  const owners = emptyAssignments();
+  const steps = {};
+  for (const area of areas) for (const group of area.tasks) for (const step of group.subtasks) {
+    const entry = { id: String(step.id), taskId: String(group.id) };
+    owners.steps[entry.id] = assigneeOf(entry, assignments).userId || '';
+    const giver = assignerOf(entry, assignments);
+    if (giver) steps[entry.id] = giver;
+  }
+  if (Object.keys(steps).length) owners.assignedBy = { groups: {}, steps };
+  return owners;
 }
 
 // Who gave a subtask to its person: the subtask's own record, otherwise its group's. null = unknown.
