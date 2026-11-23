@@ -15,7 +15,7 @@ Kira · Amelie · Frederik · Vicky
 
 **▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
 
-[At a glance](#-at-a-glance) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Roadmap](feature-plans/roadmap.md)
+[At a glance](#-at-a-glance) · [Start here](#-start-here) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [How we work with AI](#-how-we-work-with-ai) · [Roadmap](feature-plans/roadmap.md)
 
 <br />
 
@@ -40,6 +40,18 @@ Kira · Amelie · Frederik · Vicky
 
 **Tested automatically:** GitHub Actions runs the whole test suite on every pull request and every
 push to `main` (badge above). A green check on a pull request means every test passed. Details: [Tests](#-tests).
+
+## 📍 Start here
+
+New to the code? These five stops explain how the whole app works:
+
+| # | Open | What it shows |
+| --- | --- | --- |
+| 1 | [product brief](product-brief/festival-architect-brief.html) | What we build and why; it wins over everything else |
+| 2 | [`rules/festival-rules.js`](rules/festival-rules.js) | How a business rule looks: pure functions, no screen code (all rules: [`rules/`](rules/)) |
+| 3 | [`tests/festival-rules.test.js`](tests/festival-rules.test.js) | How each rule is proven with scenarios; CI runs all tests on every PR |
+| 4 | [`migrations/006_admin_only_lineup_details.sql`](migrations/006_admin_only_lineup_details.sql) | How access is enforced in the database (Row Level Security), not by hidden buttons |
+| 5 | [docs/ai-workflow.md](docs/ai-workflow.md) | How we plan, build, verify and review with AI |
 
 ## 👥 Team
 
@@ -261,8 +273,12 @@ finance/                      financial overview
 checkliste-festivalplanung/   final checklist
 rules/                        all rules and calculations — no screen code
 tests/                        automatic tests (JavaScript)
-feature-plans/                one plan per feature, plus the roadmap
+feature-plans/                one plan per feature (start from _TEMPLATE.md), plus the roadmap
 product-brief/                the product brief
+docs/ai-workflow.md           how we plan, build, verify and review with AI
+AGENTS.md · CLAUDE.md         shared rules for every AI agent (CLAUDE.md loads AGENTS.md)
+CONTRIBUTING.md               step-by-step checklist and Definition of Done
+.github/                      CI workflow, pull request and issue templates
 ```
 
 ## 🧭 Design principles
@@ -302,13 +318,24 @@ finance lines are escaped before they go into the page, and saved data is checke
 loaded, so a teammate cannot inject code into a shared festival. We audited every place that builds HTML
 (`innerHTML`); see [the audit](feature-plans/html-safety-audit.md).
 
-## 🤝 How we work
+## 🤝 How we work with AI
 
-- Every feature starts from the latest `main` on **its own branch**, with a plan in
-  `feature-plans/` first.
-- Every pull request is **reviewed by another team member** and only merged when the tests
-  pass.
-- Tests are **never weakened** to make them pass.
+The course encourages AI, and we use it deliberately: **people specify, decide and review; AI agents
+draft, implement and check.** We use AI wherever it makes us faster (implementation from a plan, tests,
+audits, repetitive work), but **we never hand over control**: decisions, pushes, merges and database changes
+stay with people. Code written by an agent goes through the same steps as code written by hand:
 
-More: [AGENTS.md](AGENTS.md) · [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
+1. **Plan** first in `feature-plans/` (Why · What · Out of scope · Done when, [template](feature-plans/_TEMPLATE.md)).
+2. **Shared rules for every agent** in [AGENTS.md](AGENTS.md): rules only in `rules/`, access enforced in the
+   database, no secrets, and tests are **never weakened** to make them pass.
+3. **Its own branch** from the latest `main`; tests written together with the code.
+4. **Verified** by the full test suite and a check in a real browser.
+5. **Pull request** with plan, AI use and test output ([template](.github/pull_request_template.md)),
+   reviewed and merged by a teammate, only with green CI.
+
+The full process, the risks of AI-written code and how we control them, real examples of where we caught
+the AI, and how we review together: **[docs/ai-workflow.md](docs/ai-workflow.md)**.
+Checklist for contributors: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+More: [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
 **[Roadmap — what comes next](feature-plans/roadmap.md)**

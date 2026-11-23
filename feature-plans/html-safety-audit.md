@@ -12,6 +12,8 @@ festival could save something like `<img src=x onerror=...>` and run code in eve
 1. Listed every HTML sink in the app code (`innerHTML`, `insertAdjacentHTML`): 49 places in 11 files.
 2. A small script listed every `${...}` value inside an HTML template, including templates nested in
    `.map(...)`, that was not obviously safe (escaped, a formatted number or a fixed text).
+   *Method note:* the first version of the script skipped templates nested inside `${...}`, which made
+   the result list suspiciously short. The script was fixed and the whole audit run again.
 3. Each remaining value was traced back to where it comes from:
    - **text from users** (artist and stage names, genres, notes, task titles, festival and map names,
      usernames, own stands with menus, own finance lines) → must be escaped;
