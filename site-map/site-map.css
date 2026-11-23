@@ -238,3 +238,12 @@
 body.sm-dragging-pin,body.sm-dragging-pin *{cursor:grabbing!important}
 @media(max-width:600px){.sm-pop{min-width:160px}.sm-dock-groups{max-height:150px}}
 @media(prefers-reduced-motion:reduce){.sm-pop{animation:none}}
+
+/* "+ Add pin" chooser in the dock */
+.sm-add-toggle.on{background:var(--ink);color:#fff}
+.sm-add{border:1px dashed var(--line);background:var(--paper);padding:10px;margin-top:10px;animation:sm-tray-in .2s ease-out}
+.sm-add-name{display:flex;flex-direction:column;gap:4px;font:600 11px var(--font-text);color:var(--ink);margin-bottom:8px}
+.sm-add-name small{font-weight:400;color:var(--muted)}
+.sm-add-name input{font:13px var(--font-text);padding:8px 10px;border:1px solid var(--line);background:var(--white);color:var(--ink);max-width:320px}
+.sm-add-types{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.sm-add-types .sm-tray-pin{cursor:pointer}

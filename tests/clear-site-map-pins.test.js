@@ -179,3 +179,62 @@ test('a removed pin can be placed again on its own, and the layout check counts 
   assert.equal(map.checkLayout(site, back, items).find((rule) => rule.id === 'all-placed').ok, true);
   assert.equal(nextPinToPlace(items, back, 'stage-b'), null);
 });
+
+// "+ Add pin": pins the organiser adds on top of the facilities for the festival size.
+const { addExtraPin, withoutExtraPin, placedExtraPins } = require('../rules/map-pin-rules.js');
+
+test('adding a pin gives it the next free id and a numbered name, or the organiser\'s own name', () => {
+  const first = addExtraPin([], 'toilets');
+  assert.deepEqual(first.pin, { id: 'x-1', kind: 'toilets', name: 'Toilets (added 1)' });
+  const second = addExtraPin(first.extraPins, 'toilets', '  VIP toilets  ');
+  assert.deepEqual(second.pin, { id: 'x-2', kind: 'toilets', name: 'VIP toilets' });
+  const gap = addExtraPin([{ id: 'x-2', kind: 'bar', name: 'Bar' }], 'water');
+  assert.equal(gap.pin.id, 'x-1', 'a freed id is used again');
+});
+
+test('adding refuses unknown kinds, nameless own pins, long names and too many pins', () => {
+  assert.equal(addExtraPin([], 'helipad').ok, false);
+  assert.match(addExtraPin([], 'marker').problem, /name/);
+  assert.equal(addExtraPin([], 'marker', 'Meeting point').pin.name, 'Meeting point');
+  assert.equal(addExtraPin([], 'bar', 'x'.repeat(map.EXTRA_PIN_NAME_MAX + 1)).ok, false);
+  const full = Array.from({ length: map.EXTRA_PIN_MAX }, (_, i) => ({ id: `x-${i + 1}`, kind: 'water', name: `W${i}` }));
+  assert.match(addExtraPin(full, 'water').problem, /at most/);
+});
+
+test('added pins become layout items and count in the layout check', () => {
+  const site = demo();
+  const far = { ...site.placements };
+  const stageB = site.placements['stage-b'];
+  // Every built-in toilet row stands next to Stage B, so Stage A has none close by ...
+  items.filter((entry) => entry.kind === 'toilets').forEach((entry, i) => { far[entry.id] = [stageB[0] + 8 + i, stageB[1] + 8]; });
+  const before = map.checkLayout(site, far, items).find((rule) => rule.id === 'toilets');
+  assert.equal(before.ok, false);
+  // ... until the organiser adds a row of toilets right next to Stage A.
+  const { extraPins, pin } = addExtraPin([], 'toilets', 'Toilets by Stage A');
+  const added = map.extraPinItems(extraPins);
+  assert.equal(added[0].added, true);
+  assert.equal(added[0].kind, 'toilets');
+  const stageA = site.placements['stage-a'];
+  const placements = { ...far, [pin.id]: [stageA[0] + 10, stageA[1] + 10] };
+  const after = map.checkLayout(site, placements, [...items, ...added]).find((rule) => rule.id === 'toilets');
+  assert.equal(after.ok, true, after.detail);
+});
+
+test('deleting an added pin removes it completely; unplaced added pins are dropped', () => {
+  const { extraPins } = addExtraPin(addExtraPin([], 'bar').extraPins, 'water');
+  assert.deepEqual(withoutExtraPin(extraPins, 'x-1').map((pin) => pin.id), ['x-2']);
+  assert.deepEqual(placedExtraPins(extraPins, { 'x-2': [5, 5] }).map((pin) => pin.id), ['x-2']);
+});
+
+test('added pins are saved with the map; broken ones and stray placements are dropped', () => {
+  const site = { ...demo(), extraPins: [{ id: 'x-1', kind: 'bar', name: 'Main bar' }, { id: 'x-1', kind: 'bar', name: 'Twin' },
+    { id: 'x-9', kind: 'helipad', name: 'No' }, { id: 'evil', kind: 'bar', name: 'No' }, { id: 'x-3', kind: 'water', name: '<b>' }] };
+  site.placements = { ...site.placements, 'x-1': [600, 400], 'x-9': [1, 1], 'x-3': [610, 410], 'x-7': [2, 2] };
+  const parsed = map.parseSiteMaps(JSON.stringify([site]))[0];
+  assert.deepEqual(parsed.extraPins, [{ id: 'x-1', kind: 'bar', name: 'Main bar' }, { id: 'x-3', kind: 'water', name: '<b>' }]);
+  assert.deepEqual(parsed.placements['x-1'], [600, 400]);
+  assert.equal(parsed.placements['x-9'], undefined);
+  assert.equal(parsed.placements['x-7'], undefined, 'a placement without its added pin is dropped');
+  const old = map.parseSiteMaps(JSON.stringify([demo()]))[0];
+  assert.equal(Object.hasOwn(old, 'extraPins'), false, 'maps without added pins keep their shape');
+});

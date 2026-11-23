@@ -44,8 +44,15 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 - [x] Everything stays a draft: **Undo change** brings the pins back right after clearing,
       **Discard changes** returns to the saved map, **Save changes** keeps the new layout.
 - [x] Viewers (no edit right) see the button disabled, like *Suggest layout*.
+- [x] **+ Add pin** (feedback: "there is still no button to add a pin"): in the toolbar and in the
+      *Pins to place* dock. Pick a type (Toilets, Free water, First aid, Bar, Info point, Security post,
+      Recycling, or an own pin with a name such as "VIP area"), then click the map. Added pins are saved
+      with the map (`site.extraPins`, ids `x-1`, `x-2`, …, at most 60). Added toilets, water and first aid
+      count in the layout check. The pin menu says **Delete** for an added pin (it is gone, not waiting
+      in the dock); Esc before placing drops it; *Clear all pins* deletes added pins too and says so.
 - [x] **Rules in `rules/map-pin-rules.js`:** `clearedPlacements`, `withoutPin`, `pinCounts`, `pinsToPlace`,
-      `pinChoices`, `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`. Screen code only
+      `pinChoices`, `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`,
+      `addExtraPin`, `withoutExtraPin`, `placedExtraPins`; extra pin types and parsing in `rules/site-map-rules.js`. Screen code only
       in `site-map/site-map-page.js`, styles in `site-map/site-map.css`.
 - [x] Cache versions raised in `index.html` for the changed page script and stylesheet.
 
@@ -63,14 +70,16 @@ layout from scratch."* Until now an organiser could only move the suggested pins
 
 ## Tests
 
-`tests/clear-site-map-pins.test.js` (17 tests): clear with and without the gate; the saved object is never
+`tests/clear-site-map-pins.test.js` (22 tests): clear with and without the gate; the saved object is never
 changed; counts; pins grouped by category; next pin after placing and after Skip; normal spot; lake,
 forest and outside the fence refused with a message; gate and exits snap onto the fence and pass the
 layout check; nonsense input; "Fill the rest" keeps hand-placed pins; clear + Undo through the map draft;
 a cleared map still parses with fence, gate and no-go areas; many pins of one kind share a button (stage
 toilets first) while a few keep their own names; one pin removed waits alone under "Pins to place" and
-placed again completes the layout check. No existing test was changed.
-Full suite: 500 tests, 500 pass, 0 fail.
+placed again completes the layout check; added pins get the next free id and a numbered name, odd
+requests are refused, added toilets count for the stage toilet rule, deleting and unplaced added pins
+are dropped, and broken saved added pins are cleaned when the map is read. No existing test was changed.
+Full suite: 505 tests, 505 pass, 0 fail.
 
 Browser check (Munich demo, port 8021, test storage cleared afterwards): dialog shows 77 pins with the gate
 kept, 78 without; after clearing only the gate is left and Stage A is ready; the preview pin follows the
@@ -81,3 +90,7 @@ button starts with "Toilets · Stage A". One pin: *Remove from map* takes Stage 
 the list and gets focus); Enter on it and a click on the map put it back (all rules met again); *Move to
 another spot* picks it up; Delete removes the selected or focused pin; Backspace while typing in the
 visitors field removes nothing; Undo and Discard restore. No console errors.
+
++ Add pin (same setup): Own pin "VIP area" refused in the lake with the message, placed on grass (79 of 79);
+its menu shows *Delete* and removes it (78 of 78); Esc while placing added toilets drops the pin; with an
+added pin on the map *Clear all pins* says "The 1 pin you added is deleted" and removes it. No console errors.

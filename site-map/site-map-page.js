@@ -31,6 +31,15 @@
   let needs = sizeFor(ground.visitors);
   let items = layoutItems(needs);
   let sites = loadSites();
+  // The pins of the open map: the facilities for the festival size plus the pins the organiser added.
+  const baseItems = () => layoutItems(needs);
+  function refreshItems() {
+    const open = sites.find((entry) => entry.id === currentId);
+    items = [...baseItems(), ...extraPinItems(open?.extraPins)];
+  }
+  // Suggestions plan only the built-in facilities; added pins keep their spots.
+  const addedPlacements = (s) => Object.fromEntries(extraPinItems(s.extraPins).filter((pin) => s.placements[pin.id]).map((pin) => [pin.id, s.placements[pin.id]]));
+  let addOpen = false;   // the "+ Add pin" chooser in the dock
   let currentId = read(SELECTED_KEY) || 'demo';
   if (!sites.some((s) => s.id === currentId)) currentId = 'demo';
   let active = MAP_CATEGORIES.map((c) => c.id);
@@ -125,7 +134,7 @@
     const map = saved.sites.find(value => value.id === saved.currentId) || saved.sites[0];
     if (!map || !committedMapIds.has(map.id)) return [{ id: `map:${map?.id || 'missing'}:saved`, label: 'Save and assess festival map', ok: false,
       unknown: true, detail: 'The suggested map has not been saved yet. Review the layout and measurements, then choose Save changes on Site map.', section: 'Site map' }];
-    const savedItems = layoutItems(sizeFor(saved.ground.visitors));
+    const savedItems = [...layoutItems(sizeFor(saved.ground.visitors)), ...extraPinItems(map.extraPins)];
     const rules = [...checkLayout(map, map.placements, savedItems), ...crowdSafetyChecks(map, saved.ground.visitors, activeStageIds(savedItems)).checks]
       .map(rule => ({ id: `map:${map.id}:${rule.id}`, label: rule.label, ok: rule.ok, unknown: !!rule.unknown, detail: rule.detail, section: 'Site map' }));
     savedReadinessCache = { snapshot: saved, stageCount, rules };
@@ -150,6 +159,7 @@
   // ---------- the page frame (drawn once per visit or map change) ----------
   function renderPage() {
     closeSimulation();
+    refreshItems();
     const keepSettingsOpen = !!view.querySelector("#sm-settings-dialog")?.open;
     const s = site();
     view.innerHTML = `
@@ -171,7 +181,7 @@
           <div class="sm-tools" role="group" aria-label="Map tools">
             ${TOOLBAR_MODES.map(([id, m]) => `<button type="button" class="sm-tool ${mode === id ? 'on' : ''}" data-mode="${id}" aria-pressed="${mode === id}">${m.label}</button>`).join('')}
             <label class="sm-toggle"><input type="checkbox" id="sm-show-nogo" ${showNogo ? 'checked' : ''} /> Show no-go areas</label>
-            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary sm-clear-button" id="sm-clear-pins" aria-haspopup="dialog" aria-controls="sm-clear-dialog">Clear all pins</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
+            <div class="sm-layout-actions"><button type="button" class="button primary" id="sm-suggest">Suggest layout</button><button type="button" class="button secondary" id="sm-add-pin" aria-controls="sm-tray">+ Add pin</button><button type="button" class="button secondary sm-clear-button" id="sm-clear-pins" aria-haspopup="dialog" aria-controls="sm-clear-dialog">Clear all pins</button><button type="button" class="button secondary" id="sm-open-settings" aria-haspopup="dialog" aria-controls="sm-settings-dialog">Map settings</button></div>
           </div>
           <div class="map-chips" role="group" aria-label="Show categories">
             ${MAP_CATEGORIES.map((c) => `<button type="button" class="map-chip ${active.includes(c.id) ? 'on' : ''}" data-category="${c.id}" aria-pressed="${active.includes(c.id)}" style="--marker:${c.colour}"><i></i>${c.title}</button>`).join('')}
@@ -217,7 +227,7 @@
     renderCrowd();
     renderDraftActions();
     if (!editable()) {
-      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-clear-pins, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
+      view.querySelectorAll('[data-mode]:not([data-mode="explore"]), #sm-suggest, #sm-add-pin, #sm-clear-pins, #sm-visitors, #sm-name, #sm-width, #sm-upload, [data-action], [data-crowd-field]').forEach(control => { control.disabled = true; });
     }
     const playbackPanel = view.querySelector('#sm-simulation');
     playbackPanel.ontoggle = () => {
@@ -338,6 +348,12 @@
     if (draftBorder?.length) { mapMessage('Finish the fence with Done, or cancel drawing it, before changing pins.'); return; }
     s.placements = withoutPin(s.placements, id);
     if (selectedId === id) selectedId = null;
+    if (item.added && !pickUp) {
+      s.extraPins = withoutExtraPin(s.extraPins, id);
+      refreshItems(); save(); drawAll();
+      mapMessage(`${item.name} deleted from the map. Undo change brings it back.`);
+      return;
+    }
     save();
     drawAll();
     if (pickUp) {
@@ -347,6 +363,16 @@
       mapMessage(`${item.name} taken off the map. It waits under the map in “Pins to place”; Undo change puts it back.`);
       view.querySelector(`#sm-tray [data-place="${id}"]`)?.focus({ preventScroll: true });
     }
+  }
+
+  // An added pin whose placing was cancelled is dropped again.
+  function dropUnplacedAdded() {
+    const s = site();
+    if (!s?.extraPins?.length) return;
+    const kept = placedExtraPins(s.extraPins, s.placements);
+    if (kept.length === s.extraPins.length) return;
+    s.extraPins = kept;
+    refreshItems(); save();
   }
 
   function stopPlacing() {
@@ -362,14 +388,16 @@
     s.placements = { ...s.placements, [item.id]: spot.at };
     if (item.id === 'entrance') s.entrance = spot.at;
     save();
-    const next = nextPinToPlace(items, s.placements, item.id);
+    // After an added pin, placing ends; after a built-in one, the next missing pin is ready.
+    const next = item.added ? null : nextPinToPlace(items.filter((entry) => !entry.added), s.placements, item.id);
     placing = next?.id || null; ghost = null;
     if (next) showCategory(next.category);
     selectedId = item.id;
     drawAll();
     if (!next) {
       setMode('explore');
-      celebrate();
+      if (item.added) mapMessage(`${item.name} added. Drag it to fine-tune; Save changes keeps it.`);
+      else celebrate();
     }
   }
 
@@ -384,7 +412,7 @@
 
   function fillMissing() {
     const s = site();
-    const result = suggestLayout(s, items);
+    const result = suggestLayout(s, baseItems());
     if (result.problem) { mapMessage(result.problem); return; }
     const before = items.filter((item) => s.placements[item.id]).length;
     s.placements = fillMissingPins(s.placements, result.placements);
@@ -415,7 +443,9 @@
         <span class="sm-dock-count">${placed} of ${total} on the map</span>
         <div class="sm-tray-progress ${groups.length ? '' : 'done'}" role="progressbar" aria-label="Pins placed" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${placed}"><i style="width:${Math.round((placed / total) * 100)}%"></i></div>
         ${groups.length ? `<button type="button" class="button primary" data-tray="fill" ${locked ? 'disabled' : ''} title="Keeps every pin you placed and plans only the missing ones">Fill the rest for me</button>` : ''}
-      </div>`;
+        <button type="button" class="button secondary sm-add-toggle ${addOpen ? 'on' : ''}" data-tray="add" aria-expanded="${addOpen}" ${locked ? 'disabled' : ''}>+ Add pin</button>
+      </div>
+      ${addOpen && !locked ? addChooser() : ''}`;
     const drop = '<div class="sm-dock-drop" aria-hidden="true">Drop here to take the pin off the map</div>';
     if (!groups.length) {
       tray.innerHTML = `${head}<p class="sm-dock-empty"><b>✓ Every facility is on the map.</b> Drag a pin to move it. To take one off, drag it here or click it and choose <b>Remove</b>.</p>${drop}`;
@@ -428,6 +458,40 @@
         ${group.choices.map((choice) => { const on = choice.ids.includes(placing); return `<button type="button" class="sm-tray-pin ${on ? 'on' : ''}" data-place="${choice.id}" aria-pressed="${on}" style="--marker:${group.colour}" ${locked ? 'disabled' : ''} aria-label="Place ${escape(choice.label)}${choice.count > 1 ? `, ${choice.count} left` : ''}">
           <i>${escape(choice.symbol)}</i>${escape(choice.label)}${choice.count > 1 ? `<b>×${choice.count}</b>` : ''}</button>`; }).join('')}</div></div>`).join('')}</div>
       ${drop}`;
+  }
+
+  // "+ Add pin": choose what to add (and optionally its name), then click the map.
+  function addChooser() {
+    const count = site().extraPins?.length || 0;
+    return `<div class="sm-add" role="group" aria-label="Add a pin">
+      <label class="sm-add-name">Name <small>(optional; needed for “Own pin”)</small>
+        <input id="sm-add-name" maxlength="${EXTRA_PIN_NAME_MAX}" placeholder="e.g. VIP area, charging station" autocomplete="off" /></label>
+      <div class="sm-add-types">${EXTRA_PIN_TYPES.map((type) => `<button type="button" class="sm-tray-pin" data-add-type="${type.kind}" style="--marker:${colourOf(type.category)}"><i>${escape(type.symbol)}</i>${escape(type.label)}</button>`).join('')}</div>
+      <small class="sm-note">Then click its spot on the map. Added pins count in the layout check (e.g. extra toilets near a stage). ${count ? `${count} added on this map.` : ''}</small>
+    </div>`;
+  }
+
+  function addPin(kind) {
+    if (!editable() || busy) return;
+    const s = site();
+    const name = view.querySelector('#sm-add-name')?.value || '';
+    const result = addExtraPin(s.extraPins, kind, name);
+    if (!result.ok) { mapMessage(result.problem); view.querySelector('#sm-add-name')?.focus(); return; }
+    s.extraPins = result.extraPins;
+    refreshItems();
+    addOpen = false;
+    selectedId = null;
+    startPlacing(result.pin.id);
+    mapMessage(`Click the spot for ${result.pin.name} on the map. Esc cancels.`);
+  }
+
+  function toggleAdd(open = !addOpen) {
+    addOpen = open;
+    renderTray();
+    if (addOpen) {
+      view.querySelector('#sm-tray')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      view.querySelector('#sm-add-name')?.focus({ preventScroll: true });
+    }
   }
 
   // The small menu next to the selected pin, right on the map.
@@ -443,7 +507,7 @@
         <button type="button" class="sm-pop-close" data-pop="close" aria-label="Close pin options">×</button></div>
       ${editable() ? `<div class="sm-pop-actions">
         <button type="button" data-pin="move" ${busy ? 'disabled' : ''} title="Pick the pin up, then click its new spot">↔ Move</button>
-        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="Take the pin off the map (Delete key)">✕ Remove</button>
+        <button type="button" data-pin="remove" class="danger" ${busy ? 'disabled' : ''} title="${item.added ? 'Delete this added pin' : 'Take the pin off the map'} (Delete key)">✕ ${item.added ? 'Delete' : 'Remove'}</button>
       </div><small>or drag the pin to a new spot</small>` : '<small>View only</small>'}`;
     pop.hidden = false;
     positionPopover(at);
@@ -510,6 +574,7 @@
       <p>All <b id="sm-clear-count">${counts.toRemove}</b> pins are taken off the map so you can place every facility yourself.</p>
       <ul class="sm-clear-chips">${byCategory.map((category) => `<li style="--marker:${category.colour}"><i></i>${category.count} ${escape(category.title)}</li>`).join('')}</ul>
       ${hasGate ? '<label class="sm-clear-keep"><input type="checkbox" id="sm-clear-keep-gate" checked /> <span>Keep the main entrance where it is<small>Everything else is planned around the gate.</small></span></label>' : ''}
+      ${s.extraPins?.length ? `<p class="sm-clear-safe">The ${s.extraPins.length} ${s.extraPins.length === 1 ? 'pin you added is' : 'pins you added are'} deleted.</p>` : ''}
       <div class="sm-clear-stays"><b>Stays as it is:</b> the map, the fence, no-go areas, the festival size and crowd measurements.</div>
       <p class="sm-clear-safe">Nothing is saved yet. <b>Undo change</b> brings the pins back right away, <b>Discard changes</b> returns to your saved map.</p>
       <div class="dialog-actions"><button class="button secondary" value="cancel">Keep my pins</button><button class="button danger" value="clear" id="sm-clear-confirm">Clear ${counts.toRemove} pins</button></div>`;
@@ -533,6 +598,8 @@
     const s = site();
     const removed = pinCounts(items, s.placements, { keepGate }).toRemove;
     s.placements = clearedPlacements(s.placements, { keepGate });
+    if (s.extraPins?.length) s.extraPins = [];   // added pins are deleted, not kept waiting
+    refreshItems();
     selectedId = null;
     save();
     const first = nextPinToPlace(items, s.placements);
@@ -696,7 +763,7 @@
     if (!validVisitors(value)) { mapMessage(`Please enter a whole number from ${MIN_VISITORS.toLocaleString('en-GB')} to ${MAX_VISITORS.toLocaleString('en-GB')}.`); renderSize(); return; }
     ground = { visitors: Number(value) };
     needs = sizeFor(ground.visitors);
-    items = layoutItems(needs);
+    refreshItems();
     save();
     if (selectedId && !findItem(selectedId, items)) selectedId = null;
     renderSize(); drawAll(); renderCrowd();
@@ -707,9 +774,9 @@
   // ---------- actions ----------
   function suggest() {
     const s = site();
-    const result = suggestLayout(s, items);
+    const result = suggestLayout(s, baseItems());
     if (result.problem) { mapMessage(result.problem); return; }
-    s.placements = result.placements;
+    s.placements = { ...result.placements, ...addedPlacements(s) };
     save();
     drawAll();
     const score = layoutScore(checkLayout(s, s.placements, items));
@@ -733,7 +800,7 @@
   function setMode(next) {
     closeSimulation();
     mode = next;
-    if (mode !== 'place') { placing = null; ghost = null; }
+    if (mode !== 'place') { placing = null; ghost = null; dropUnplacedAdded(); }
     if (mode === 'border' && draftBorder === null) draftBorder = [];
     view.querySelector('.sm-frame').className = `sm-frame mode-${mode}`;
     view.querySelectorAll('[data-mode]').forEach((b) => { b.classList.toggle('on', b.dataset.mode === mode); b.setAttribute('aria-pressed', b.dataset.mode === mode); });
@@ -779,7 +846,7 @@
         entrance: null, grid: emptyGrid(width, height), placements: {}
       };
       created.grid = await detectWater(created);
-      created.placements = suggestLayout(created, items).placements;
+      created.placements = suggestLayout(created, baseItems()).placements;
       sites.push(created);
       switchMap(created.id, true); save();
       mapMessage('Map uploaded and a first layout suggested. Set the real width, the fence and the gate, then suggest again.');
@@ -964,6 +1031,9 @@
     }
     if (t.closest('#sm-suggest')) { if (editable() && !busy) suggest(); return; }
     if (t.closest('#sm-clear-pins')) { if (editable() && !busy) openClearDialog(); return; }
+    if (t.closest('#sm-add-pin')) { if (editable() && !busy) toggleAdd(true); return; }
+    const addType = t.closest('[data-add-type]')?.dataset.addType;
+    if (addType) { addPin(addType); return; }
     if (t.closest('[data-pop="close"]')) { deselect(); return; }
     const pinAction = t.closest('[data-pin]')?.dataset.pin;
     if (pinAction && selectedId) { removePin(selectedId, { pickUp: pinAction === 'move' }); return; }
@@ -974,6 +1044,7 @@
     }
     const trayAction = t.closest('[data-tray]')?.dataset.tray;
     if (trayAction === 'stop') { stopPlacing(); return; }
+    if (trayAction === 'add') { if (editable() && !busy) toggleAdd(); return; }
     if (trayAction === 'list') {
       // On narrow screens the list sits below the map: jump there and focus the pin being placed.
       const tray = view.querySelector('#sm-tray');

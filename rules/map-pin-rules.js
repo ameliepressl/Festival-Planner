@@ -5,7 +5,8 @@
 
 // In the browser site-map-rules.js is loaded first; the tests load it with require.
 const pinMap = typeof module !== 'undefined' && typeof require === 'function'
-  ? require('./site-map-rules.js') : { MAP_CATEGORIES, isUsable, isOnFence, nearestBoundaryPoint };
+  ? require('./site-map-rules.js')
+  : { MAP_CATEGORIES, isUsable, isOnFence, nearestBoundaryPoint, EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins };
 
 // The placements left after "Clear all pins". keepGate keeps only the main entrance.
 function clearedPlacements(placements = {}, { keepGate = false } = {}) {
@@ -84,6 +85,34 @@ function pinSpot(site, item, point) {
   return { ok: true, at: point.map(Math.round) };
 }
 
+// "+ Add pin": a new extra pin of one type, with the next free id and a name.
+// The name is the organiser's own (e.g. "VIP area") or the type's label with a number ("Toilets (added 2)").
+//   → { ok: true, extraPins, pin } or { ok: false, problem }
+function addExtraPin(extraPins = [], kind, name = '') {
+  const pins = pinMap.parseExtraPins(extraPins);
+  const type = pinMap.EXTRA_PIN_TYPES.find((entry) => entry.kind === kind);
+  if (!type) return { ok: false, problem: 'Choose what kind of pin to add.' };
+  if (pins.length >= pinMap.EXTRA_PIN_MAX) return { ok: false, problem: `A map can have at most ${pinMap.EXTRA_PIN_MAX} added pins. Remove one first.` };
+  const own = String(name || '').trim();
+  if (own.length > pinMap.EXTRA_PIN_NAME_MAX) return { ok: false, problem: `Keep the name to ${pinMap.EXTRA_PIN_NAME_MAX} characters.` };
+  if (kind === 'marker' && !own) return { ok: false, problem: 'Give your own pin a name, e.g. "VIP area".' };
+  let n = 1;
+  while (pins.some((pin) => pin.id === `x-${n}`)) n++;
+  const sameKind = pins.filter((pin) => pin.kind === kind).length + 1;
+  const pin = { id: `x-${n}`, kind, name: own || `${type.label} (added ${sameKind})` };
+  return { ok: true, extraPins: [...pins, pin], pin };
+}
+
+// Removing an added pin deletes it completely (it does not wait under "Pins to place").
+function withoutExtraPin(extraPins = [], id) {
+  return pinMap.parseExtraPins(extraPins).filter((pin) => pin.id !== id);
+}
+
+// Added pins that are not on the map (e.g. adding was cancelled) are dropped.
+function placedExtraPins(extraPins = [], placements = {}) {
+  return pinMap.parseExtraPins(extraPins).filter((pin) => placements[pin.id]);
+}
+
 // "Fill the rest for me": keep every pin the organiser placed by hand and take the
 // suggestion only for the pins that are still missing.
 function fillMissingPins(placements = {}, suggested = {}) {
@@ -91,5 +120,6 @@ function fillMissingPins(placements = {}, suggested = {}) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { clearedPlacements, withoutPin, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins };
+  module.exports = { clearedPlacements, withoutPin, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins,
+    addExtraPin, withoutExtraPin, placedExtraPins };
 }
