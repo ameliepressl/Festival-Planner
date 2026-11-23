@@ -18,12 +18,12 @@ Code written by an agent goes through the same gates as code written by hand.
 
 | | |
 | --- | --- |
-| Merged pull requests | 49, from all four team members |
-| Feature plans written before building | 51 in [`feature-plans/`](../feature-plans/) |
-| Automated tests | 513 in 46 test files, run by CI on every pull request |
-| Rule modules (logic without screen code) | 21 in [`rules/`](../rules/) |
-| Database migrations (access rules) | 6 in [`migrations/`](../migrations/) |
-| Commits on `main` | more than 160; over 70 carry an AI co-author line |
+| Merged pull requests | 57, from all four team members |
+| Feature plans written before building | 58 in [`feature-plans/`](../feature-plans/) |
+| Automated tests | 582 in 52 test files, run by CI on every pull request |
+| Rule modules (logic without screen code) | 22 in [`rules/`](../rules/) |
+| Database migrations (access rules) | 7 in [`migrations/`](../migrations/) |
+| Commits on `main` | more than 200; over 100 carry an AI co-author line |
 
 ---
 

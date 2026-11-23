@@ -22,6 +22,8 @@ the live demo and shows at a glance what kind of festival it is.
       - moving waves (coast) and flickering windows (city)
 
       The festival name sits on top in poster style, glowing to the beat, with venue · dates · mood.
+      **Hidden for now** (commit 81e0fbf): the page heading already shows the name, so the poster text
+      is still built but not shown (`display: none` in `overview-backdrop.css`).
       **Changed on 23 November at Amelie's request:** the first version was a still SVG poster;
       she wanted animation ("take more risk").
 - [x] **Rules in `rules/backdrop-rules.js`:**

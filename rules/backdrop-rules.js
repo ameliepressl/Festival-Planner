@@ -18,10 +18,10 @@ const BACKDROP_MOODS = {
 const BACKDROP_GENRE_MOODS = [
   ['ember', ['metal', 'punk', 'rock', 'grunge', 'hardcore']],
   ['gold', ['jazz', 'blues', 'soul', 'r&b', 'funk', 'gospel', 'swing']],
-  ['heat', ['hip-hop', 'hip hop', 'rap', 'trap', 'afro', 'reggaeton', 'latin', 'dancehall', 'reggae', 'global']],
-  ['dusk', ['folk', 'country', 'fado', 'acoustic', 'classical', 'singer-songwriter', 'americana']],
+  ['heat', ['hip-hop', 'hip hop', 'rap', 'trap', 'afro', 'reggaeton', 'latin', 'dancehall', 'reggae', 'global', 'grime', 'drill', 'amapiano', 'kuduro', 'bachata', 'salsa', 'cumbia', 'corridos', 'axé', 'samba', 'bongo flava', 'mbalax', 'brazilian bass']],
+  ['dusk', ['folk', 'country', 'fado', 'acoustic', 'classical', 'singer-songwriter', 'americana', 'kora', 'mpb', 'film music', 'cape verdean', 'sitar', 'flamenco']],
   ['candy', ['pop']],
-  ['neon', ['electronic', 'electronica', 'techno', 'house', 'trance', 'edm', 'dance', 'drum', 'dubstep', 'ambient', 'disco']]
+  ['neon', ['electronic', 'electronica', 'techno', 'house', 'trance', 'edm', 'dance', 'drum', 'dubstep', 'ambient', 'disco', 'electro', 'big beat', 'future bass', 'uk bass', 'minimal', 'downtempo', 'trip hop']]
 ];
 
 function backdropMoodForGenre(genre) {
@@ -53,7 +53,7 @@ function festivalMood(artists = [], bookings = []) {
 
 const BACKDROP_SCENE_WORDS = [
   ['mountains', ['munich', 'münchen', 'muenchen', 'zurich', 'zürich', 'zuerich', 'alps', 'alpen', 'alpine', 'innsbruck', 'salzburg', 'geneva', 'genf', 'bern', 'mountain', 'berg', 'ski', 'tirol', 'tyrol', 'dolomit']],
-  ['coast', ['sydney', 'san francisco', 'lisbon', 'lisboa', 'lissabon', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'nice', 'marseille', 'sylt', 'strand', 'meer', 'see', 'lake']],
+  ['coast', ['sydney', 'san francisco', 'lisbon', 'lisboa', 'lissabon', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'marseille', 'sylt', 'strand', 'meer', 'lake']],
   ['field', ['park', 'field', 'farm', 'forest', 'wood', 'meadow', 'wiese', 'countryside', 'valley', 'garden', 'green']]
 ];
 
@@ -61,7 +61,7 @@ const BACKDROP_SCENE_WORDS = [
 // with wholeWords, every word must ("Parisian" is not "Paris").
 function venueMatch(venue, table, wholeWords = false) {
   const text = String(venue || '').toLowerCase();
-  const words = text.split(/[^a-z0-9äöüßéèêáàâíóúçãõñ&-]+/).filter(Boolean);
+  const words = text.split(/[^a-z0-9äöüßéèêáàâíóúçãõñ&]+/).filter(Boolean);
   const phrase = ` ${words.join(' ')} `;
   const has = word => word.includes(' ') ? phrase.includes(` ${word} `)
     : words.includes(word) || (!wholeWords && word.length > 4 && text.includes(word));
