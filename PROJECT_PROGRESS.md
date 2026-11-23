@@ -716,3 +716,21 @@ respected and missing artists are reported" checked the old hard limit. It is re
 a hard limit and missing artists are reported" (all artists planned at €250 and €0 budget; artists left
 out only for lack of time). Vicky, please review. New: `tests/lineup-suggestion-budget.test.js` (8 tests).
 Validation: 413/413 tests passed.
+
+## Animated visitor simulation — 22 November 2026
+
+Branch: `feature-animated-visitor-simulation` (owner: Vicky). Plan: [feature-plans/animated-visitor-simulation.md](feature-plans/animated-visitor-simulation.md).
+
+The Site map now has a read-only Visitor simulation for every festival role. Each dot represents one visitor. Visitors arrive in groups, follow the selected day's booked sets and move between stages and facilities. A switchable heatmap counts visitors in each map cell against the project's density limit. Organisers can choose a day, scrub the clock, pause, restart or play at 1×, 1.5× or 2×.
+
+Evacuation starts with the people currently on the map. Walking routes use the site's fence and no-go areas. Open exit widths, response delay, walking speed and flow rate govern the animation. Visitors without a reachable exit stay visible. An exit without a measured width holds its queue. The existing peak-scenario estimate appears beside playback when its measurements are complete. Both modes model group behaviour for planning discussions.
+
+Validation: all 389 tests passed, including nine new checks for individual dots, timetable changes, walkable ground, exit queues, overnight sets and read-only playback. In Chrome, reloaded the 20,000-visitor Munich demo, switched to Saturday at 1.5×, checked that all 20,000 exited, and returned to the original festival time.
+
+## Evacuation slider endpoint — 23 November 2026
+
+Branch: `feature-visitor-simulation-merge` (fix owner: Vicky). Plan: [feature-plans/animated-visitor-simulation.md](feature-plans/animated-visitor-simulation.md). Pull request: [#42](https://github.com/ameliepressl/Festival-Planner/pull/42).
+
+Seeking to the end now uses exactly 100% of the simulated evacuation time. Chrome previously rounded the fractional time and could leave one visitor on site.
+
+Validation: 422/422 tests passed, including the endpoint regression check. In Chrome, Munich showed 20,000 exited and zero on site. Lisbon showed 5,000 waiting at unmeasured exits.
