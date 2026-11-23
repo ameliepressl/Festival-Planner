@@ -18,7 +18,7 @@ function buildStageScene(backdrop, W, H) {
   const sun = { x: rnd() < 0.5 || backdrop.landmark ? W * r(0.08, 0.22) : W * r(0.86, 0.95), y: horizon - H * r(0.12, 0.2), radius: H * r(0.08, 0.11) };
 
   // The famous landmark stands to the right of the stage, on the ground of the landscape.
-  const ground = horizon + H * ({ coast: 0.01, city: 0.06, mountains: 0.08, field: 0.09 }[backdrop.scene] || 0.06);
+  const ground = H * 0.86; // ground level: the landmark stands among the crowd, whose back row hides its feet
   const zoneLeft = stage.x + stage.w + 34;
   const landmark = backdrop.landmark ? { kind: backdrop.landmark, left: zoneLeft, right: W, x: (zoneLeft + W) / 2, ground,
     width: W - zoneLeft, height: H * 0.62,
@@ -232,12 +232,11 @@ function blinking(t, speed, phase = 0) { return Math.sin(t * speed + phase) > 0 
 function drawLandmark(ctx, scene, t, beat) {
   const m = scene.landmark, { W, H, colours } = scene, gy = m.ground;
   const [laserA, laserB] = colours.lasers;
-  // Solid ground under the landmark, so it stands on something and does not float in front of the skyline.
+  // Ground: the sky fades into dark earth down to the crowd, so the landmark stands at ground level.
   ctx.save();
-  const left = Math.max(0, m.left - 20), soil = ctx.createLinearGradient(0, gy, 0, H);
-  soil.addColorStop(0, colours.shade); soil.addColorStop(1, '#05030a');
-  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = soil; ctx.fillRect(left, gy, W - left, H - gy);
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.3; ctx.fillStyle = colours.lasers[0]; ctx.fillRect(left, gy, W - left, 1.5);
+  const soil = ctx.createLinearGradient(0, scene.horizon, 0, H);
+  soil.addColorStop(0, 'rgba(5,3,10,0)'); soil.addColorStop(0.45, colours.shade); soil.addColorStop(1, '#05030a');
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.97; ctx.fillStyle = soil; ctx.fillRect(0, scene.horizon, W, H - scene.horizon);
   ctx.restore();
   // Floodlights at night: a warm glow behind the landmark and light washing up from the ground.
   ctx.save();
