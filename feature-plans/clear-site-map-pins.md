@@ -50,6 +50,15 @@ layout from scratch."* Until now an organiser could only move the suggested pins
       with the map (`site.extraPins`, ids `x-1`, `x-2`, …, at most 60). Added toilets, water and first aid
       count in the layout check. The pin menu says **Delete** for an added pin (it is gone, not waiting
       in the dock); Esc before placing drops it; *Clear all pins* deletes added pins too and says so.
+- [x] **Nicer "+ Add pin"** (feedback: "make it more user friendly"): big choices with one line on what each
+      is for ("Counts for toilets near a stage"); *Own pin* asks for its name first. Added pins carry a small
+      "+" on the map, their menu says "Added by you" and offers **+ Add another**, and the dock lists them under
+      **Added by you** (click to find, × to delete). *Move* on an added pin, then Esc, puts it back.
+- [x] **A calmer Site map page** (feedback: "the site map is quite cluttered"): the map comes first; the save
+      bar stays at the top while you work and turns coral when something is unsaved; the toolbar has three
+      labelled groups (pin actions, **Tool**, **Show**); pin details and the layout check sit next to the map;
+      *Festival size* and *Crowd and evacuation estimates* follow below the map. Layout in the new
+      `site-map/site-map-layout.css`, loaded after `design.css`. Every id stays the same.
 - [x] **Rules in `rules/map-pin-rules.js`:** `clearedPlacements`, `withoutPin`, `pinCounts`, `pinsToPlace`,
       `pinChoices`, `nextPinToPlace`, `pinSpot` (usable ground / snap to fence), `fillMissingPins`,
       `addExtraPin`, `withoutExtraPin`, `placedExtraPins`; extra pin types and parsing in `rules/site-map-rules.js`. Screen code only
@@ -94,3 +103,9 @@ visitors field removes nothing; Undo and Discard restore. No console errors.
 + Add pin (same setup): Own pin "VIP area" refused in the lake with the message, placed on grass (79 of 79);
 its menu shows *Delete* and removes it (78 of 78); Esc while placing added toilets drops the pin; with an
 added pin on the map *Clear all pins* says "The 1 pin you added is deleted" and removes it. No console errors.
+
+Calmer page (1280 px and 375 px): map visible without scrolling at 1280 px; save bar stays on top and turns
+coral after a change; Own pin "VIP area" via the name field and Enter, placed, menu with *+ Add another own
+pin*, listed under *Added by you*; added toilets: Move then Esc puts it back on the same spot, × in the list
+deletes it; *Fill the rest* is hidden when only added pins are missing; no sideways scrolling at 375 px;
+no console errors.
