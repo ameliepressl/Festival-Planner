@@ -53,7 +53,7 @@ function festivalMood(artists = [], bookings = []) {
 
 const BACKDROP_SCENE_WORDS = [
   ['mountains', ['munich', 'münchen', 'muenchen', 'zurich', 'zürich', 'zuerich', 'alps', 'alpen', 'alpine', 'innsbruck', 'salzburg', 'geneva', 'genf', 'bern', 'mountain', 'berg', 'ski', 'tirol', 'tyrol', 'dolomit']],
-  ['coast', ['sydney', 'san francisco', 'lisbon', 'lisboa', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'nice', 'marseille', 'sylt', 'strand', 'meer', 'see', 'lake']],
+  ['coast', ['sydney', 'san francisco', 'lisbon', 'lisboa', 'lissabon', 'porto', 'cascais', 'algarve', 'tejo', 'beach', 'praia', 'playa', 'coast', 'costa', 'sea', 'ocean', 'harbour', 'harbor', 'bay', 'island', 'barcelona', 'nice', 'marseille', 'sylt', 'strand', 'meer', 'see', 'lake']],
   ['field', ['park', 'field', 'farm', 'forest', 'wood', 'meadow', 'wiese', 'countryside', 'valley', 'garden', 'green']]
 ];
 
@@ -78,7 +78,7 @@ function festivalScene(venue) {
 const BACKDROP_CLASSIC_LANDMARKS = [
   ['eiffel', ['paris']],
   ['bigben', ['london']],
-  ['bridge', ['lisbon', 'lisboa', 'san francisco']],
+  ['bridge', ['lisbon', 'lisboa', 'san francisco', 'lissabon']],
   ['frauenkirche', ['munich', 'münchen', 'muenchen']],
   ['fernsehturm', ['berlin']],
   ['colosseum', ['rome', 'roma', 'rom']],
@@ -106,7 +106,7 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   const M = (light, dark, extra) => ({ shape: 'peak', light, dark, ...extra });
   return [
   // Needles and towers
-  ['tokyo', ['tokyo'], N('#cfe3ff', '#5c7fb8', { pods: 2, w: 0.018 })],
+  ['tokyo', ['tokyo', 'tokio'], N('#cfe3ff', '#5c7fb8', { pods: 2, w: 0.018 })],
   ['toronto', ['toronto'], N('#e6e9f0', '#7a8493', { pods: 1, w: 0.022 })],
   ['seattle', ['seattle'], N('#f3ecdc', '#8d8575', { saucer: true, h: 0.8 })],
   ['auckland', ['auckland'], N('#d9e0ea', '#6d7a8c', { pods: 1, h: 0.95 })],
@@ -118,20 +118,20 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   ['shanghai', ['shanghai'], N('#ffc4e1', '#c0397f', { pods: 3, w: 0.022 })],
   // Cathedrals and church towers
   ['cologne', ['cologne', 'köln', 'koeln'], S('#b9b3a8', '#4c4a46', { towers: [[-0.11, 0.8, 0.065], [0.11, 0.8, 0.065]], roofH: 5 })],
-  ['milan', ['milan', 'milano'], S('#fff3e0', '#c9b79c', { towers: [[-0.2, 0.5, 0.03], [-0.1, 0.62, 0.03], [0, 0.85, 0.035], [0.1, 0.62, 0.03], [0.2, 0.5, 0.03]], roofH: 5 })],
+  ['milan', ['milan', 'milano', 'mailand'], S('#fff3e0', '#c9b79c', { towers: [[-0.2, 0.5, 0.03], [-0.1, 0.62, 0.03], [0, 0.85, 0.035], [0.1, 0.62, 0.03], [0.2, 0.5, 0.03]], roofH: 5 })],
   ['zurich', ['zurich', 'zürich', 'zuerich'], S('#e9e1cf', '#8a7f68', { towers: [[-0.1, 0.62, 0.065], [0.1, 0.62, 0.065]], roof: '#6aa58f', roofH: 2 })],
   ['strasbourg', ['strasbourg', 'straßburg'], S('#e9a07a', '#9a4f35', { towers: [[0.1, 1, 0.06]], roofH: 7 })],
   ['antwerp', ['antwerp', 'antwerpen'], S('#e6d7bd', '#8c7a5a', { towers: [[-0.05, 0.95, 0.07]], roofH: 6 })],
   ['brussels', ['brussels', 'bruxelles', 'brüssel'], S('#f0d9a0', '#a98a3d', { towers: [[0, 1, 0.045]], roofH: 8 })],
   ['bruges', ['bruges', 'brugge'], S('#d99a6d', '#85472b', { towers: [[0, 0.8, 0.09]], flat: true })],
   ['gdansk', ['gdansk', 'danzig'], S('#d98f6d', '#7e3b2a', { towers: [[-0.09, 0.62, 0.07], [0.12, 0.8, 0.045]], roofH: 4 })],
-  ['krakow', ['krakow', 'kraków', 'cracow'], S('#d8a67a', '#85502f', { towers: [[-0.12, 0.9, 0.06], [0.12, 0.7, 0.055]], roof: '#3f7f6c', roofH: 3 })],
+  ['krakow', ['krakow', 'kraków', 'cracow', 'krakau'], S('#d8a67a', '#85502f', { towers: [[-0.12, 0.9, 0.06], [0.12, 0.7, 0.055]], roof: '#3f7f6c', roofH: 3 })],
   ['riga', ['riga'], S('#e7c9a0', '#8f6b3f', { towers: [[0, 1, 0.04]], roof: '#3d8a7a', roofH: 8 })],
-  ['copenhagen', ['copenhagen'], S('#e0b78a', '#855a32', { towers: [[0, 0.9, 0.05]], roof: '#3aa085', roofH: 5, noNave: true })],
+  ['copenhagen', ['copenhagen', 'kopenhagen'], S('#e0b78a', '#855a32', { towers: [[0, 0.9, 0.05]], roof: '#3aa085', roofH: 5, noNave: true })],
   ['stockholm', ['stockholm'], S('#e8b28a', '#a35a3c', { towers: [[0.05, 0.85, 0.055]], roof: '#4b8c7c', roofH: 4 })],
   ['hamburg', ['hamburg'], S('#e6c69a', '#8c6a40', { towers: [[0, 0.9, 0.06]], roof: '#52b69a', roofH: 4.5 })],
   ['seville', ['seville', 'sevilla'], S('#f0c58a', '#a56d2f', { towers: [[0, 0.95, 0.07]], roof: '#d8a24b', roofH: 2, noNave: true })],
-  ['marrakech', ['marrakech', 'marrakesh'], S('#e8a773', '#a05a2e', { towers: [[0, 1, 0.065]], flat: true, noNave: true })],
+  ['marrakech', ['marrakech', 'marrakesh', 'marrakesch'], S('#e8a773', '#a05a2e', { towers: [[0, 1, 0.065]], flat: true, noNave: true })],
   ['reykjavik', ['reykjavik', 'reykjavík'], S('#f1f4f8', '#8a96a8', { towers: [[0, 1, 0.04]], roofH: 3, wings: true })],
   ['pisa', ['pisa'], S('#fbf2e0', '#b9a88a', { towers: [[0, 0.82, 0.075]], lean: 0.09, tiers: 6, flat: true, noNave: true })],
   // Domes and minarets
@@ -149,7 +149,7 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   // Onion domes
   ['moscow', ['moscow', 'moskau'], O('#f3dcc0', '#9a6b3d', { tent: true, domes: [[-0.2, 0.34, 0.07, '#4fc08a', '#1f7a55'], [0.2, 0.34, 0.07, '#f2c54a', '#b9831d'], [-0.1, 0.28, 0.055, '#e05a4f', '#962a22'], [0.1, 0.28, 0.055, '#4a8fd6', '#1f4f8f']] })],
   ['stpetersburg', ['saint petersburg', 'st petersburg', 'sankt petersburg'], O('#e7d6c6', '#8c6a55', { tent: true, domes: [[-0.22, 0.3, 0.07, '#7ad0e8', '#2f7f99'], [0.22, 0.3, 0.07, '#f5b04f', '#b36a18'], [0, 0.5, 0.075, '#e9573f', '#8f2316']] })],
-  ['kyiv', ['kyiv', 'kiev'], O('#f4f1e6', '#a39d8a', { domes: [[-0.22, 0.34, 0.06, '#ffd75a', '#b98a14'], [0, 0.48, 0.08, '#ffd75a', '#b98a14'], [0.22, 0.34, 0.06, '#ffd75a', '#b98a14']] })],
+  ['kyiv', ['kyiv', 'kiev', 'kiew'], O('#f4f1e6', '#a39d8a', { domes: [[-0.22, 0.34, 0.06, '#ffd75a', '#b98a14'], [0, 0.48, 0.08, '#ffd75a', '#b98a14'], [0.22, 0.34, 0.06, '#ffd75a', '#b98a14']] })],
   ['sofia', ['sofia'], O('#f2eadc', '#a79a82', { domes: [[-0.18, 0.3, 0.06, '#ffd75a', '#b98a14'], [0.08, 0.46, 0.1, '#ffd75a', '#b98a14'], [0.26, 0.3, 0.05, '#53b28d', '#1f7457']] })],
   // Castles
   ['prague', ['prague', 'praha', 'prag'], C('#e9d9bd', '#85704d', { hill: true, roof: '#3e8f7a', towers: [[-0.34, 0.3, 0.05], [-0.1, 0.5, 0.06], [0.12, 0.8, 0.065], [0.36, 0.4, 0.05]] })],
@@ -160,7 +160,7 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   ['nuremberg', ['nuremberg', 'nürnberg', 'nuernberg'], C('#e6c9a0', '#8a6a42', { hill: true, roof: '#b24f3a' })],
   ['tallinn', ['tallinn'], C('#e9dcc4', '#85745a', { roof: '#a8443a', towers: [[-0.38, 0.45, 0.04], [-0.2, 0.7, 0.045], [0, 0.55, 0.04], [0.2, 0.75, 0.045], [0.38, 0.45, 0.04]] })],
   ['dubrovnik', ['dubrovnik'], C('#efd9b4', '#9a7c4d', { hill: true, roof: '#cf6a43' })],
-  ['luxembourg', ['luxembourg'], C('#dcd5c7', '#6f685a', { hill: true, roof: '#4a6a7a' })],
+  ['luxembourg', ['luxembourg', 'luxemburg'], C('#dcd5c7', '#6f685a', { hill: true, roof: '#4a6a7a' })],
   ['cardiff', ['cardiff'], C('#e2d3b8', '#7f6c4b', { roof: '#6f5a46' })],
   ['granada', ['granada'], C('#f0b98a', '#9b5a33', { hill: true, roof: '#c8643f', towers: [[-0.36, 0.34, 0.06], [-0.1, 0.46, 0.06], [0.14, 0.38, 0.06], [0.38, 0.5, 0.05]] })],
   // Skylines
@@ -175,10 +175,10 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   ['denver', ['denver'], K('#c3d6e8', '#3a4f66', '#ffe29a', { crown: 'spire', tall: 0.65 })],
   ['austin', ['austin'], K('#e8d0b0', '#6a4a30', '#ffd27a', { crown: 'spire', tall: 0.6 })],
   ['neworleans', ['new orleans'], K('#d7b3e8', '#5a3a73', '#ffd27a', { crown: 'spire', tall: 0.55 })],
-  ['hongkong', ['hong kong'], K('#a3e1ff', '#1f4a80', '#ff9ad1', { crown: 'antenna', tall: 1.05 })],
-  ['singapore', ['singapore'], K('#a8f0d6', '#1f6a66', '#fff0a0', { crown: 'stack', tall: 0.9 })],
+  ['hongkong', ['hong kong', 'hongkong'], K('#a3e1ff', '#1f4a80', '#ff9ad1', { crown: 'antenna', tall: 1.05 })],
+  ['singapore', ['singapore', 'singapur'], K('#a8f0d6', '#1f6a66', '#fff0a0', { crown: 'stack', tall: 0.9 })],
   ['seoul', ['seoul'], K('#c9d9ff', '#3a4a8a', '#ffe3a0', { crown: 'antenna', tall: 0.9 })],
-  ['taipei', ['taipei'], K('#a6e8b8', '#2a6a4a', '#fff0a0', { crown: 'stack', tall: 1 })],
+  ['taipei', ['taipei', 'taipeh'], K('#a6e8b8', '#2a6a4a', '#fff0a0', { crown: 'stack', tall: 1 })],
   ['shenzhen', ['shenzhen'], K('#c0d8ff', '#34508a', '#7df0ff', { crown: 'antenna', tall: 0.95 })],
   ['doha', ['doha'], K('#e8d2b0', '#7a5a38', '#ffe2a0', { crown: 'spire', tall: 0.8 })],
   ['riyadh', ['riyadh'], K('#f0d6a8', '#8a6a3a', '#ffe9b0', { crown: 'stack', tall: 0.85 })],
@@ -188,7 +188,7 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   ['santiago', ['santiago'], K('#cfe0f0', '#3a5570', '#ffe3a0', { crown: 'antenna', tall: 0.95 })],
   ['frankfurt', ['frankfurt'], K('#bfd4ee', '#33496e', '#ffe29a', { crown: 'spire', tall: 0.9 })],
   ['rotterdam', ['rotterdam'], K('#c2d8e8', '#36506a', '#ffe29a', { crown: 'spire', tall: 0.75 })],
-  ['warsaw', ['warsaw', 'warszawa'], K('#e2d2c0', '#6a523f', '#ffe0a0', { crown: 'spire', tall: 0.8 })],
+  ['warsaw', ['warsaw', 'warszawa', 'warschau'], K('#e2d2c0', '#6a523f', '#ffe0a0', { crown: 'spire', tall: 0.8 })],
   ['madrid', ['madrid'], K('#f0cfa8', '#8a5a3a', '#ffe0a0', { crown: 'stack', tall: 0.75 })],
   ['vancouver', ['vancouver'], K('#a8dcea', '#2a5e70', '#fff0a8', { crown: 'spire', tall: 0.7 })],
   ['melbourne', ['melbourne'], K('#d0c0f0', '#4a3a80', '#ffe29a', { crown: 'spire', tall: 0.85 })],
@@ -199,7 +199,7 @@ const BACKDROP_CITY_LANDMARKS = (() => {
   ['bangkok', ['bangkok'], P('#f7efe0', '#b7a88a', { prang: true })],
   ['xian', ['xian', 'xi an'], P('#d9b48a', '#7e5a36', { tiers: 7, roof: '#7e5a36', bw0: 0.14 })],
   ['cairo', ['cairo', 'kairo', 'giza'], Y('#f3d08a', '#a9742a', { count: 3 })],
-  ['mexicocity', ['mexico city'], Y('#d6b88a', '#7e5f38', { step: true, steps: 9 })],
+  ['mexicocity', ['mexico city', 'mexiko stadt'], Y('#d6b88a', '#7e5f38', { step: true, steps: 9 })],
   ['cancun', ['cancun', 'cancún'], Y('#e2c79a', '#8a6a3f', { step: true, steps: 9, jungle: true })],
   ['lasvegas', ['las vegas'], Y('#2a2f45', '#0d1020', { count: 1, beam: '#bdf4ff' })],
   ['athens', ['athens', 'athen'], { shape: 'temple', light: '#f5ead2', dark: '#a99572' }],
