@@ -279,7 +279,7 @@ flowchart LR
 
 ## 🧪 Tests
 
-**530 tests in 48 files.** GitHub Actions runs the suite on every pull request
+**582 tests in 52 files.** GitHub Actions runs the suite on every pull request
 and every push to `main`.
 
 ```bash
