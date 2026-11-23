@@ -777,3 +777,15 @@ In timeline edit mode, Clear all tasks opens a confirmation for festival owners 
 After a saved bulk deletion, Restore last deletion appears beside the view switch and Manage work areas for festival owners and Admins. It recovers the last cleared tasks or deleted work area, including saved dates, progress and assignments. It keeps newer work and consumes the recovery record after one successful restore.
 
 Validation: **491/491 tests passed**, including eight new regression checks. An isolated browser preview confirmed saving a task and its owner together, creating an area from both views, clearing with Cancel and Save, and persistence after reload. The timeline dialog requires a subtask, and the saved task appears on the board. Editor and Viewer controls matched their existing roles. The board dialog fit at 390 px. Browser checks also covered the fixed position of Manage work areas, an area rename, moving and deleting tasks, cancelling a draft deletion, and reloading. Recovery checks covered restoring a deleted area after reload, keeping a newer task, recovering completion and ownership, and restoring after Clear all tasks. No console errors appeared during the verified flows.
+
+## Festival backdrop on the Overview — 23 November 2026
+
+Branch: `feature-festival-backdrop` (owner: Amelie). Plan: `feature-plans/festival-backdrop.md`.
+
+An animated live stage above the Overview (`<canvas>`): lasers, light cones, haze, an aurora sky, an
+a DJ and an MC in front of an LED wall, pumping speaker stacks, smoke, flames, fireworks, confetti every 8 beats, clouds and a four-row crowd with glow sticks, with a camera look (grain, soft lights, vignette). The festival name is set
+in poster style and glows to the beat. Colours and tempo follow the lineup's main genre, and the
+landscape follows the venue; 112 well-known cities add their lit-up landmark (12 hand-drawn: Eiffel Tower, Big Ben + London Eye, Lisbon bridge, Frauenkirche, TV tower + Brandenburg Gate, Colosseum, Sagrada Família, Empire State, Opera House, Riesenrad, canal houses, Burj Khalifa; 100 more share 11 shapes with their own colours: towers, cathedrals, domes, onion domes, castles, skylines, pagodas, pyramids, Parthenon, arches, mountains). Decorative only: nothing saved or sent, no photos. It pauses off screen
+and stands still with "reduce motion". The first still SVG version was replaced at Amelie's request.
+New files: `rules/backdrop-rules.js`, `overview-backdrop.js`, `overview-backdrop.css`.
+Validation: 529/529 tests passed (16 in `tests/festival-backdrop.test.js`).
