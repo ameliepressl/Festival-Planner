@@ -1,5 +1,9 @@
 # Technical audit and reliability fixes
 
+**Historical implementation record:** the approval, database and verification notes below
+describe this audit's stage of development. Current stack approval and migration 006 status
+are recorded in [course-standard.md](course-standard.md) and the [README](../README.md).
+
 Owner: Kira · Branch: `codex/technical-audit-fixes` · Base: `92c6bd3`
 Approved for local implementation: 22 November 2026. Kira subsequently authorised
 committing and pushing this branch for team review. No merge or database change.

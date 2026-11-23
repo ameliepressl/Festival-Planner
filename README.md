@@ -15,11 +15,7 @@ Kira · Amelie · Frederik · Vicky
 
 **▶ Live app: <https://ameliepressl.github.io/Festival-Planner/>**
 
-[At a glance](#-at-a-glance) · [Start here](#-start-here) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Features](#-features) · [Screenshots](#-screenshots) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Data & privacy](#-data--privacy) · [How we work with AI](#-how-we-work-with-ai) · [Roadmap](feature-plans/roadmap.md)
-
-<br />
-
-<img src="docs/screenshots/overview.png" alt="Festival Architect overview page for the example Lisbon Sound Festival: performances booked, artist budget, projected finances and tasks needing attention" width="900" />
+[At a glance](#-at-a-glance) · [Start here](#-start-here) · [Team](#-team) · [Quick start](#-quick-start) · [Accounts](#-accounts) · [Release checks](#release-verification) · [Features](#-features) · [How it fits together](#-how-it-fits-together) · [Tests](#-tests) · [Project structure](#-project-structure) · [Data & privacy](#-data--privacy) · [How we work with AI](#-how-we-work-with-ai)
 
 </div>
 
@@ -49,7 +45,7 @@ New to the code? These five stops explain how the whole app works:
 | --- | --- | --- |
 | 1 | [product brief](product-brief/festival-architect-brief.html) | What we build and why; it wins over everything else |
 | 2 | [`rules/festival-rules.js`](rules/festival-rules.js) | How a business rule looks: pure functions, no screen code (all rules: [`rules/`](rules/)) |
-| 3 | [`tests/festival-rules.test.js`](tests/festival-rules.test.js) | How each rule is proven with scenarios; CI runs all tests on every PR |
+| 3 | [`tests/lineup-integration.test.js`](tests/lineup-integration.test.js) | Current multi-day scenarios, including minute-level times, flexible budgets and no finalisation minimum; CI runs all tests on every PR |
 | 4 | [`migrations/006_admin_only_lineup_details.sql`](migrations/006_admin_only_lineup_details.sql) | How access is enforced in the database (Row Level Security), not by hidden buttons |
 | 5 | [docs/ai-workflow.md](docs/ai-workflow.md) | How we plan, build, verify and review with AI |
 
@@ -123,27 +119,47 @@ link that opens **Choose a new password**.
 Details: [login](feature-plans/login.md) · [shared festivals](feature-plans/shared-festivals.md) ·
 [forgot password](feature-plans/forgot-password.md).
 
-Accounts and saved festivals are stored in **Supabase**. One-time setup by the project owner:
+Accounts and saved festivals use **Supabase**. The database guards for festival details and
+the overall artist budget are implemented and applied in
+[`migrations/006`](migrations/006_admin_only_lineup_details.sql). Current verification checks
+are listed below. Deployment configuration is documented separately in
+[Supabase setup](docs/supabase-setup.md).
 
-1. Create a Supabase project and configure email/password authentication and its email
-   confirmation behaviour for the course deployment.
-2. Apply the numbered files in [`migrations/`](migrations/) in order in the Supabase
-   SQL Editor. The database owner performs this step; the browser never runs SQL migrations.
-3. Put the project URL and the **publishable** key into [`supabase-config.js`](supabase-config.js).
-   Never the secret key — see [AGENTS.md → Secrets](AGENTS.md).
-4. In *Authentication → URL Configuration*, set the Site URL to the deployed address and add
-   `https://ameliepressl.github.io/Festival-Planner/**` and `http://localhost:8000/**` as
-   Redirect URLs (the password reset link only opens addresses on this list).
-5. Email sending: Supabase's built-in email service only sends to members of the Supabase
-   organization, and only a few emails per hour. For password reset emails to everyone, set up
-   custom SMTP in *Authentication → Emails → SMTP settings*.
-6. In *Authentication → Emails → Templates → Reset password*, the link must be
-   `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery` instead of
-   `{{ .ConfirmationURL }}`. Mail scanners such as Microsoft Safe Links (Nova addresses) open
-   links before the person does; the default link is then already used up ("expired").
+### Supabase dependency and recovery
 
-Editors cannot change the festival details or the overall artist budget, also not through a
-direct request (`migrations/006`, applied on 22 November 2026).
+GitHub Pages serves the website files; **Supabase provides sign-in, database permissions and
+saved festival data**. We chose it to keep managed accounts and shared storage in one service.
+This also creates a dependency: new sign-ins, loading or creating festivals and account saves
+need Supabase to be available and correctly configured. A network outage, a paused project,
+provider usage limits or incorrect authentication/database settings can interrupt these flows.
+Password-reset delivery also depends on the configured email service.
+
+An available session and a cached festival may let an already used browser continue working
+locally during a connection failure. Temporary account-save failures keep changes pending in
+that browser, show **“Not saved yet — no connection to your account. Retrying…”**, and retry
+automatically. This is limited recovery, not full offline access or a second backup service.
+Wait for **“Saved to your account”** before clearing browser data or signing out. If saving
+fails during sign-out, the app offers **“Sign out without saving”**; that choice can discard
+changes that have not reached the account. A permission rejection instead asks for a reload.
+
+Different sections save independently, but simultaneous edits to the same section can still
+overwrite one another. See the [release checks](#release-verification) before presenting.
+
+## Release verification
+
+These checks distinguish recorded outstanding verification from the checks to repeat before
+a demonstration. They are not a list of missing features.
+
+| Check | What to verify | Status |
+| --- | --- | --- |
+| **Live account permissions** | Use separate real accounts on the deployed app: Owner/Admin actions succeed; Editor/Viewer restrictions also hold for direct database requests. | Real-account verification pending; database protection is implemented and applied. |
+| **Password-reset template** | Confirm with the database owner that the current reset-link template is applied, then test a reset through a university email address. | Configuration confirmation and delivery check needed. SMTP and redirect URLs are already recorded as configured. |
+| **Saving and recovery** | Save and reload a festival, reopen it on another device, and check the pending-save/retry feedback during a connection failure. | Pre-demo recheck; automated account tests use a mock service. |
+| **Final deployed version** | Confirm the intended `main` is live, tests pass, Supabase is available, and the chosen demo workflow works at the public URL. | Pre-demo recheck. |
+
+The team records completed live checks in [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
+See the course's [demo preparation guide](https://2477-introduction-programming.gitlab.io/wiki/guides/preparing-the-demo.html)
+for rehearsal and account-readiness checks.
 
 ## ✨ Features
 
@@ -193,7 +209,7 @@ These are the active rules in the [current product brief](product-brief/festival
 - **Notifications** — a bell in the top bar tells you when a task was assigned to you and by whom, and which
   of your tasks are due within 7 days or overdue. One click opens the task under *My tasks*;
   "Mark all as read" clears the counter, and open deadlines come back the next day.
-  Notifications appear when you open the app (no e-mails yet; see the [plan](feature-plans/notifications.md)).
+  These are in-app notifications; teammates' changes appear after the festival is reloaded.
 
 ### Design the ground
 - **Site map** — a realistic aerial view with a clickable pin for every facility: stages,
@@ -209,6 +225,7 @@ These are the active rules in the [current product brief](product-brief/festival
     refuses water, forest and spots outside the fence, or let **Fill the rest for me** plan what is missing.
   - **+ Add pin** adds extra toilets, water, first aid, a bar, info point, security post, recycling point or
     your own named pin (e.g. "VIP area"). Added toilets, water and first aid count in the layout check.
+    New facilities use the preset naming style and appearance; your own pin names are preserved.
   - **Festival size:** the expected visitors decide how many toilets, water points, food
     pitches, first aiders and security staff are needed.
   - Edits remain a draft until **Save changes**. **Undo change** reverses the last action;
@@ -216,7 +233,7 @@ These are the active rules in the [current product brief](product-brief/festival
   - Enter usable audience areas, expected crowds and clear exit widths for density and
     evacuation estimates. The assumptions and chosen exit routes are visible. These are
     planning estimates, not a legal capacity assessment or safety approval.
-- **Vendors** — the original catalogue plus a searchable vendor library, with fictional
+- **Vendors** — the built-in catalogue plus a searchable vendor library, with fictional
   example stands, menus and prices. Confirm stands on food-court pitches, see pitch income
   and check visitor needs such as vegan food and alcohol-free drinks. **Add vendor** adds your
   own stand with its fee, description and a menu with prices and diet labels (edit or delete it later).
@@ -241,17 +258,6 @@ These are the active rules in the [current product brief](product-brief/festival
 - **Final checklist** — event-day checks for 12 teams, from security to radios, with a
   progress bar.
 
-## 📸 Screenshots
-
-These illustrative screenshots show an earlier *Lisbon Sound Festival* demo (2 days,
-2 stages, 5,000 visitors). Dates and some controls differ from the current interface.
-
-| Lineup planner | Site map |
-| --- | --- |
-| <img src="docs/screenshots/lineup.png" alt="Lineup planner with the artist budget and a two-stage timetable for 30 December" /> | <img src="docs/screenshots/sitemap.png" alt="Site map: aerial view with pins for stages, food court, toilets, water and exits, the festival size card and a layout check at 100 percent" /> |
-| **Vendors** | **Finances** |
-| <img src="docs/screenshots/vendors.png" alt="Vendors page: 11 of 13 pitches used, pitch income, visitor needs check and vendor cards" /> | <img src="docs/screenshots/finances.png" alt="Financial overview: assumptions, profit, revenue, costs, break-even and where the money goes and comes from" /> |
-
 ## 🔗 How it fits together
 
 The sections share their data, so a change in one place shows up everywhere it matters.
@@ -271,8 +277,8 @@ flowchart LR
 
 ## 🧪 Tests
 
-**513 tests in 46 files, all passing on `main`** (GitHub Actions runs them on every pull request
-and every push to `main`).
+**530 tests in 48 files.** GitHub Actions runs the suite on every pull request
+and every push to `main`.
 
 ```bash
 uvx --from nodejs-wheel node --test
@@ -287,8 +293,10 @@ uvx --from nodejs-wheel node --test
 | **Page flows** | selected screens with a simulated page and a mock Supabase client |
 
 **They do not cover:** real clicks in every browser, the live Supabase project and its Row Level
-Security policies (those are in [`migrations/`](migrations/) and were checked by hand), e-mail delivery,
-or the look of the pages. Some use a simulated DOM or a mock Supabase client.
+Security policies, e-mail delivery, or the look of the pages. Some use a simulated DOM or a mock
+Supabase client. The policies are recorded in [`migrations/`](migrations/); deployment and local
+database checks are logged in [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md). Current live-service
+checks are listed under [Release verification](#release-verification).
 
 With Node already installed, `node --test` also works; GitHub CI uses Node 22 and runs on
 pull requests and pushes to `main`. The `uvx` command requires `uv` and downloads Node.
@@ -298,9 +306,9 @@ The suite never contacts the real Supabase project. The access rules live in
 and real multi-account/database verification remain separate checks; see
 [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for what was actually exercised.
 
-Original single-day regression exports remain in `rules/legacy-lineup-compatibility.js`
-for Node tests. They are not loaded by the browser and do not set the current app's
-requirements; the current lineup is checked by the multi-day rules and integration tests.
+**Current behaviour:** start with [`tests/lineup-integration.test.js`](tests/lineup-integration.test.js)
+and [`tests/lineup-enhancements.test.js`](tests/lineup-enhancements.test.js), alongside the active
+[product brief](product-brief/festival-architect-brief.html).
 
 ## 📁 Project structure
 
@@ -309,6 +317,7 @@ index.html                    page structure for all sections
 styles.css                    shared look
 account/                      sign-in screen, saving the plan to the account, sign out
 supabase-config.js            Supabase project URL + publishable key (public by design)
+docs/supabase-setup.md         setup reference for a separate deployment
 migrations/                   database tables and access rules (SQL, run in Supabase)
 vendor/                       the pinned Supabase library
 app.js                        lineup planner
@@ -343,9 +352,10 @@ CONTRIBUTING.md               step-by-step checklist and Definition of Done
 - **The brief decides.** [`product-brief/`](product-brief/festival-architect-brief.html)
   wins over anything else.
 
-**Stack.** The app uses browser JavaScript with Supabase rather than the course's default Python stack
-(see the [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)).
-Whether this stack is approved for the course is still to be confirmed with the teacher.
+**Approved language choice.** The team has confirmed with the professor that using programming
+languages other than Python is allowed. This project uses HTML, CSS and browser JavaScript
+with Supabase rather than the course's default Python stack (see the
+[course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)).
 2FA is not part of the agreed feature scope.
 
 ## 🔒 Data & privacy
@@ -403,5 +413,4 @@ The full process, the risks of AI-written code and how we control them, real exa
 the AI, and how we review together: **[docs/ai-workflow.md](docs/ai-workflow.md)**.
 Checklist for contributors: [CONTRIBUTING.md](CONTRIBUTING.md).
 
-More: [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) ·
-**[Roadmap — what comes next](feature-plans/roadmap.md)**
+More: [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [Supabase setup](docs/supabase-setup.md)

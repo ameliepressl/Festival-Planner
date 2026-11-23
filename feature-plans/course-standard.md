@@ -1,6 +1,6 @@
 # Current baseline — flexible festival planning and verifiable behaviour
 
-Updated 22 November 2026. This is the active baseline; earlier single-day feature
+Updated 23 November 2026. This is the active baseline; earlier single-day feature
 descriptions in Git history do not set the current app's requirements. The active
 [product brief](../product-brief/festival-architect-brief.html) describes the agreed rules.
 
@@ -48,15 +48,23 @@ The unchanged original regression-test contract is isolated in
 uses the current multi-day functions in `rules/festival-rules.js`. The archived
 contract does not add requirements to the active app.
 
-Outstanding for Amelie: strengthen database permissions so Editors cannot change
-festival details or the overall artist budget by bypassing the app controls. Amelie
-will implement and test this separately. No database fix or SQL file is included
-in this audit branch, and the live database has not been changed.
+**Implemented:** [`migrations/006_admin_only_lineup_details.sql`](../migrations/006_admin_only_lineup_details.sql)
+protects festival details and the overall artist budget against Editor changes,
+including requests that bypass the page controls. Amelie applied it on 22 November
+2026; the deployment and local role checks are recorded in
+[PROJECT_PROGRESS.md](../PROJECT_PROGRESS.md).
 
-The project uses HTML, CSS and browser JavaScript with Supabase. **Teacher approval
-for that stack remains unconfirmed.** Check the
-[course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)
-and confirm the permitted stack with the teacher. Do not report that approval as granted.
+**Still to verify:** use separate real accounts on the deployed app to check allowed
+Owner/Admin actions and rejected Editor/Viewer actions. Database inspection and
+mock-service tests do not replace this end-to-end check. No new SQL change is
+required by this documentation update.
+
+The project uses HTML, CSS and browser JavaScript with Supabase. **The team has
+confirmed with the professor that using programming languages other than Python
+is allowed.** See the [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html)
+for the reasons to agree this choice with teaching staff. Supabase availability and
+configuration remain external dependencies; the [README](../README.md#supabase-dependency-and-recovery)
+explains recovery limits and the live-service checks.
 
 2FA is outside the team's agreed scope. Historical feature plans are records of
 earlier work, rather than additional instructions for the current baseline.

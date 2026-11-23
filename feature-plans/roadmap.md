@@ -19,8 +19,10 @@ system, ordered along a real festival's timeline. **Pick one, put your name in t
 
 2FA is not part of the agreed scope. Earlier feature plans describe their historical
 implementation stages; they do not add old limits to the current flexible rules.
-Teacher approval for the JavaScript/Supabase stack remains unconfirmed; see the
-[current baseline](course-standard.md) and [course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html).
+The team has confirmed with the professor that programming languages other than
+Python are allowed; the project uses HTML, CSS and browser JavaScript with Supabase.
+See the [current baseline](course-standard.md) and
+[course stack guide](https://2477-introduction-programming.gitlab.io/wiki/guides/stack.html).
 
 ---
 
@@ -81,7 +83,7 @@ Teacher approval for the JavaScript/Supabase stack remains unconfirmed; see the
 ## 8. Finances (extension)
 
 - [x] **Bar revenue** — drinks per visitor × price × margin (often the biggest income)
-- [x] **Contingency** — automatic 10 % reserve
+- [x] **Contingency** — configurable reserve; new festivals start at 0 %, while demo assumptions can use 10 %
 - [x] **Cash-flow plan** — account balance over the months; when are we negative because deposits are due before tickets sell?
 - [ ] **Actual vs. plan** — enter real invoices; difference per cost line. ✅ finances page
 - [ ] **VAT** — gross / net ticket and cost calculations using the applicable rates

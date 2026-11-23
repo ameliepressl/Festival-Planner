@@ -2,6 +2,53 @@
 
 Use this file together with GitHub branches and pull requests so the team can see what changed, who owns it, and whether it is ready to merge.
 
+**How to read this log:** dated entries record the status at the time they were written.
+Later entries supersede earlier “not started”, “not applied” or “not pushed” notes.
+The early tables below are historical. Use the [README](README.md),
+[current product brief](product-brief/festival-architect-brief.html) and
+[current baseline](feature-plans/course-standard.md) for the present app and remaining release checks.
+
+**Map pin refinements — 23 November 2026:** refreshed `origin/main` at `dd51701`; this
+branch was already up to date. Fixed the Add another wording for all eight pin types.
+Added facilities now use the preset naming style and appearance, without the orange
+“Added by you” label or extra plus badge. Old automatic names display consistently;
+custom names, IDs and placements are preserved. Pin shortcuts, delete and undo remain available.
+
+Branch: `codex/docs-clarity-and-service-dependencies`, kept with the documentation changes
+at the user's request. Validation: **530/530 tests passed**, including 17 new rule/page
+checks; existing assertions are unchanged. Isolated browser checks covered placement,
+undo, saving/reloading automatic and custom names, and a 375px-wide view. No console errors
+or horizontal overflow. Live festival data was not changed. JS/CSS cache versions and
+README were updated. Plan: [map-pin-presentation.md](feature-plans/map-pin-presentation.md).
+The final review also caught and fixed automatic-name collisions after changing festival
+size. Generated names retain a small saved flag so they can adjust; custom names stay fixed.
+A browser check confirmed unique names and a preserved custom name after resizing, saving
+and reloading. Full test output: `/private/tmp/festival-map-pin-prepush-tests.txt`.
+Publication: Kira approved committing and pushing this branch for team review. It contains
+both map and documentation updates; merging into `main` is not part of this request.
+The updated normal app is open on Site map.
+
+**Documentation review — 23 November 2026:** Kira confirmed that using programming languages
+other than Python was agreed with the professor. The README, active brief and baseline now
+reflect that confirmation. Migration 006 is implemented/applied; real-account verification
+is still pending. The README explains the Supabase dependency, limited connection-failure
+recovery and pending-save risks, and points newcomers to current integration tests.
+Historical test assertions and app behaviour are unchanged. Older plans/progress are labelled
+as historical, and the roadmap describes the configurable reserve accurately.
+
+The README now focuses on current behaviour: outdated screenshots and historical test detail
+were removed, deployment configuration moved to [Supabase setup](docs/supabase-setup.md), and
+Release verification distinguishes outstanding role/reset-template checks from routine
+pre-demo checks. SMTP and redirect URLs remain recorded as already configured.
+
+Branch: `codex/docs-clarity-and-service-dependencies`, based on `main` at `dd51701`.
+Validation: **513/513 tests passed**, relative documentation links have no missing targets,
+the updated brief renders after reload with no console errors, and the historical test's
+executable code is unchanged. Plan: [documentation-clarity.md](feature-plans/documentation-clarity.md).
+Publication: Kira approved committing and pushing these documentation changes together with
+the map refinements on this branch. The existing local
+Word study guide is preserved and still needs a separate refresh against final main.
+
 ## Working agreement
 
 1. Start every feature from the latest `main` branch.
@@ -10,7 +57,7 @@ Use this file together with GitHub branches and pull requests so the team can se
 4. Keep each pull request focused and describe the user-visible change, files changed, and how it was tested.
 5. Merge only after the team agrees that the preview works.
 
-## Current progress
+## Early branch progress — historical
 
 | Branch | Scope | Status | Reviewers | Date |
 | --- | --- | --- | --- | --- |
@@ -19,7 +66,7 @@ Use this file together with GitHub branches and pull requests so the team can se
 
 | `codex/festival-planner-edits` | Editable artist catalogue, planning settings and vertical multi-day lineup calendar for 15–16 October 2026. | Local preview — ready for review | — | 28 October 2026 |
 
-## Team ownership
+## Initial team ownership — historical
 
 Agree an owner before starting each row. Update this table in the same pull request as the work.
 
