@@ -99,7 +99,9 @@ const VisitorPlayback = (() => {
         ctx.drawImage(heatCanvas, left, top, site.width * scale, site.height * scale);
       }
       const label = drill ? '+' + minute.toFixed(1) + ' min' : timeText(Math.floor(minute) % 1440) + (minute >= 1440 ? ' (+1d)' : '');
-      setText(clock, label); time.value = minute; time.setAttribute('aria-valuetext', label);
+      setText(clock, label);
+      time.value = drill ? (drill.end > 0 ? minute / drill.end * 100 : 0) : minute;
+      time.setAttribute('aria-valuetext', label);
       setText(count, number.format(inside) + ' on site');
       if (!drill) {
         evacuate.disabled = !inside;
@@ -138,7 +140,8 @@ const VisitorPlayback = (() => {
       raf = requestAnimationFrame(tick);
     }
     function configure() {
-      time.min = start(); time.max = end(); time.disabled = end() <= start();
+      // The range control can round fractional minutes. Its 100% endpoint is exact.
+      time.min = start(); time.max = drill ? 100 : end(); time.disabled = end() <= start();
       play.disabled = restart.disabled = time.disabled;
       evacuate.disabled = false;
       evacuate.textContent = drill ? 'Return to festival' : 'Simulate evacuation';
@@ -165,7 +168,11 @@ const VisitorPlayback = (() => {
     day.onchange = loadDay;
     play.onclick = () => running ? pause() : resume();
     restart.onclick = () => { minute = start(); pause(); paint(); };
-    time.oninput = () => { minute = Number(time.value); pause(); paint(); };
+    time.oninput = () => {
+      const value = Number(time.value);
+      minute = drill ? (value / 100) * drill.end : value;
+      pause(); paint();
+    };
     heat.onchange = () => { legend.hidden = !heat.checked; paint(); };
     evacuate.onclick = () => {
       pause();

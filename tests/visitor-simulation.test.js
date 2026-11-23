@@ -154,6 +154,12 @@ test('a Viewer can play, pause, seek, restart, evacuate, return and close withou
   field('time').value = 975; field('time').oninput();
   assert.match(field('count').textContent, /1,000 on site/);
   field('evacuate').onclick(); assert.match(field('note').textContent, /Peak-scenario planning estimate/);
+  // A native range control can serialize a fractional maximum just below the model time.
+  const sliderMax = Number(field('time').max);
+  field('time').value = Math.floor(sliderMax * 1e12) / 1e12;
+  field('time').oninput();
+  assert.equal(field('count').textContent, '0 on site', 'seeking to the browser endpoint clears measured queues');
+  assert.equal(field('play').textContent, 'Replay');
   field('time').value = field('time').max; field('time').oninput();
   assert.equal(field('count').textContent, '0 on site');
   field('evacuate').onclick(); assert.equal(Number(field('time').value), 975);
