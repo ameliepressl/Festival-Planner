@@ -13,16 +13,16 @@
   content: '';
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 50%;
+  height: 30%;
   background:
     linear-gradient(to bottom,
       rgba(247, 245, 238, 0) 0%,
-      rgba(247, 245, 238, .04) 25%,
-      rgba(247, 245, 238, .2) 48%,
-      rgba(247, 245, 238, .5) 66%,
-      rgba(247, 245, 238, .82) 82%,
-      #f7f5ee 96%),
-    radial-gradient(ellipse 70% 80% at 50% 100%, color-mix(in srgb, var(--bd-glow, #ffb070) 50%, transparent) 0%, transparent 75%);
+      rgba(247, 245, 238, .06) 25%,
+      rgba(247, 245, 238, .25) 50%,
+      rgba(247, 245, 238, .6) 72%,
+      rgba(247, 245, 238, .88) 88%,
+      #f7f5ee 98%),
+    radial-gradient(ellipse 70% 80% at 50% 100%, color-mix(in srgb, var(--bd-glow, #ffb070) 40%, transparent) 0%, transparent 75%);
   pointer-events: none;
 }
 .overview-backdrop[hidden] { display: none; }
