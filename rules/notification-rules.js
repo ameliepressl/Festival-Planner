@@ -62,7 +62,9 @@ function myAssignedSteps({ steps = [], assignments, people = [], myUserId }) {
 // Returns { items: [{ kind, stepId, title, end, days, unread, isNew, from }], unread }.
 //   from = who gave me the task: { name, isMe }, or null when unknown (older assignments,
 //   or that person has left the team).
+//   likelyFrom = only when `from` is unknown: who can have given it (see likelyAssigner).
 function notificationsFor({ steps, assignments, people, myUserId, seen = emptySeen(), today }) {
+  const likely = likelyAssigner(people, myUserId);
   const known = new Set(seen.assigned);
   const deadlinesRead = seen.readOn === today;
   const items = [];
@@ -77,6 +79,8 @@ function notificationsFor({ steps, assignments, people, myUserId, seen = emptySe
     const unread = isNew || (kind !== 'new' && !deadlinesRead);
     items.push({ kind, stepId: step.id, title: String(step.title || 'Untitled task'), end: step.end, days, unread, isNew,
       from: assignedFrom(step, assignments, people, myUserId) });
+    const item = items[items.length - 1];
+    item.likelyFrom = item.from ? null : likely;
   }
   items.sort((a, b) => NOTIFICATION_ORDER[a.kind] - NOTIFICATION_ORDER[b.kind]
     || (a.days ?? 0) - (b.days ?? 0) || a.title.localeCompare(b.title));
@@ -89,6 +93,15 @@ function assignedFrom(step, assignments, people, myUserId) {
   const person = giver ? people.find((entry) => entry.userId === giver) : null;
   if (!person) return null;
   return { name: String(person.username || 'Teammate'), isMe: giver === myUserId };
+}
+
+// For tasks without a saved giver (assigned before givers were recorded, or from a browser that
+// still had the old page): only Owner and Admins can assign tasks (migrations/004), so when the
+// team has exactly one of them, that person gave it. Otherwise { name: null } = "Owner or an Admin".
+function likelyAssigner(people = [], myUserId) {
+  const assigners = people.filter((person) => person.role === 'Admin');
+  if (assigners.length !== 1) return { name: null, isMe: false };
+  return { name: String(assigners[0].username || 'Teammate'), isMe: assigners[0].userId === myUserId };
 }
 
 // "Mark all as read": remember my current subtasks and today. Deadlines come back tomorrow.
@@ -123,8 +136,15 @@ function notificationText(item) {
 // Who a task came from, under a deadline notification ("From Amelie"); '' when unknown.
 // New-task sentences already name the person.
 function notificationSource(item) {
-  if (!item.from || item.kind === 'new') return '';
-  return item.from.isMe ? 'Assigned by you' : `From ${item.from.name}`;
+  if (item.from) {
+    if (item.kind === 'new') return '';
+    return item.from.isMe ? 'Assigned by you' : `From ${item.from.name}`;
+  }
+  // No saved giver: the only person who can assign, or "the Owner or an Admin".
+  const likely = item.likelyFrom;
+  if (!likely) return '';
+  if (likely.isMe) return 'Assigned by you';
+  return likely.name ? `From ${likely.name}` : 'From the Owner or an Admin';
 }
 
 // The text of an empty list. Owner and Admins also learn where tasks are assigned,
