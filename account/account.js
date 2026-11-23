@@ -898,21 +898,36 @@
       });
       if (error) { message.textContent = accountErrorMessage(error); return; }
       // The same answer whether the account exists or not.
-      message.textContent = 'If an account exists for this email, we sent a link to choose a new password. Check your inbox (and spam folder).';
+      message.textContent = 'If an account exists for this email, we sent a link to choose a new password. It can take a few minutes to arrive; check your spam or junk folder too.';
     });
   }
 
+  function showResetLinkUsedUp() {
+    showTab('forgot');
+    $('#forgot-form .form-message').textContent = 'This reset link has expired or was already used. Request a new one below.';
+  }
+
+  // From a scanner-safe reset link; redeemed only when the person saves the new password.
+  let recoveryTokenHash = null;
+
   // Called by start() when the page was opened from a reset email. Returns true if it took over.
   async function handleRecoveryLink() {
+    const tokenHash = recoveryTokenFromQuery(window.location.search);
+    if (tokenHash) {
+      // Opening the page redeems nothing, so a mail scanner opening the link cannot use it up.
+      history.replaceState(null, '', window.location.pathname);
+      recoveryTokenHash = tokenHash;
+      showSignIn();
+      showTab('new-password');
+      return true;
+    }
+    // Older links (Supabase's own /verify link): the tokens arrive after "#".
     const recovery = recoveryFromUrl(window.location.hash);
     if (!recovery) return false;
     // Remove the login tokens from the address bar and the browser history straight away.
     history.replaceState(null, '', window.location.pathname + window.location.search);
     showSignIn();
-    const expired = () => {
-      showTab('forgot');
-      $('#forgot-form .form-message').textContent = 'This reset link has expired or was already used. Request a new one below.';
-    };
+    const expired = showResetLinkUsedUp;
     if (recovery.kind !== 'recovery') { expired(); return true; }
     try {
       const { error } = await client.auth.setSession({
@@ -929,6 +944,14 @@
     const form = event.currentTarget;
     const { password = '', confirm = '' } = formValues(form);
     submitForm(form, newPasswordProblem({ password, confirm }), async (message) => {
+      if (recoveryTokenHash) {
+        const { error: linkError } = await client.auth.verifyOtp({ token_hash: recoveryTokenHash, type: 'recovery' });
+        if (linkError) {
+          if (resetLinkUsedUp(linkError)) { recoveryTokenHash = null; showResetLinkUsedUp(); return; }
+          message.textContent = accountErrorMessage(linkError); return; // e.g. offline: the link stays usable
+        }
+        recoveryTokenHash = null; // redeemed: signed in for this password change
+      }
       const { error } = await client.auth.updateUser({ password });
       if (error) { message.textContent = accountErrorMessage(error); return; }
       message.textContent = 'Password changed. Opening your festival…';

@@ -88,6 +88,25 @@ function passwordResetRedirect(location) {
 //   #access_token=…&refresh_token=…&type=recovery   → { kind: 'recovery', accessToken, refreshToken }
 //   #error=access_denied&error_code=otp_expired&…   → { kind: 'expired' }
 // Anything else (no "#", a normal "#top" link, a sign-up confirmation) → null.
+// Reset links in the scanner-safe format (Supabase "Reset password" email template):
+//   https://…/Festival-Planner/?token_hash=…&type=recovery   → the token hash, else null.
+// Opening such a link redeems nothing. Mail scanners (e.g. Microsoft Safe Links at
+// @novasbe.pt) open links before the person does; the token is only redeemed with
+// verifyOtp when the person saves the new password.
+function recoveryTokenFromQuery(search) {
+  if (typeof search !== 'string' || !search.includes('token_hash=')) return null;
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const tokenHash = params.get('token_hash');
+  if (params.get('type') !== 'recovery' || !tokenHash || !/^[A-Za-z0-9_-]{8,200}$/.test(tokenHash)) return null;
+  return tokenHash;
+}
+
+// Supabase's answer when a reset link has expired or was already used.
+function resetLinkUsedUp(error) {
+  const code = String(error?.code || '');
+  return code === 'otp_expired' || code === 'otp_disabled' || error?.status === 403;
+}
+
 function recoveryFromUrl(hash) {
   if (typeof hash !== 'string' || !hash.startsWith('#') || !hash.includes('=')) return null;
   const params = new URLSearchParams(hash.slice(1));
@@ -499,7 +518,7 @@ if (typeof module !== 'undefined') {
     rosterFromTeam, parseRoster, teamChanges, sameRoster, festivalLabel,
     MAX_OWN_FESTIVALS, ownFestivals, canCreateFestival, canDeleteFestival, festivalAfterDelete,
     usernameProblem, emailProblem, passwordProblem, signUpProblem, signInProblem, usernameKey,
-    newPasswordProblem, passwordResetRedirect, recoveryFromUrl,
+    newPasswordProblem, passwordResetRedirect, recoveryFromUrl, recoveryTokenFromQuery, resetLinkUsedUp,
     accountErrorMessage, isFestivalDataKey, collectFestivalData, cleanFestivalData, hasFestivalData,
     clearFestivalData, applyFestivalData, parseAccountMeta, syncAction, teammateFromRows
   };

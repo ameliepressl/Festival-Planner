@@ -121,6 +121,10 @@ Accounts and saved festivals are stored in **Supabase**. One-time setup by the p
 5. Email sending: Supabase's built-in email service only sends to members of the Supabase
    organization, and only a few emails per hour. For password reset emails to everyone, set up
    custom SMTP in *Authentication → Emails → SMTP settings*.
+6. In *Authentication → Emails → Templates → Reset password*, the link must be
+   `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery` instead of
+   `{{ .ConfirmationURL }}`. Mail scanners such as Microsoft Safe Links (Nova addresses) open
+   links before the person does; the default link is then already used up ("expired").
 
 Editors cannot change the festival details or the overall artist budget, also not through a
 direct request (`migrations/006`, applied on 22 November 2026).
