@@ -10,7 +10,7 @@ function buildStageScene(backdrop, W, H) {
   const rnd = backdropRandom(backdrop.seed);
   const r = (min, max) => min + rnd() * (max - min);
   const horizon = H * 0.66;
-  const stageW = Math.min(W * 0.34, 400), cx = W * (backdrop.landmark ? 0.45 : 0.58); // with a landmark the stage steps aside
+  const stageW = Math.min(W * 0.28, 340), cx = W * (backdrop.landmark ? 0.36 : 0.5); // a smaller stage; with a landmark it steps aside
   const stage = { cx, x: cx - stageW / 2, w: stageW, top: H * 0.43, floor: H * 0.78 };
 
   const stars = Array.from({ length: Math.round(W / 9) }, () => ({ x: r(0, W), y: r(0, H * 0.45), size: r(0.5, 1.6), phase: r(0, 6.3), speed: r(0.8, 2.4) }));
@@ -18,10 +18,10 @@ function buildStageScene(backdrop, W, H) {
   const sun = { x: rnd() < 0.5 || backdrop.landmark ? W * r(0.08, 0.22) : W * r(0.86, 0.95), y: horizon - H * r(0.12, 0.2), radius: H * r(0.08, 0.11) };
 
   // The famous landmark stands to the right of the stage, on the ground of the landscape.
-  const ground = H * 0.86; // ground level: the landmark stands among the crowd, whose back row hides its feet
+  const ground = H * 0.84; // ground level: the landmark stands among the crowd, whose back row hides its feet
   const zoneLeft = stage.x + stage.w + stageW * 0.15 + 30; // room for the speakers beside the stage
   const landmark = backdrop.landmark ? { kind: backdrop.landmark, left: zoneLeft, right: W, x: (zoneLeft + W) / 2, ground,
-    width: W - zoneLeft, height: H * 0.62,
+    width: W - zoneLeft, height: H * 0.7,
     sparkles: Array.from({ length: 34 }, () => ({ y: r(0.04, 0.9), side: r(-0.85, 0.85), phase: r(0, 6.3) })),
     houses: Array.from({ length: 8 }, () => ({ h: r(0.22, 0.38), step: rnd() < 0.5 })),
     windows: Array.from({ length: 60 }, () => ({ x: r(-0.5, 0.5), y: r(0.05, 0.95), phase: r(0, 6.3) })) } : null;
