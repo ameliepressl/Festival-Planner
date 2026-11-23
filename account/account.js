@@ -1031,6 +1031,11 @@
     return { me, owner, members: localRoster() };
   };
 
+  // The open festival's id, e.g. to keep one person's notification read state per festival.
+  window.currentFestivalId = function currentFestivalId() {
+    return currentUser && ready ? meta.festivalId || null : null;
+  };
+
   const readyCallbacks = [];
   window.whenAccountReady = function whenAccountReady(callback) {
     if (ready) callback(); else readyCallbacks.push(callback);

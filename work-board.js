@@ -101,6 +101,12 @@
     return teamProgress({ steps, assignments: assignments.read(), people: team });
   };
 
+  // Notifications (notifications.js): every subtask with its current status, and today's date.
+  window.getProjectTaskSnapshot = () => {
+    const date = today();
+    return { today: date, steps: projectSteps().map(step => ({ ...step, status: statusOf(step, date) })) };
+  };
+
   window.getOverviewUrgentTasks = () => {
     const date = today();
     return urgentSteps(projectSteps(), date).slice(0, 5).map(({ id, title, area, end }) => ({

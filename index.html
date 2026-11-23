@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="account/account.css?v=forgot-password" />
     <link rel="stylesheet" href="compact.css?v=suggestion-hover" />
     <link rel="stylesheet" href="readiness.css" />
+    <link rel="stylesheet" href="notifications.css" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Loaded last: fonts, colours, buttons and the frame (sidebar, header) for every page. -->
     <link rel="stylesheet" href="design.css?v=design-1" />
@@ -24,7 +25,7 @@
     <script src="vendor/supabase-js-2.119.2.js" integrity="sha384-A97u3Qnt9GZHURO9YJZRe7VQgGUeFzcv6I1oIGnUTxQrCxnpQMwR0/G8F2zt9abZ"></script>
     <script src="supabase-config.js"></script>
     <script src="rules/account-rules.js?v=reset-link-scanners"></script>
-    <script src="account/account.js?v=reset-link-scanners"></script>
+    <script src="account/account.js?v=notifications-reset-links"></script>
   </head>
   <body>
     <!-- Icons for the sidebar (24×24, drawn with a 1.75 stroke in the text colour). -->
@@ -37,6 +38,7 @@
       <symbol id="i-finances" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M15.2 8.8a4.2 4.2 0 1 0 0 6.4"/><path d="M7.8 11h5.4M7.8 13.4h5.4"/></symbol>
       <symbol id="i-checklist" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m9 13 2.2 2.2L15.5 11"/></symbol>
       <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7.5h9M17 7.5h3M4 16.5h3M11 16.5h9"/><circle cx="15" cy="7.5" r="2"/><circle cx="9" cy="16.5" r="2"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
       <symbol id="i-signout" viewBox="0 0 24 24"><path d="M14.5 4.5h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3"/><path d="m10 8-4 4 4 4M6 12h9.5"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
       <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14.5 7.5v1.5M14.5 11.25v1.5M14.5 15v1.5"/></symbol>
@@ -141,6 +143,21 @@
           <span id="event-summary"></span>
         </div>
         <div class="plan-actions">
+          <!-- Notifications (feature-plans/notifications.md): shown once signed in and on the team. -->
+          <div class="notifications" id="notifications" hidden>
+            <button type="button" class="notification-bell" id="notifications-button" aria-expanded="false" aria-controls="notifications-panel" aria-label="Notifications">
+              <svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg>
+              <span class="notification-count" id="notifications-count" aria-hidden="true" hidden></span>
+            </button>
+            <section class="notification-panel" id="notifications-panel" aria-labelledby="notifications-title" hidden>
+              <div class="notification-head">
+                <h2 id="notifications-title">Notifications</h2>
+                <button type="button" class="notification-read-all" id="notifications-read-all">Mark all as read</button>
+              </div>
+              <ul class="notification-list" id="notifications-list"></ul>
+              <p class="notification-empty" id="notifications-empty">You're all caught up. Tasks assigned to you and their deadlines appear here.</p>
+            </section>
+          </div>
           <div class="festival-countdown" id="festival-countdown" role="group" title="Days remaining include today and exclude festival opening day. Workdays are Monday–Friday; public holidays are not deducted. Time zone: Europe/Lisbon.">
             <span class="countdown-label"></span>
             <span class="countdown-total"><strong id="countdown-days">0</strong> <span id="countdown-day-unit">days left</span></span>
@@ -784,12 +801,13 @@
     <script src="rules/countdown-rules.js"></script>
     <script src="festival-countdown.js?v=technical-audit-1"></script>
     <script src="rules/task-rules.js"></script>
+    <script src="rules/notification-rules.js"></script>
     <script src="task-assignments.js?v=subtask-owners-only"></script>
     <script src="gantt-defaults.js"></script>
     <script src="gantt-editor.js?v=technical-audit-1"></script>
     <script src="gantt-placeholder.js?v=technical-audit-1"></script>
     <script src="gantt-schedule.js?v=technical-audit-1"></script>
-    <script src="work-board.js?v=technical-audit-1"></script>
+    <script src="work-board.js?v=notifications"></script>
     <script src="rules/capacity-rules.js"></script>
     <script src="rules/vendor-rules.js?v=custom-vendors"></script>
     <script src="rules/vendor-library.js?v=vendor-catalogue"></script>
@@ -808,5 +826,6 @@
     <script src="overview.js?v=overnight-hours"></script>
     <script src="rules/readiness-rules.js"></script>
     <script src="readiness.js?v=technical-audit-1"></script>
+    <script src="notifications.js"></script>
   </body>
 </html>
