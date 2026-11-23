@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="overview-backdrop.css?v=backdrop-live-5" />
     <link rel="stylesheet" href="artist-library/artist-library.css?v=artist-library" />
     <!-- Loaded last: fonts, colours, buttons and the frame (sidebar, header) for every page. -->
-    <link rel="stylesheet" href="design.css?v=design-1" />
+    <link rel="stylesheet" href="design.css?v=design-2" />
     <!-- Site map page order and toolbar; after design.css so it wins (feature-plans/clear-site-map-pins.md). -->
     <link rel="stylesheet" href="site-map/site-map-layout.css?v=calm-4" />
     <!-- Accounts (feature-plans/login.md). These must run before the page scripts at the end of
@@ -109,10 +109,6 @@
     </div>
     <div class="app-layout">
       <aside class="sidebar" aria-label="Festival Architect navigation">
-        <a class="sidebar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
-          <span class="brand-mark"><i></i><i></i><i></i></span>
-          <span>Festival Architect</span>
-        </a>
         <nav class="sidebar-nav" aria-label="Project sections">
           <button class="sidebar-item active" data-section="Overview" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-overview"/></svg>Overview</button>
           <button class="sidebar-item" data-section="Lineup planner"><svg class="icon" aria-hidden="true"><use href="#i-lineup"/></svg>Lineup planner</button>
@@ -142,6 +138,10 @@
       </aside>
       <div class="app-shell" id="top">
       <header class="topbar">
+        <a class="topbar-brand" href="#top" data-open-section="Overview" aria-label="Festival Architect home">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>Festival Architect</span>
+        </a>
         <div class="festival-meta hidden">
           <span id="event-summary"></span>
         </div>
