@@ -734,3 +734,18 @@ Branch: `feature-visitor-simulation-merge` (fix owner: Vicky). Plan: [feature-pl
 Seeking to the end now uses exactly 100% of the simulated evacuation time. Chrome previously rounded the fractional time and could leave one visitor on site.
 
 Validation: 422/422 tests passed, including the endpoint regression check. In Chrome, Munich showed 20,000 exited and zero on site. Lisbon showed 5,000 waiting at unmeasured exits.
+
+## Reset links that mail scanners cannot use up — 23 November 2026
+
+Branch: `fix-reset-link-scanners` (owner: Amelie). Plan: `feature-plans/forgot-password.md`.
+
+Testing on the live app, reset links for @novasbe.pt addresses always said "expired". The Supabase
+auth log showed why: Microsoft Safe Links opened each link about 15 seconds after it was sent
+(GET /verify from Microsoft addresses), which used up the one-time token before the person clicked
+("One-time token not found"). Now the email links to the app with `?token_hash=…&type=recovery`;
+opening the page redeems nothing, and `verifyOtp` runs only when the person saves the new password.
+Old `#access_token` links still work. The confirmation mentions the few-minute delay and the junk
+folder. Validation: 429/429 tests passed (7 new in `tests/forgot-password.test.js`; the test helper
+there can now also simulate an address with `?…` and `verifyOtp`; no existing check changed).
+
+Supabase (Amelie, after merging): change the Reset password email template to the new link.

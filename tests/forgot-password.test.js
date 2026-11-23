@@ -46,7 +46,7 @@ test('clear messages for the email service limits and reusing the old password',
 
 // --- The real sign-in screen --------------------------------------------------------------
 
-function signInScreen({ hash = '', session = null, auth = {} } = {}) {
+function signInScreen({ hash = '', search = '', session = null, auth = {} } = {}) {
   const nodes = new Map(), calls = [];
   let reloads = 0, ready = null;
   function node(selector) {
@@ -61,7 +61,7 @@ function signInScreen({ hash = '', session = null, auth = {} } = {}) {
     }
     return nodes.get(selector);
   }
-  const location = { origin: 'https://ameliepressl.github.io', pathname: '/Festival-Planner/', search: '', hash,
+  const location = { origin: 'https://ameliepressl.github.io', pathname: '/Festival-Planner/', search, hash,
     reload() { reloads++; } };
   const client = { auth: {
     onAuthStateChange() {},
@@ -69,11 +69,12 @@ function signInScreen({ hash = '', session = null, auth = {} } = {}) {
     async resetPasswordForEmail(email, options) { calls.push(['resetPasswordForEmail', email, options]); return { error: null }; },
     async setSession(tokens) { calls.push(['setSession', tokens]); return { data: {}, error: null }; },
     async updateUser(changes) { calls.push(['updateUser', changes]); return { data: {}, error: null }; },
+    async verifyOtp(params) { calls.push(['verifyOtp', params]); return { data: {}, error: null }; },
     ...auth } };
   const context = vm.createContext({
     window: { localStorage: new Map(), location, supabase: { createClient: () => client }, addEventListener() {}, dispatchEvent() {},
       FESTIVAL_SUPABASE: { url: 'https://isolated-test.invalid', publishableKey: 'public-placeholder-for-isolated-tests' } },
-    history: { replaceState(state, title, url) { calls.push(['replaceState', url]); location.hash = ''; } },
+    history: { replaceState(state, title, url) { calls.push(['replaceState', url]); location.hash = ''; if (!String(url).includes('?')) location.search = ''; } },
     Storage: class { setItem() {} removeItem() {} },
     document: { documentElement: { classList: { add() {}, remove() {}, contains() { return false; } } },
       querySelector: node, querySelectorAll() { return []; },
@@ -204,4 +205,102 @@ test('the reset form shows the waiting message from Supabase', async () => {
   ui.node('#forgot-form').values = { email: 'amelie@novasbe.pt' };
   await ui.node('#forgot-form').submit();
   assert.match(ui.node('#forgot-form .form-message').textContent, /Please wait 25 seconds/);
+});
+
+// --- Reset links that mail scanners cannot use up (23 November) ----------------------------
+// Microsoft Safe Links (@novasbe.pt) opened every reset link ~15 seconds after it was sent,
+// which used up the one-time token before the person clicked ("expired"). Scanner-safe
+// links point to the app with ?token_hash=…; the token is redeemed only on "Save new password".
+
+const HASH = 'pkce_0123456789abcdef0123456789abcdef0123456789abcdef01234567';
+
+test('a scanner-safe reset link is recognised; anything else is not', () => {
+  const { recoveryTokenFromQuery, resetLinkUsedUp } = require('../rules/account-rules.js');
+  assert.equal(recoveryTokenFromQuery(`?token_hash=${HASH}&type=recovery`), HASH);
+  assert.equal(recoveryTokenFromQuery(`token_hash=${HASH}&type=recovery`), HASH);
+  for (const search of ['', '?', '?type=recovery', `?token_hash=${HASH}&type=signup`, `?token_hash=${HASH}`,
+    '?token_hash=<script>&type=recovery', '?token_hash=short&type=recovery', undefined, null])
+    assert.equal(recoveryTokenFromQuery(search), null, String(search));
+  assert.equal(resetLinkUsedUp({ code: 'otp_expired', status: 403 }), true);
+  assert.equal(resetLinkUsedUp({ status: 403, message: 'Email link is invalid or has expired' }), true);
+  assert.equal(resetLinkUsedUp({ status: 0, message: 'Failed to fetch' }), false);
+});
+
+test('opening the link (as a mail scanner does) redeems nothing and removes the token from the address', async () => {
+  const ui = signInScreen({ search: `?token_hash=${HASH}&type=recovery` });
+  await settle();
+  assert.deepEqual(ui.calls, [['replaceState', '/Festival-Planner/']]);
+  assert.equal(ui.location.search, '');
+  assert.deepEqual(ui.shown(), ['new-password']);
+  assert.equal(ui.node('#account-title').textContent, 'Choose a new password');
+});
+
+test('saving the new password redeems the link first, then changes the password and opens the app', async () => {
+  const ui = signInScreen({ search: `?token_hash=${HASH}&type=recovery` });
+  await settle();
+  const form = ui.node('#new-password-form');
+  form.values = { password: 'festival-2027', confirm: 'festival-2028' };
+  await form.submit();
+  assert.equal(ui.calls.some(([name]) => name === 'verifyOtp'), false, 'mismatched passwords do not use up the link');
+  form.values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await form.submit();
+  assert.deepEqual(ui.calls.slice(1), [
+    ['verifyOtp', { token_hash: HASH, type: 'recovery' }],
+    ['updateUser', { password: 'festival-2027' }]
+  ]);
+  assert.equal(ui.reloads(), 1);
+});
+
+test('a link that really expired or was already used offers a new one', async () => {
+  const ui = signInScreen({ search: `?token_hash=${HASH}&type=recovery`,
+    auth: { async verifyOtp() { return { data: {}, error: { code: 'otp_expired', status: 403, message: 'Email link is invalid or has expired' } }; } } });
+  await settle();
+  ui.node('#new-password-form').values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await ui.node('#new-password-form').submit();
+  assert.deepEqual(ui.shown(), ['forgot']);
+  assert.match(ui.node('#forgot-form .form-message').textContent, /expired or was already used/);
+  assert.equal(ui.calls.some(([name]) => name === 'updateUser'), false);
+});
+
+test('offline while saving: the link stays usable for the next try', async () => {
+  let attempt = 0;
+  const ui = signInScreen({ search: `?token_hash=${HASH}&type=recovery`, auth: { async verifyOtp(params) {
+    attempt++;
+    return attempt === 1 ? { data: {}, error: { status: 0, message: 'Failed to fetch' } } : { data: {}, error: null }; } } });
+  await settle();
+  const form = ui.node('#new-password-form');
+  form.values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await form.submit();
+  assert.deepEqual(ui.shown(), ['new-password']);
+  assert.notEqual(ui.node('#new-password-form .form-message').textContent, '');
+  await form.submit();
+  assert.equal(attempt, 2);
+  assert.deepEqual(ui.calls.at(-1), ['updateUser', { password: 'festival-2027' }]);
+  assert.equal(ui.reloads(), 1);
+});
+
+test('after the link is redeemed, a refused password can be retried without the link', async () => {
+  let verified = 0, updates = 0;
+  const ui = signInScreen({ search: `?token_hash=${HASH}&type=recovery`, auth: {
+    async verifyOtp() { verified++; return { data: {}, error: null }; },
+    async updateUser() { updates++; return updates === 1 ? { data: {}, error: { code: 'same_password', status: 422 } } : { data: {}, error: null }; } } });
+  await settle();
+  const form = ui.node('#new-password-form');
+  form.values = { password: 'festival-2027', confirm: 'festival-2027' };
+  await form.submit();
+  assert.match(ui.node('#new-password-form .form-message').textContent, /different from your old one/);
+  form.values = { password: 'festival-2028', confirm: 'festival-2028' };
+  await form.submit();
+  assert.equal(verified, 1, 'the link is redeemed once');
+  assert.equal(updates, 2);
+  assert.equal(ui.reloads(), 1);
+});
+
+test('the confirmation after requesting a link mentions the delay and the junk folder', async () => {
+  const ui = signInScreen();
+  await settle();
+  ui.node('#forgot-password').onclick();
+  ui.node('#forgot-form').values = { email: 'kira@novasbe.pt' };
+  await ui.node('#forgot-form').submit();
+  assert.match(ui.node('#forgot-form .form-message').textContent, /few minutes.*junk/);
 });
