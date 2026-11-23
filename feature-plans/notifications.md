@@ -35,7 +35,7 @@ assignment into a complete workflow: assign → get notified → open the task �
 ## Out of scope
 
 - E-mail or push notifications. They need a server function, a mail service with a secret key and
-  a database change. This is the documented next step.
+  a database change, see [Next step: e-mail notifications](#next-step-e-mail-notifications).
 - Live updates while the app is open: notifications are computed when a festival is opened or
   the plan is reloaded.
 - Read state across devices (it is kept per browser).
@@ -79,3 +79,45 @@ console, two due dates moved to make one task overdue and one due soon):
 - Phone width (375 px): the list opens just below the bell, fits the screen, no sideways scrolling.
   (First try covered the bell; fixed by opening the list below it.)
 - No console errors. All test data removed afterwards.
+
+## Next step: e-mail notifications
+
+Decided by the team on 23 November 2026: not built yet. Doing it properly needs a mail service
+account, a secret key and a database change by the database owner, and it would not have been live
+and tested before the submission deadline. This is how we would build it.
+
+**Why it must run on a server.** The browser never knows a teammate's e-mail address: addresses are
+kept only in Supabase Auth (`auth.users`), and `profiles` holds just the username. That is on purpose
+(privacy). So the e-mail has to be sent by the server, with a key that never reaches the browser.
+
+```mermaid
+flowchart LR
+  A["Admin assigns a task<br/>(festival saved)"] --> B["Database trigger<br/>compares old and new assignments"]
+  B --> C["notification_outbox<br/>one row per person"]
+  C --> D["Edge Function<br/>every 10 min (Supabase Cron)"]
+  D --> E["Mail service<br/>(SMTP or Resend)"]
+  E --> F["E-mail to the teammate"]
+```
+
+1. **Migration `007_email_notifications.sql`** (run by the database owner):
+   - Table `notification_outbox` (festival, person, what happened, `created_at`, `sent_at`).
+     Row Level Security on and no access through the API, so nobody can read or fill it from a browser.
+   - A trigger on `festivals`: when `festival-task-assignments-v1` changes, it adds a row for each person
+     who received new tasks. Only people on the festival's team qualify.
+   - A column in `profiles` so everyone can switch e-mails off (on by default for assigned tasks).
+2. **Edge Function `send-notifications`** (Supabase, server side):
+   - Reads unsent rows, looks up the address in Supabase Auth, sends **one summary e-mail per person**
+     ("You have 3 new tasks in Munich Loud Weekend") with a link to the app, then sets `sent_at`.
+   - Once a day it also sends a reminder for tasks due within 7 days or overdue, reusing the rules of
+     `rules/notification-rules.js`.
+   - Failed sends stay unsent and are retried; `sent_at` prevents duplicates.
+3. **Secrets:** the mail service key is stored only as a Supabase secret by the database owner, never
+   in the repository, an issue or an agent chat (`AGENTS.md` → Secrets).
+4. **Delivery:** Supabase's built-in mailer and test senders only reach our own addresses. E-mail to
+   every user needs a mail service with a verified domain, or SMTP with its own sending limits.
+5. **Tests:** the comparison "who received new tasks" as a pure function with scenario tests (new
+   person, removed person, same tasks, someone not on the team); the Edge Function tested against a
+   fake mail service; a real e-mail checked once by hand.
+
+**Limits of the in-app version until then:** notifications appear when the app is opened, and the
+read state is kept per browser.
