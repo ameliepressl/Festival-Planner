@@ -749,3 +749,13 @@ folder. Validation: 429/429 tests passed (7 new in `tests/forgot-password.test.j
 there can now also simulate an address with `?…` and `verifyOtp`; no existing check changed).
 
 Supabase (Amelie, after merging): change the Reset password email template to the new link.
+
+## New festivals start with zero finances — 23 November 2026
+
+Owner: Kira · Branch: `codex/zero-finance-start` · Plan: [zero-finance-start.md](feature-plans/zero-finance-start.md).
+
+Newly created festivals now store a complete set of zero finance assumptions and no custom cost/income lines. This applies to the first festival of an account and the New festival action. Existing saved finance sections, imported plans and both demos keep their supplied values. New-account startup loads the seeded values into the browser before showing the plan.
+
+An untouched finance page shows zero totals and neutral guidance instead of claiming that sponsors cover costs or displaying hypothetical profit comparisons. The former Reset action is explicitly labelled Load example values; its existing optional example-loading behaviour is retained. Finances still include actual booked artists and confirmed vendor income. Data uses the existing synced `festival-architect-finance` key; no database migration is needed.
+
+Validation: **470/470 tests pass**, including 16 new creation, persistence, finance and screen checks; existing assertions remain unchanged. Isolated browser checks covered new-account and later-festival creation, zero values after reload, entered values after reload, switching back to preserved custom values, both populated demos, and a 375px layout with no document overflow or console errors. The normal app's existing Lisbon festival still shows its saved figures. Status: implemented locally for Kira's review; not committed or pushed.

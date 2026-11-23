@@ -227,11 +227,12 @@
     const openSections = [...view.querySelectorAll(".cleanup-disclosure[open]")].map(node => node.querySelector("summary").textContent);
     const data = collect();
     const { model, artists, input } = data;
+    const hasForecast = hasFinanceValues(input);
     const canEditAssumptions = canFestival('budget');
     const profitText = `${model.profit >= 0 ? '' : '−'}${money(Math.abs(model.profit))}`;
     const be = model.breakEvenTickets;
-    const beText = be === null ? 'Not possible' : be === 0 ? 'Covered' : `${number(be)} tickets`;
-    const beNote = be === null ? 'nothing is earned per ticket' : be === 0 ? 'sponsors and vendors cover all fixed costs'
+    const beText = !hasForecast ? '—' : be === null ? 'Not possible' : be === 0 ? 'Covered' : `${number(be)} tickets`;
+    const beNote = !hasForecast ? 'enter financial assumptions first' : be === null ? 'nothing is earned per ticket' : be === 0 ? 'sponsors and vendors cover all fixed costs'
       : model.breakEvenReachable ? `${Math.round((be / input.visitors) * 100)}% of ${number(input.visitors)} visitors · or regular price €${model.breakEvenPrice}` : `more than the ${number(input.visitors)} expected visitors`;
     const safety = model.safetyMargin;
     const safetyText = safety === null ? '—' : `${safety}%`;
@@ -253,6 +254,7 @@
         <a href="#" data-go="Site map">Festival size · ${number(input.visitors)} visitors</a>
         <span>${input.days} day${input.days === 1 ? '' : 's'} · ${input.stages} stages</span>
       </div>
+      ${hasForecast ? '' : '<p class="fin-note">No financial assumptions entered yet. New festivals start at zero; enter your prices, expected ticket sales and costs under Financial assumptions.</p>'}
       <section class="fin-kpis five">
         <div class="fin-kpi"><span>${model.profit >= 0 ? 'Profit' : 'Loss'}</span><strong class="${model.profit >= 0 ? 'pos' : 'neg'}">${profitText}</strong><small>${model.margin}% margin</small></div>
         <div class="fin-kpi"><span>Revenue</span><strong>${money(model.totalRevenue)}</strong><small>${number(model.ticketsSold)} tickets · average €${model.averageTicketPrice.toFixed(2)}</small></div>
@@ -260,10 +262,10 @@
         <div class="fin-kpi"><span>Break-even</span><strong>${beText}</strong><small>${beNote}</small></div>
         <div class="fin-kpi"><span>Safety margin</span><strong class="${safety !== null && safety < 0 ? 'neg' : ''}">${safetyText}</strong><small>${safetyNote}</small></div>
       </section>
-      <section class="fin-card fin-assumptions"><details class="cleanup-disclosure"><summary>Financial assumptions</summary><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Reset</button></header>
+      <section class="fin-card fin-assumptions"><details class="cleanup-disclosure"><summary>Financial assumptions</summary><header><h2>Assumptions</h2><button type="button" class="button secondary" data-reset ${canEditAssumptions ? '' : 'disabled'}>Load example values</button></header>
         <div class="fin-groups">${['Tickets', 'Bar & sponsors', 'Costs'].map((group) => `<details class="cleanup-disclosure"><summary>${group}</summary><div class="fin-form">${FINANCE_FIELDS.filter((f) => f.group === group).map((f) => `
           <label>${f.label}<input type="number" data-field="${f.id}" value="${settings[f.id]}" min="${f.min}" max="${f.max}" step="${f.step}" ${canEditAssumptions ? '' : 'disabled'} /><small>${f.unit}</small></label>`).join('')}</div></details>`).join('')}${additionalAssumptions(canEditAssumptions)}</div>
-        <p class="fin-note">${canEditAssumptions ? 'Replace the example prices with your real offers.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
+        <p class="fin-note">${canEditAssumptions ? 'Enter your prices, expected ticket sales and real offers. Load example values fills in sample assumptions.' : 'Admins can edit these assumptions.'} Toilets, water points, first aiders and security follow the festival size on the Site map.</p>
         <details class="cleanup-disclosure fin-limits"><summary>What this model leaves out</summary>
           <p class="fin-note">A planning estimate for comparing options, not accounting or tax advice. It simplifies on purpose:</p>
           <ul class="fin-note">
@@ -292,22 +294,24 @@
         <section class="fin-card"><header><h2>Where the money comes from</h2><span>${money(model.totalRevenue)}</span></header>${barChart(model.revenue, PROFIT, model.totalRevenue, 'Revenue')}</section>
       </div>
       <div class="fin-grid2 wide-left">
-        <section class="fin-card"><header><h2>Profit by regular ticket price</h2><span>everything else unchanged</span></header>${priceChart(data)}
-          <p class="fin-note">${model.breakEvenPrice === null ? 'With no tickets sold there is no break-even price.' : model.breakEvenPrice === 0 ? 'Bars, sponsors and vendors already cover the fixed costs, so any ticket price is profit.' : `Below a regular price of <b>€${model.breakEvenPrice}</b> the festival loses money. Every extra euro on the regular ticket adds about <b>${money(Math.round(model.ticketsSold * averagePriceFactor(input.settings) * (1 - input.settings.ticketingFee / 100)))}</b> profit.`}</p></section>
+        <section class="fin-card"><header><h2>Profit by regular ticket price</h2><span>everything else unchanged</span></header>${hasForecast ? priceChart(data) : ''}
+          <p class="fin-note">${!hasForecast ? 'Enter financial assumptions to compare ticket prices.' : model.breakEvenPrice === null ? 'With no tickets sold there is no break-even price.' : model.breakEvenPrice === 0 ? 'Bars, sponsors and vendors already cover the fixed costs, so any ticket price is profit.' : `Below a regular price of <b>€${model.breakEvenPrice}</b> the festival loses money. Every extra euro on the regular ticket adds about <b>${money(Math.round(model.ticketsSold * averagePriceFactor(input.settings) * (1 - input.settings.ticketingFee / 100)))}</b> profit.`}</p></section>
         <section class="fin-card"><header><h2>Scenarios</h2><span>how many tickets sell?</span></header>${scenarioChart(scenarios(input))}${scenarioControls(scenarios(input), input.visitors, canEditAssumptions)}</section>
       </div>
       <section class="fin-card"><header><h2>Profit matrix</h2><span>regular price × tickets sold</span></header>
-        <div class="fin-matrix-wrap">${matrixTable(data)}</div>
-        <p class="fin-note">Read across to see what happens if fewer or more tickets sell, down to see a different price. Green is profit, red is loss; the outlined cell is your plan.</p>
+        <div class="fin-matrix-wrap">${hasForecast ? matrixTable(data) : '<p class="fin-empty">Enter financial assumptions to see price and ticket-sales comparisons.</p>'}</div>
+        ${hasForecast ? '<p class="fin-note">Read across to see what happens if fewer or more tickets sell, down to see a different price. Green is profit, red is loss; the outlined cell is your plan.</p>' : ''}
       </section>
       <section class="fin-card"><header><h2>Cash-flow plan</h2><span>account balance month by month</span></header>
-        <div class="fin-cash-callout ${cash.cashNeeded ? 'warn' : 'ok'}">${cash.cashNeeded
+        <div class="fin-cash-callout ${cash.cashNeeded ? 'warn' : hasForecast ? 'ok' : ''}">${!hasForecast
+          ? '<strong>No cash-flow forecast yet</strong><span>Enter financial assumptions before assessing how much starting money is needed.</span>'
+          : cash.cashNeeded
           ? `<strong>${money(cash.cashNeeded)} starting money needed</strong><span>Lowest point: <b>${cash.lowestMonth}</b>. ${cash.months.find((m) => m.label === cash.lowestMonth).offset < 0
             ? 'Deposits and the venue are due before enough tickets are sold. Plan a loan, an earlier sponsor payment or more early bird tickets.'
             : 'The festival does not earn back its costs, so the loss has to come from your own money or a loan. Look at the price, the bars or the costs.'}</span>`
           : `<strong>No starting money needed</strong><span>Ticket and sponsor money always arrives before the bills; the account never goes below zero.</span>`}
-          <span class="fin-cash-peak">Highest balance <b>${money(cash.highestBalance)}</b> (${cash.highestMonth.toLowerCase()}) · at the end <b class="${cash.finalBalance >= 0 ? 'pos' : 'neg'}">${cash.finalBalance < 0 ? '−' : ''}${money(Math.abs(cash.finalBalance))}</b> = the ${cash.finalBalance >= 0 ? 'profit' : 'loss'}</span></div>
-        ${cashChart(cash)}
+          ${hasForecast ? `<span class="fin-cash-peak">Highest balance <b>${money(cash.highestBalance)}</b> (${cash.highestMonth.toLowerCase()}) · at the end <b class="${cash.finalBalance >= 0 ? 'pos' : 'neg'}">${cash.finalBalance < 0 ? '−' : ''}${money(Math.abs(cash.finalBalance))}</b> = the ${cash.finalBalance >= 0 ? 'profit' : 'loss'}</span>` : ''}</div>
+        ${hasForecast ? cashChart(cash) : ''}
         <div class="fin-matrix-wrap">${cashTable(cash)}</div>
         <p class="fin-note">Typical timing: early bird tickets sell 6–4 months before, regular tickets 3–1 months before, box office and bars at the festival. Venue first, 50 % artist deposits when booking, 30 % stage deposit, toilet and water invoices after the festival.</p>
       </section>

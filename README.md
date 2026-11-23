@@ -201,6 +201,9 @@ These are the active rules in the [current product brief](product-brief/festival
   tickets, VAT, music licence, merch, grants, power, crew, cleaning, artist hospitality). **+ Add cost** /
   **+ Add income** adds your own lines (in total, per day, per visitor or per visitor per day), which
   flow into profit, break-even and the cash-flow plan.
+  Every **new festival starts with zero finance assumptions** and no custom cost or income lines.
+  Saved projects keep their last values; both demo festivals retain their example figures.
+  **Load example values** is an explicit optional action in Financial assumptions.
   The model is a **simplified planning estimate**, not accounting or tax advice: profit is before income
   tax, VAT is only taken out of tickets (enter other amounts without VAT), sponsorship and pitch fees stay
   the same in every scenario, and security, toilets, first aid and water are sized for the expected
