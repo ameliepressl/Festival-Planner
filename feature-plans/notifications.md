@@ -152,3 +152,19 @@ Result: 463 tests, 463 pass, 0 fail.
 picked Kira as owner of a subtask in Timeline → Edit plan and saved; the saved data held
 `assignedBy` for that subtask only; Kira's bell showed "1" with "Due Mon 23 Nov · From Amelie".
 A second subtask assigned the same way showed up as well. No console errors; test data removed.
+
+## Fix: sender missing on older tasks
+
+Branch `fix-notification-sender-fallback`. Team feedback: tasks assigned before the giver was
+recorded (or from a browser that still had the old page) showed no sender at all.
+
+- [x] Only Owner and Admins can assign tasks (`migrations/004`). Without a saved giver,
+      `notificationsFor` adds `likelyFrom`: when the team has exactly one Owner/Admin, that person
+      ("From Amelie", or "Assigned by you" for them); otherwise "From the Owner or an Admin".
+- [x] Shown in the line under every notification without a saved giver, new tasks included.
+      A saved giver always wins over the guess.
+- [x] Cache version of `rules/notification-rules.js` raised in `index.html`.
+
+**Tests:** 4 new tests at the end of `tests/notification-sender.test.js` (only giver; several
+Admins; Owner alone sees "Assigned by you"; saved giver wins). No existing test was changed.
+Result: 467 tests, 467 pass, 0 fail.
