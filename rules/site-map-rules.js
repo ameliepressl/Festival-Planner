@@ -119,20 +119,21 @@ function isKnownItemId(id) {
     || EXTRA_PIN_ID.test(id);
 }
 
-// ---------- pins the organiser adds ("+ Add pin"), saved per map as extraPins: [{ id, kind, name }] ----------
+// ---------- pins the organiser adds ("+ Add pin"), saved per map as extraPins ----------
+// automaticName marks generated names so they can follow changes to the preset facility list.
 // They count in the layout check like the built-in ones (an extra toilet near a stage helps that rule).
 const EXTRA_PIN_ID = /^x-[1-9][0-9]{0,2}$/;
 const EXTRA_PIN_MAX = 60;
 const EXTRA_PIN_NAME_MAX = 40;
 const EXTRA_PIN_TYPES = [
-  { kind: 'toilets', label: 'Toilets', category: 'facilities', symbol: 'WC', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra row of toilet cabins added by the organiser.' },
-  { kind: 'water', label: 'Free water', category: 'facilities', symbol: 'H₂O', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra free drinking water point added by the organiser.' },
-  { kind: 'first-aid', label: 'First aid', category: 'safety', symbol: '✚', team: 'First aid & safety', hours: 'Whole event', text: 'An extra first aid point added by the organiser.' },
-  { kind: 'bar', label: 'Bar', category: 'food', symbol: 'BAR', team: 'Backstage & catering', hours: 'From gates open', text: 'A drinks bar added by the organiser.' },
-  { kind: 'info', label: 'Info point', category: 'services', symbol: 'i', team: 'Tickets & entry', hours: 'From gates open', text: 'An extra info point added by the organiser.' },
-  { kind: 'security', label: 'Security post', category: 'safety', symbol: '◈', team: 'Security', hours: 'Whole event', text: 'An extra security post added by the organiser.' },
-  { kind: 'recycling', label: 'Recycling point', category: 'facilities', symbol: '♲', team: 'Toilets, water & waste', hours: 'From gates open', text: 'An extra recycling point added by the organiser.' },
-  { kind: 'marker', label: 'Own pin', category: 'services', symbol: '◆', team: 'Organiser', hours: '—', text: 'A pin the organiser added, e.g. a VIP area, a charging station or a meeting point.' }
+  { kind: 'toilets', label: 'Toilets', category: 'facilities', symbol: 'WC', team: 'Toilets, water & waste', hours: 'From gates open', text: 'A row of 8 toilet cabins including an accessible unit.' },
+  { kind: 'water', label: 'Free water', category: 'facilities', symbol: 'H₂O', team: 'Toilets, water & waste', hours: 'From gates open', text: 'Free drinking water refill station.' },
+  { kind: 'first-aid', label: 'First aid', category: 'safety', symbol: '✚', team: 'First aid & safety', hours: 'Whole event', text: 'Medical tent with defibrillator.' },
+  { kind: 'bar', label: 'Bar', category: 'food', symbol: 'BAR', team: 'Backstage & catering', hours: 'From gates open', text: 'Drinks bar.' },
+  { kind: 'info', label: 'Info point', category: 'services', symbol: 'i', team: 'Tickets & entry', hours: 'From gates open', text: 'Help desk, visitor information and lost and found.' },
+  { kind: 'security', label: 'Security post', category: 'safety', symbol: '◈', team: 'Security', hours: 'Whole event', text: 'Security control and radio contact point.' },
+  { kind: 'recycling', label: 'Recycling point', category: 'facilities', symbol: '♲', team: 'Toilets, water & waste', hours: 'From gates open', text: 'Bins, recycling and cup return.' },
+  { kind: 'marker', label: 'Own pin', category: 'services', symbol: '◆', team: 'Organiser', hours: '—', text: 'A named location on the festival map.' }
 ];
 
 // Reads saved extra pins; anything broken, unknown or duplicated is dropped.
@@ -142,15 +143,47 @@ function parseExtraPins(list) {
   return list.filter((pin) => pin && typeof pin === 'object' && EXTRA_PIN_ID.test(pin.id) && !seen.has(pin.id)
       && EXTRA_PIN_TYPES.some((type) => type.kind === pin.kind) && typeof pin.name === 'string'
       && pin.name.trim().length > 0 && pin.name.length <= EXTRA_PIN_NAME_MAX && seen.add(pin.id))
-    .slice(0, EXTRA_PIN_MAX).map((pin) => ({ id: pin.id, kind: pin.kind, name: pin.name.trim() }));
+    .slice(0, EXTRA_PIN_MAX).map((pin) => ({ id: pin.id, kind: pin.kind, name: pin.name.trim(),
+      ...(pin.automaticName === true && pin.kind !== 'marker' ? { automaticName: true } : {}) }));
 }
 
 // Extra pins as layout items (same shape as the built-in facilities).
 function extraPinItems(extraPins = []) {
   return parseExtraPins(extraPins).map((pin) => {
     const type = EXTRA_PIN_TYPES.find((entry) => entry.kind === pin.kind);
-    return { id: pin.id, kind: pin.kind, name: pin.name, category: type.category, symbol: type.symbol,
+    return { id: pin.id, kind: pin.kind, name: pin.name,
+      ...(pin.automaticName ? { automaticName: true } : {}), category: type.category, symbol: type.symbol,
       team: type.team, hours: type.hours, text: type.text, added: true };
+  });
+}
+
+// Match the preset facility names without rewriting saved pins. Generated names and old
+// "Toilets (added 1)" labels adapt; explicit names, ids and placement metadata stay intact.
+function namedExtraPinItems(extraPins = [], baseItems = []) {
+  const pins = extraPinItems(extraPins);
+  const automatic = (pin) => {
+    if (pin.kind === 'marker') return false; // Own pins always have a user-entered name.
+    if (pin.automaticName === true) return true;
+    const type = EXTRA_PIN_TYPES.find((entry) => entry.kind === pin.kind);
+    const match = /^(.+) \(added [1-9][0-9]*\)$/.exec(pin.name);
+    return Boolean(match && match[1] === type.label);
+  };
+  // Reserve custom names before assigning any automatic name, regardless of list order.
+  const reserved = new Set([...baseItems, ...pins.filter((pin) => !automatic(pin))]
+    .map((pin) => pin.name.toLowerCase()));
+  const next = new Map();
+  return pins.map((pin) => {
+    if (!automatic(pin)) return pin;
+    const presets = baseItems.filter((item) => item.kind === pin.kind);
+    const type = EXTRA_PIN_TYPES.find((entry) => entry.kind === pin.kind);
+    const prefix = (presets[0]?.name || type.label)
+      .replace(/\s*·\s*Stage\b.*$/, '').replace(/\s+[0-9]+$/, '').trim() || type.label;
+    let number = next.get(pin.kind) || presets.length + 1;
+    while (reserved.has(`${prefix} ${number}`.toLowerCase())) number++;
+    const name = `${prefix} ${number}`;
+    reserved.add(name.toLowerCase());
+    next.set(pin.kind, number + 1);
+    return { ...pin, name };
   });
 }
 
@@ -586,6 +619,6 @@ if (typeof module !== 'undefined') {
     findItem, distance, metresPerUnit, gridSearch, cellCentre, walkwayRoute, metresBetweenPoints, walkingMinutesBetween, pointInPolygon,
     nearestBoundaryPoint, emptyGrid, buildGrid, isBlocked, isUsable, isOnFence, candidatePoints,
     suggestLayout, checkLayout, layoutScore, nearestOfKind, demoSite, parseSiteMaps,
-    EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins, extraPinItems
+    EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins, extraPinItems, namedExtraPinItems
   };
 }

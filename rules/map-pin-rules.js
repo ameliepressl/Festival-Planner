@@ -6,7 +6,7 @@
 // In the browser site-map-rules.js is loaded first; the tests load it with require.
 const pinMap = typeof module !== 'undefined' && typeof require === 'function'
   ? require('./site-map-rules.js')
-  : { MAP_CATEGORIES, isUsable, isOnFence, nearestBoundaryPoint, EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins };
+  : { MAP_CATEGORIES, isUsable, isOnFence, nearestBoundaryPoint, EXTRA_PIN_TYPES, EXTRA_PIN_MAX, EXTRA_PIN_NAME_MAX, parseExtraPins, namedExtraPinItems };
 
 // The placements left after "Clear all pins". keepGate keeps only the main entrance.
 function clearedPlacements(placements = {}, { keepGate = false } = {}) {
@@ -39,6 +39,13 @@ function pinsToPlace(items, placements = {}) {
 // Kinds that come in large numbers share one button in "Pins to place" ("Toilets ×25").
 const PIN_BULK_LABELS = { toilets: 'Toilets', water: 'Free water', pitch: 'Food pitches' };
 const PIN_BULK_FROM = 4;
+
+// Countable nouns for a single facility, rather than plural or mass-noun type labels.
+function anotherPinLabel(kind) {
+  const nouns = { toilets: 'toilet block', water: 'water point', 'first-aid': 'first aid point',
+    bar: 'bar', info: 'info point', security: 'security post', recycling: 'recycling point', marker: 'pin' };
+  return `Add another ${Object.hasOwn(nouns, kind) ? nouns[kind] : 'pin'}`;
+}
 
 // The buttons of "Pins to place": one per pin, except many open pins of one kind share a button.
 // A shared button places its first open pin (e.g. the toilets next to Stage A come first).
@@ -86,9 +93,10 @@ function pinSpot(site, item, point) {
 }
 
 // "+ Add pin": a new extra pin of one type, with the next free id and a name.
-// The name is the organiser's own (e.g. "VIP area") or the type's label with a number ("Toilets (added 2)").
+// With the current preset list, save a matching facility name; older callers retain their
+// stored-name contract. Explicit custom names (e.g. "VIP area") are always preserved.
 //   → { ok: true, extraPins, pin } or { ok: false, problem }
-function addExtraPin(extraPins = [], kind, name = '') {
+function addExtraPin(extraPins = [], kind, name = '', baseItems = null) {
   const pins = pinMap.parseExtraPins(extraPins);
   const type = pinMap.EXTRA_PIN_TYPES.find((entry) => entry.kind === kind);
   if (!type) return { ok: false, problem: 'Choose what kind of pin to add.' };
@@ -100,6 +108,10 @@ function addExtraPin(extraPins = [], kind, name = '') {
   while (pins.some((pin) => pin.id === `x-${n}`)) n++;
   const sameKind = pins.filter((pin) => pin.kind === kind).length + 1;
   const pin = { id: `x-${n}`, kind, name: own || `${type.label} (added ${sameKind})` };
+  if (Array.isArray(baseItems)) {
+    if (!own) pin.automaticName = true;
+    pin.name = pinMap.namedExtraPinItems([...pins, pin], baseItems).find((item) => item.id === pin.id).name;
+  }
   return { ok: true, extraPins: [...pins, pin], pin };
 }
 
@@ -121,5 +133,5 @@ function fillMissingPins(placements = {}, suggested = {}) {
 
 if (typeof module !== 'undefined') {
   module.exports = { clearedPlacements, withoutPin, pinCounts, pinsToPlace, pinChoices, nextPinToPlace, pinSpot, fillMissingPins,
-    addExtraPin, withoutExtraPin, placedExtraPins };
+    addExtraPin, withoutExtraPin, placedExtraPins, anotherPinLabel };
 }

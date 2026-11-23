@@ -1,5 +1,8 @@
-// Acceptance checks for the lineup planner rules (rules/festival-rules.js), one block per scenario A1–A6
-// in product-brief/festival-architect-brief.html. Run with:  uvx --from nodejs-wheel node --test
+// Historical compatibility tests for the original single-day lineup contract (A1–A6).
+// The Node exports from festival-rules.js delegate these checks to legacy-lineup-compatibility.js.
+// Its booking minimum, hard budget limit and duplicate ban are not current app requirements.
+// Current behaviour: product-brief/festival-architect-brief.html and lineup-integration.test.js.
+// All original assertions below are preserved. Run: uvx --from nodejs-wheel node --test
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
