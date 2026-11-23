@@ -141,7 +141,7 @@ dialog h2 { font: 700 26px/1.15 var(--font-display); letter-spacing: -.005em; ma
 .topbar-brand .brand-mark { width: 27px; height: 30px; }
 .topbar-brand:focus-visible { outline: 2px solid var(--coral); outline-offset: 4px; }
 /* The name lives in the top bar on tablets and desktops, and in the sidebar on phones (like before). */
-@media (min-width: 621px) { .sidebar-brand { display: none; } .sidebar-nav { margin-top: 58px; } }
+@media (min-width: 621px) { .sidebar-brand { display: none; } .sidebar-nav { margin-top: 4px; } }
 @media (max-width: 620px) { .topbar-brand { display: none; } }
 .festival-countdown { border-right: 0; padding-right: 0; margin-right: 0; display: grid; justify-items: end; gap: 0; }
 .festival-countdown + .lineup-actions:not(.hidden) { padding-left: 16px; border-left: 1px solid var(--line); }
