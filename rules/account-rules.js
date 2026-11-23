@@ -127,6 +127,14 @@ function accountErrorMessage(error) {
     return 'Confirm your email first (check your inbox), then sign in.';
   }
   // Forgot password (feature-plans/forgot-password.md)
+  // Supabase uses the same code for two limits. The first one is per person: one email per
+  // minute ("For security purposes, you can only request this after 25 seconds.").
+  const wait = message.match(/only request this after (\d+) seconds?/);
+  if (wait) {
+    const seconds = Number(wait[1]);
+    return `An email was just sent. Please wait ${seconds} ${seconds === 1 ? 'second' : 'seconds'} before requesting another one.`;
+  }
+  // The second one is for the whole project: too many emails in the last hour.
   if (code === 'over_email_send_rate_limit' || message.includes('email rate limit exceeded')) {
     return 'Too many emails were sent in the last hour. Try again later.';
   }

@@ -181,3 +181,27 @@ test('a normal visit still checks the session as before', async () => {
   assert.deepEqual(ui.calls, [['getSession']]);
   assert.deepEqual(ui.shown(), ['sign-in']);
 });
+
+// --- Waiting a minute between two reset emails (seen on the live app, 22 November) ---------
+
+test('asking again within a minute says how long to wait, not that the hourly limit was reached', () => {
+  const perPerson = { code: 'over_email_send_rate_limit', status: 429,
+    message: 'For security purposes, you can only request this after 25 seconds.' };
+  assert.equal(accountErrorMessage(perPerson), 'An email was just sent. Please wait 25 seconds before requesting another one.');
+  assert.doesNotMatch(accountErrorMessage(perPerson), /last hour/);
+  assert.match(accountErrorMessage({ ...perPerson, message: 'For security purposes, you can only request this after 1 second.' }),
+    /wait 1 second before/);
+  assert.match(accountErrorMessage({ code: 'over_email_send_rate_limit', status: 429, message: 'email rate limit exceeded' }),
+    /last hour/, 'the hourly limit keeps its own message');
+});
+
+test('the reset form shows the waiting message from Supabase', async () => {
+  const ui = signInScreen({ auth: { async resetPasswordForEmail() {
+    return { error: { code: 'over_email_send_rate_limit', status: 429,
+      message: 'For security purposes, you can only request this after 25 seconds.' } }; } } });
+  await settle();
+  ui.node('#forgot-password').onclick();
+  ui.node('#forgot-form').values = { email: 'amelie@novasbe.pt' };
+  await ui.node('#forgot-form').submit();
+  assert.match(ui.node('#forgot-form .form-message').textContent, /Please wait 25 seconds/);
+});

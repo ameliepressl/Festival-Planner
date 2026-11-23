@@ -684,6 +684,39 @@ Before it works for everyone (Amelie, in the Supabase dashboard): Redirect URLs 
 Authentication → URL Configuration, and custom SMTP — the built-in email service only sends to
 members of the Supabase organization.
 
+## Automatic lineup planning — 22 November 2026
+
+Branch: `feature-automatic-lineup-fillup` (owner: Vicky). Plan: `feature-plans/automatic-lineup-fillup.md`.
+
+Added Suggest lineup as the orange primary action in the festival timetable, replacing the redundant toolbar Book artist button. Individual booking remains available from the catalogue and free timetable slots. Opening it immediately shows a compact timetable grouped by day with a horizontal row per stage, and Cancel and Use this lineup actions. Time positions show gaps and overlaps; retained bookings and blocks are included, the headliner is outlined, and an immediate custom tooltip exposes each set’s full name/time on hover, keyboard focus or tap. The tooltip stays above the modal and outside the scrolling preview, and clears when the preview scrolls or regenerates. The preview scrolls for longer festivals or narrow screens. The suggestion uses only This festival artists, balances performance counts across days/stages and spreads entertainment across the day. It aims for 30 minutes after doors open and 15 minutes before closing, and tries an alternating stage order without overlapping performances when the available time allows it. Busy schedules retain stage parallelism; any remaining overlaps or reduced arrival/exit buffers are explained. The organiser chooses the final-day headliner in the suggestion popup, independently of artist fees; changing the selection immediately recalculates the timetable, and applying remembers the choice; changeovers are at least 15 minutes per stage and three consecutive performances of the same genre per stage/day are avoided. Artist budget, stage hours, overnight times and calendar blocks remain enforced.
+
+Using a suggestion replaces tentative performances after a visible notice; confirmed bookings, their linked changeovers and standalone blocks stay in place. New performances are tentative. Cancel does not save; changed plans require another suggestion, and permissions and failed saves keep the original plan intact. Renamed Delete artist to Remove from festival throughout its editor, confirmation and success message.
+
+Validation: all 403 tests pass (0 failed or skipped), with 23 new scheduling/interface checks and unchanged existing regression tests. Tests cover fees, hours, overnight bookings, headliners, genre runs, spacing, non-overlapping alternating stages, dense-schedule fallback, fixed blocks, confirmed performances, cancellation, stale suggestions, permissions and failed saves. In Chrome, opening Suggest lineup immediately showed 10 proposed sets with no checkbox or preview button. Cancel kept the prior schedule; Use this lineup saved five sets per day, alternating stages without overlaps, starting at 14:30 and ending at 22:45, with €2,500 remaining. The plan survived reload. Verified in Chrome that selecting Fado Nova in the headliner dropdown immediately puts that artist in the final slot, without applying the suggestion. The compact Chrome preview displays both festival days and all stage rows together; changing the headliner updates its outlined closing slot without saving, and cancellation keeps the existing timetable. Verified the custom tooltip in Chrome on a truncated Tomás Vale label; its full name and 14:30–15:10 times appear above the bar. Status: ready for team review.
+
+**Update 22 November (forgot password):** custom SMTP with the team Gmail account
+(festivalarchitect.team@gmail.com) and the Redirect URLs are set up in Supabase; Amelie reset her
+password on the live app successfully. Fix on `fix-reset-wait-message`: asking for a second email
+within a minute showed "Too many emails were sent in the last hour" — Supabase uses the same code
+for its one-email-per-minute rule. It now says how many seconds to wait. 405/405 tests passed after merging main (with #38).
+
+## Lineup suggestions: budget as in manual booking — 22 November 2026
+
+Branch: `fix-lineup-suggestion-budget` (owner: Amelie). Plan: `feature-plans/automatic-lineup-fillup.md` (updated).
+
+"Suggest lineup" treated the artist budget as a hard limit: it left artists out ("Not enough remaining
+budget") and refused to plan when the lineup was already over budget. Manual booking and the brief
+("Flexible budget") allow going over after confirmation. Now the suggestion plans every artist that fits
+the hours; the preview shows the remaining amount or "€X over the €Y artist budget", and applying asks
+with the same "Go over budget?" dialog when the overrun is created or increased. The rule is
+`budgetOverrunGrows` in `rules/festival-rules.js`.
+
+**Test changed with Amelie's approval (22 November):** in `tests/automatic-lineup.test.js`, "budget is
+respected and missing artists are reported" checked the old hard limit. It is replaced by "budget is not
+a hard limit and missing artists are reported" (all artists planned at €250 and €0 budget; artists left
+out only for lack of time). Vicky, please review. New: `tests/lineup-suggestion-budget.test.js` (8 tests).
+Validation: 413/413 tests passed.
+
 ## Animated visitor simulation — 22 November 2026
 
 Branch: `feature-animated-visitor-simulation` (owner: Vicky). Plan: [feature-plans/animated-visitor-simulation.md](feature-plans/animated-visitor-simulation.md).
